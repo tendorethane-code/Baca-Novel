@@ -15,7 +15,7 @@ Repo ini hanya berisi kode. Jangan commit teks novel; `.gitignore` sudah menolak
   - **Pratinjau** sebelum disimpan: jumlah chapter/paragraf, cuplikan isi, peringatan (teks sebelum chapter pertama, nomor kembar, nomor yang hilang, chapter kosong). Chapter bisa dicentang/dilepas.
   - Kalau nomor chapter sudah ada di novel tujuan, aplikasi bertanya per chapter: **ganti** atau **lewati** (bawaan: lewati).
 - **Perpustakaan**: cari judul/pengarang, urutkan (terakhir dibaca / judul / baru ditambah), status baca (*Sedang dibaca*, *Nanti*, *Selesai*) dengan filter. Status diubah lewat menu ⋯ di kartu novel.
-- **Tampilan**: 10 tema latar + tema kustom (pilih warna latar & teks, dengan peringatan kontras rendah), jenis huruf, ukuran huruf, jarak baris, jarak antarparagraf, lebar teks, rata kiri-kanan.
+- **Tampilan**: 10 tema latar + tema kustom (pilih warna latar & teks, dengan peringatan kontras rendah), jenis huruf (termasuk *Source* (Source Serif 4), disertakan di aplikasi jadi tampil sama di semua perangkat), ukuran huruf, jarak baris, jarak antarparagraf, lebar teks, rata kiri-kanan.
 - **Kembalikan ke bawaan** (tombol di bawah Pengaturan): mengembalikan semua setelan tampilan; bisa dibatalkan lewat notifikasi. Novel, bookmark, posisi, kunci, dan sinkron tidak tersentuh.
 - **Kecerahan**: peredup layar. Aplikasi web tidak bisa mengubah kecerahan layar asli, jadi ini lapisan gelap di atas halaman (hanya bisa lebih redup dari setelan perangkat).
 - **Bookmark**: tandai posisi (chapter + paragraf) dengan catatan opsional; daftar bookmark, penanda di paragraf dan di daftar isi. Ikut tersinkron.
@@ -84,4 +84,5 @@ node --test tests/*.test.mjs    # unit test parser, zip, dan EPUB
 | `js/db.js` | Penyimpanan IndexedDB |
 | `js/merge.js`, `js/sync.js` | Aturan gabung data antarperangkat, sinkron ke repo GitHub privat |
 | `js/zip.js`, `js/epub.js` | Baca/tulis ZIP, susun EPUB |
+| `fonts/` | Huruf Source Serif 4 (SIL Open Font License, `fonts/OFL-LICENSE`) |
 | `sw.js`, `manifest.webmanifest`, `icons/` | PWA / offline |

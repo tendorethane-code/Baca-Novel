@@ -237,6 +237,7 @@ function downloadOrShare(data, filename, mime) {
 
 const FONTS = {
   book: { label: 'Buku', css: '"Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif' },
+  source: { label: 'Source', css: '"Source Serif 4", Georgia, serif' },
   serif: { label: 'Serif', css: 'Georgia, "Times New Roman", Times, serif' },
   sans: { label: 'Sans', css: 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' },
   mono: { label: 'Mono', css: 'ui-monospace, Menlo, Consolas, "Liberation Mono", monospace' },
