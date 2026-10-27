@@ -32,6 +32,7 @@ const ICONS = {
   more: 'M5 12h.01M12 12h.01M19 12h.01',
   close: 'M6 6l12 12M18 6L6 18',
   chevron: 'M9 6l6 6-6 6',
+  home: 'M3 11l9-7 9 7M5 10v10h5v-6h4v6h5V10',
   lock: 'M6 11h12v9H6zM8.5 11V8a3.5 3.5 0 0 1 7 0v3',
   bookmark: 'M7 4h10v16l-5-4-5 4z',
   search: 'M11 18a7 7 0 1 1 0-14 7 7 0 0 1 0 14zM20 20l-4-4',
@@ -403,41 +404,60 @@ if (migrated) saveSettings();
 // Dipasang oleh tampilan pembaca supaya posisi baca tetap saat ukuran teks berubah.
 let readerHooks = null;
 
+// Kontrol pengaturan; dipakai dialog Pengaturan dan panel di layar baca.
+async function updateSettings(patch) {
+  const anchor = readerHooks?.anchor();
+  Object.assign(settings, patch);
+  applySettings();
+  saveSettings();
+  if ('recapCount' in patch) await readerHooks?.refreshRecap();
+  if (anchor != null) readerHooks?.restore(anchor);
+}
+
+function settingPicker(label, entries, key) {
+  const sel = el(
+    'select',
+    { onchange: () => updateSettings({ [key]: typeof settings[key] === 'number' ? Number(sel.value) : sel.value }) },
+    entries.map(([k, v]) => el('option', { value: k, selected: String(settings[key]) === k }, v.label)),
+  );
+  return el('label', null, label, sel);
+}
+
+function settingSlider(label, key, min, max, step, fmt) {
+  const out = el('output', null, fmt(settings[key]));
+  const input = el('input', {
+    type: 'range',
+    min,
+    max,
+    step,
+    value: settings[key],
+    'aria-label': label,
+    oninput: () => {
+      updateSettings({ [key]: Number(input.value) });
+      out.textContent = fmt(settings[key]);
+    },
+  });
+  return el('label', { class: 'slider' }, el('span', null, label), input, out);
+}
+
+/** Pengaturan huruf utama: ukuran, jenis & kecerahan teks, jarak baris & paragraf. */
+function typeControls() {
+  return [
+    ...sizePicker(updateSettings),
+    el(
+      'div',
+      { class: 'pick-row' },
+      settingPicker('Jenis huruf', Object.entries(FONTS), 'font'),
+      settingPicker('Kecerahan teks', Object.entries(TEXT_LEVELS).reverse(), 'textLevel'),
+    ),
+    settingSlider('Jarak baris', 'lh', 1.2, 2.4, 0.05, (v) => v.toFixed(2)),
+    settingSlider('Jarak antarparagraf', 'paraGap', 0, 48, 1, (v) => `${v}px`),
+  ];
+}
+
 function openSettings() {
-  const update = async (patch) => {
-    const anchor = readerHooks?.anchor();
-    Object.assign(settings, patch);
-    applySettings();
-    saveSettings();
-    if ('recapCount' in patch) await readerHooks?.refreshRecap();
-    if (anchor != null) readerHooks?.restore(anchor);
-  };
-
-  const picker = (label, entries, key) => {
-    const sel = el(
-      'select',
-      { onchange: () => update({ [key]: typeof settings[key] === 'number' ? Number(sel.value) : sel.value }) },
-      entries.map(([k, v]) => el('option', { value: k, selected: String(settings[key]) === k }, v.label)),
-    );
-    return el('label', null, label, sel);
-  };
-
-  const slider = (label, key, min, max, step, fmt) => {
-    const out = el('output', null, fmt(settings[key]));
-    const input = el('input', {
-      type: 'range',
-      min,
-      max,
-      step,
-      value: settings[key],
-      'aria-label': label,
-      oninput: () => {
-        update({ [key]: Number(input.value) });
-        out.textContent = fmt(settings[key]);
-      },
-    });
-    return el('label', { class: 'slider' }, el('span', null, label), input, out);
-  };
+  const update = updateSettings;
+  const slider = settingSlider;
 
   const check = (label, key) =>
     el(
@@ -539,21 +559,13 @@ function openSettings() {
       customBox,
       el('div', { class: 'section-label' }, 'Kecerahan'),
       dimSlider(update),
-      sizePicker(update),
-      el(
-        'div',
-        { class: 'pick-row' },
-        picker('Jenis huruf', Object.entries(FONTS), 'font'),
-        picker('Kecerahan teks', Object.entries(TEXT_LEVELS).reverse(), 'textLevel'),
-      ),
-      slider('Jarak baris', 'lh', 1.2, 2.4, 0.05, (v) => v.toFixed(2)),
-      slider('Jarak antarparagraf', 'paraGap', 0, 48, 1, (v) => `${v}px`),
+      typeControls(),
       slider('Lebar teks', 'width', 360, 1200, 20, (v) => `${v}px`),
       check('Rata kiri-kanan', 'justify'),
       el('div', { class: 'section-label' }, 'Pengingat chapter sebelumnya'),
       slider('Jumlah paragraf terakhir yang ditampilkan (0 = mati)', 'recapCount', 0, 15, 1, (v) => String(v)),
       check('Tampilkan terbuka', 'recapOpen'),
-      el('div', { class: 'section-label' }, 'Tombol di bar layar baca'),
+      el('div', { class: 'section-label' }, 'Tombol di panel layar baca'),
       barEditor(),
       el('div', { class: 'section-label' }, 'Kunci perubahan'),
       el('label', { class: 'check' }, lockBox, 'Kunci perubahan (mode baca-saja)'),
@@ -571,7 +583,7 @@ function openSettings() {
         run: async () => {
           const ok = await confirmDialog(
             'Kembalikan ke bawaan?',
-            'Tema, huruf, ukuran, kecerahan teks, jarak baris & paragraf, lebar, kecerahan, pengingat, dan tombol bar kembali seperti awal. Novel, bookmark, posisi baca, kunci perubahan, dan sinkron tidak berubah.',
+            'Tema, huruf, ukuran, kecerahan teks, jarak baris & paragraf, lebar, kecerahan, pengingat, dan tombol panel baca kembali seperti awal. Novel, bookmark, posisi baca, kunci perubahan, dan sinkron tidak berubah.',
             'Kembalikan',
           );
           if (!ok) return false;
@@ -700,7 +712,7 @@ function openBrightness() {
   });
 }
 
-/** Atur tombol apa saja yang tampil di bar layar baca dan urutannya. */
+/** Atur tombol apa saja yang tampil di panel layar baca dan urutannya. */
 function barEditor() {
   const list = el('div', { class: 'bar-editor' });
   const render = () => {
@@ -1607,47 +1619,77 @@ async function showReader(id, wantNum) {
     para = 0;
   }
 
-  const titleBtn = el('button', { type: 'button', class: 'bar-title', onclick: () => openToc() });
+  // Panel baca: tersembunyi saat membaca, muncul dari bawah saat teks diketuk.
+  // Isinya judul & progres, baris tombol (bisa diatur di Pengaturan), dan pengaturan huruf.
+  const closing = (fn) => () => {
+    showPanel(false);
+    fn();
+  };
   const actions = {
     lock: () => setTouchLock(true),
-    bookmark: () => openBookmarks(),
-    search: () => openSearch(),
-    toc: () => openToc(),
-    brightness: openBrightness,
-    settings: openSettings,
+    bookmark: closing(() => openBookmarks()),
+    search: closing(() => openSearch()),
+    toc: closing(() => openToc()),
+    brightness: closing(openBrightness),
+    settings: closing(openSettings),
   };
-  const barSlot = el('span', { class: 'bar-actions' });
+  const prevBtn = iconBtn('back', 'Chapter sebelumnya', () => go(idx - 1));
+  const nextBtn = iconBtn('chevron', 'Chapter berikutnya', () => go(idx + 1));
+  const btnRow = el('div', { class: 'rp-actions' });
   const rebuildBar = () =>
-    barSlot.replaceChildren(
+    btnRow.replaceChildren(
+      prevBtn,
+      iconBtn('home', 'Kembali ke perpustakaan', () => (location.hash = '#/')),
       ...settings.barOrder
         .filter((k) => !settings.barHidden.includes(k))
         .map((k) => iconBtn(BAR_ITEMS[k].icon, BAR_ITEMS[k].label, actions[k])),
+      iconBtn('more', 'Menu lainnya', closing(() => openMore())),
+      nextBtn,
     );
   rebuildBar();
-  const bar = el(
-    'header',
-    { class: 'bar' },
-    iconBtn('back', 'Kembali ke perpustakaan', () => (location.hash = '#/')),
-    titleBtn,
-    barSlot,
-    iconBtn('more', 'Menu lainnya', () => openMore()),
-  );
-  // Bar pindah chapter di bawah bar atas: ‹ [pilih chapter] ›
+
   const chSelect = el('select', { 'aria-label': 'Pilih chapter', onchange: () => go(Number(chSelect.value)) });
   const fillChSelect = () =>
     chSelect.replaceChildren(...novel.toc.map((t, i) => el('option', { value: i }, chapterLabel(t.num, t.title))));
-  fillChSelect();
-  const chPrev = el('button', { type: 'button', class: 'ch-step', 'aria-label': 'Chapter sebelumnya', onclick: () => go(idx - 1) }, icon('back'));
-  const chNext = el('button', { type: 'button', class: 'ch-step', 'aria-label': 'Chapter berikutnya', onclick: () => go(idx + 1) }, icon('chevron'));
-  const chBar = el('div', { class: 'ch-bar hide' }, chPrev, el('div', { class: 'ch-pick' }, chSelect), chNext);
-  bar.classList.add('hide');
+  const progressText = el('span', { class: 'rp-pct' });
+  const progressFill = el('i');
+  const typeSlot = el('div', { class: 'rp-type' });
+  const panel = el(
+    'section',
+    { class: 'rp-panel', 'aria-label': 'Menu baca' },
+    el(
+      'div',
+      { class: 'rp-head' },
+      el('div', { class: 'rp-novel' }, novel.title),
+      progressText,
+      iconBtn('close', 'Tutup menu', () => showPanel(false)),
+      el('div', { class: 'rp-ch' }, chSelect),
+      el('div', { class: 'rp-progress' }, progressFill),
+    ),
+    btnRow,
+    typeSlot,
+  );
+  const backdrop = el('div', { class: 'rp-backdrop', onclick: () => showPanel(false) });
 
-  // Kontrol (bar atas + bar chapter) tersembunyi saat membaca; ketuk teks untuk menampilkan/menyembunyikan.
+  function refreshHead() {
+    fillChSelect(); // daftar isi bisa berubah (edit, hapus, sinkron)
+    chSelect.value = String(idx);
+    prevBtn.disabled = idx === 0;
+    nextBtn.disabled = idx === novel.toc.length - 1;
+    const max = document.documentElement.scrollHeight - innerHeight;
+    const pct = Math.round((max > 0 ? Math.min(1, window.scrollY / max) : 1) * 100);
+    progressText.textContent = `${idx + 1}/${novel.toc.length} · ${pct}%`;
+    progressFill.style.width = `${pct}%`;
+  }
+
   let controls = false;
-  function showControls(on) {
+  function showPanel(on) {
     controls = on;
-    bar.classList.toggle('hide', !on);
-    chBar.classList.toggle('hide', !on);
+    document.documentElement.classList.toggle('panel-open', on);
+    if (on) {
+      refreshHead();
+      typeSlot.replaceChildren(...typeControls()); // dibuat ulang supaya sesuai setelan terbaru
+    }
   }
 
   const main = el('main', {
@@ -1655,7 +1697,7 @@ async function showReader(id, wantNum) {
     onclick: (e) => {
       if (touchLocked || e.target.closest('button, a, summary, input, select, textarea, label, .hold')) return;
       if (String(getSelection?.() || '').trim()) return; // sedang memilih teks
-      showControls(!controls);
+      showPanel(!controls);
     },
   });
   const unlock = holdButton('Tahan untuk membuka kunci', 900, () => setTouchLock(false), 'unlock');
@@ -1666,8 +1708,9 @@ async function showReader(id, wantNum) {
   let current = null; // { entry, chapter }
   let token = 0;
 
-  setView([bar, chBar, main, lockLayer], () => {
+  setView([main, backdrop, panel, lockLayer], () => {
     saveNow();
+    showPanel(false);
     setTouchLock(false);
     window.removeEventListener('scroll', onScroll);
     document.removeEventListener('keydown', onKey);
@@ -1677,7 +1720,7 @@ async function showReader(id, wantNum) {
   });
 
   if (!settings.tapHint) {
-    toast('Ketuk teks untuk menampilkan menu dan pindah chapter.');
+    toast('Ketuk teks untuk membuka menu baca.');
     settings.tapHint = true;
     saveSettings();
   }
@@ -1687,12 +1730,12 @@ async function showReader(id, wantNum) {
   function setTouchLock(on) {
     touchLocked = on;
     document.documentElement.classList.toggle('touch-locked', on);
-    showControls(false);
+    showPanel(false);
     if (on) toast('Layar terkunci. Hanya bisa scroll. Tahan tombol gembok untuk membuka.');
   }
 
-  // Posisi = indeks paragraf pertama yang terlihat di bawah bar (lebih tahan perubahan ukuran huruf daripada scrollY).
-  const topOffset = () => bar.offsetHeight + 4;
+  // Posisi = indeks paragraf pertama yang terlihat di layar (lebih tahan perubahan ukuran huruf daripada scrollY).
+  const topOffset = () => 8;
   // Setelah lompat ke paragraf tertentu (hasil cari/bookmark/posisi terakhir), paragraf itu yang dianggap
   // posisi sekarang sampai pengguna menggulir sendiri. Kalau tidak, paragraf di akhir chapter (yang tidak bisa
   // digulir sampai ke atas layar) tersimpan sebagai beberapa paragraf sebelumnya.
@@ -1717,9 +1760,9 @@ async function showReader(id, wantNum) {
   }
   function restore(p) {
     const target = article?.children[p];
-    if (!p || !target) return window.scrollTo(0, 0);
-    window.scrollTo(0, target.getBoundingClientRect().top + window.scrollY - topOffset());
+    window.scrollTo(0, !p || !target ? 0 : target.getBoundingClientRect().top + window.scrollY - topOffset());
     if (pinned?.para === p) pinned.y = window.scrollY;
+    lastY = window.scrollY; // gulir oleh aplikasi, bukan pengguna: jangan tutup panel
   }
 
   let saveTimer = 0;
@@ -1744,13 +1787,14 @@ async function showReader(id, wantNum) {
   let lastY = window.scrollY;
   function onScroll() {
     const y = window.scrollY;
-    // Kontrol hanya muncul lewat ketukan; menggulir ke bawah menyembunyikannya lagi.
-    if (controls && y > lastY + 8) showControls(false);
+    // Panel hanya muncul lewat ketukan; menggulir menutupnya lagi.
+    if (controls && Math.abs(y - lastY) > 8) showPanel(false);
     lastY = y;
     scheduleSave();
   }
   function onKey(e) {
     if (touchLocked) return;
+    if (controls && e.key === 'Escape' && !document.querySelector('dialog[open]')) return showPanel(false);
     if (document.querySelector('dialog[open]') || /INPUT|TEXTAREA|SELECT/.test(e.target.tagName) || e.metaKey || e.ctrlKey || e.altKey)
       return;
     if (e.key === 'ArrowLeft') go(idx - 1);
@@ -1829,10 +1873,6 @@ async function showReader(id, wantNum) {
     if (my !== token) return;
     current = { entry, chapter };
 
-    titleBtn.replaceChildren(
-      el('span', null, chapterLabel(entry.num, entry.title)),
-      el('small', null, `${novel.title} · ${idx + 1}/${novel.toc.length}`),
-    );
     document.title = `${chapterLabel(entry.num, entry.title)} · ${novel.title}`;
 
     recapSlot = el('div', null, recap);
@@ -1854,10 +1894,7 @@ async function showReader(id, wantNum) {
       ].filter(Boolean),
     );
     history.replaceState(null, '', `#/read/${encodeURIComponent(novel.id)}/${entry.num}`);
-    fillChSelect(); // daftar isi bisa berubah (edit, hapus, sinkron)
-    chSelect.value = String(idx);
-    chPrev.disabled = idx === 0;
-    chNext.disabled = idx === novel.toc.length - 1;
+    if (controls) refreshHead();
     markBookmarks();
     const target = article.children[startPara];
     if (highlight && target) {
