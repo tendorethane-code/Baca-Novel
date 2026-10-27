@@ -1707,6 +1707,7 @@ async function showReader(id, wantNum) {
   let article = null;
   let recapSlot = null;
   let navSlot = null;
+  let topSlot = null;
   let current = null; // { entry, chapter }
   let token = 0;
 
@@ -1839,17 +1840,31 @@ async function showReader(id, wantNum) {
     recapSlot.replaceChildren(...(r ? [r] : []));
   }
 
+  // Bar pindah chapter di awal dan akhir chapter: ‹ [pilih chapter] ›
+  function jumpBar() {
+    const sel = el(
+      'select',
+      { 'aria-label': 'Pilih chapter', onchange: () => go(Number(sel.value)) },
+      novel.toc.map((t, i) => el('option', { value: i }, chapterLabel(t.num, t.title))),
+    );
+    sel.value = String(idx);
+    return el(
+      'nav',
+      { class: 'ch-jump' },
+      el('button', { type: 'button', class: 'ch-step', 'aria-label': 'Chapter sebelumnya', disabled: idx === 0, onclick: () => go(idx - 1) }, icon('back')),
+      el('div', { class: 'ch-pick' }, sel),
+      el(
+        'button',
+        { type: 'button', class: 'ch-step', 'aria-label': 'Chapter berikutnya', disabled: idx === novel.toc.length - 1, onclick: () => go(idx + 1) },
+        icon('chevron'),
+      ),
+    );
+  }
+
   function buildNav() {
-    const prevE = novel.toc[idx - 1];
     const nextE = novel.toc[idx + 1];
     return [
-      el(
-        'nav',
-        { class: 'ch-nav' },
-        el('button', { type: 'button', class: 'btn', disabled: !prevE, onclick: () => go(idx - 1) }, '‹ Sebelumnya'),
-        el('button', { type: 'button', class: 'btn', onclick: () => openToc() }, 'Daftar isi'),
-        el('button', { type: 'button', class: 'btn primary', disabled: !nextE, onclick: () => go(idx + 1) }, 'Berikutnya ›'),
-      ),
+      jumpBar(),
       // Saat kunci sentuhan aktif, tombol di atas disembunyikan; pindah chapter harus ditahan.
       nextE ? holdButton(`Tahan untuk lanjut ke Chapter ${nextE.num}`, 700, () => go(idx + 1), 'locked-next') : null,
       nextE ? null : el('p', { class: 'ch-end' }, 'Ini chapter terakhir yang tersimpan.'),
@@ -1883,9 +1898,11 @@ async function showReader(id, wantNum) {
       null,
       (chapter?.paragraphs || []).map((p) => el('p', null, p)),
     );
-    navSlot = el('div', null, buildNav());
+    topSlot = el('div', null, jumpBar());
+    navSlot = el('div', { class: 'ch-bottom' }, buildNav());
     main.replaceChildren(
       ...[
+        topSlot,
         recapSlot,
         entry.title
           ? el('h1', { class: 'ch-title' }, el('small', null, `Chapter ${entry.num}`), entry.title)
@@ -2102,6 +2119,13 @@ async function showReader(id, wantNum) {
     });
   }
 
+  // Judul seperti "Water and Fire (Air dan Api)": bagian dalam kurung (biasanya terjemahan) jadi baris kedua.
+  function tocTitle(title) {
+    if (!title) return el('span', { class: 't' }, el('i', { class: 'muted' }, '(tanpa judul)'));
+    const m = /^(.+?)\s*\(([^()]+)\)\s*$/.exec(title);
+    return el('span', { class: 't' }, el('span', null, m ? m[1] : title), m ? el('small', null, m[2]) : null);
+  }
+
   // Daftar isi: tab Chapter (cari, urutan, ke chapter sekarang, per halaman 100) dan tab Bookmark.
   function openToc() {
     const PAGE = 100;
@@ -2162,7 +2186,7 @@ async function showReader(id, wantNum) {
                 'button',
                 { type: 'button', class: `toc-row${i === idx ? ' current' : ''}`, title: chapterLabel(t.num, t.title), onclick: pick(() => go(i)) },
                 el('span', { class: 'n' }, t.num),
-                el('span', { class: 't' }, t.title || el('i', { class: 'muted' }, '(tanpa judul)')),
+                tocTitle(t.title),
                 marked.has(t.num) ? el('span', { class: 'toc-bm', title: 'Ada bookmark' }, icon('bookmark')) : null,
               );
             })
@@ -2348,6 +2372,7 @@ async function showReader(id, wantNum) {
     const at = novel.toc.findIndex((t) => t.num === current.entry.num);
     if (at >= 0) idx = at;
     navSlot?.replaceChildren(...buildNav());
+    topSlot?.replaceChildren(jumpBar());
     const lr = fresh.lastRead;
     if (lr && (!mine || lr.at > mine.at) && (lr.num !== current.entry.num || Math.abs(lr.para - anchor()) > 2)) {
       novel.lastRead = lr;

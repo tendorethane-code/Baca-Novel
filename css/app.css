@@ -346,17 +346,6 @@ label.field > span {
   letter-spacing: 0.3em;
   margin: 0 0 0.6em;
 }
-.ch-nav {
-  display: flex;
-  gap: 8px;
-  justify-content: space-between;
-  margin: 2.5em 0 1em;
-  font-family: var(--ui-font);
-  font-size: 16px;
-}
-.ch-nav .btn {
-  flex: 1;
-}
 .ch-end {
   text-align: center;
   color: var(--muted);
@@ -772,7 +761,7 @@ dialog.drawer {
 html.touch-locked { touch-action: pan-y; }
 html.touch-locked .reader { pointer-events: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 html.touch-locked .reader .locked-next { display: block; pointer-events: auto; }
-html.touch-locked .reader .ch-nav { display: none; }
+html.touch-locked .reader .ch-jump { display: none; }
 html.touch-locked .bar { pointer-events: none; }
 html.touch-locked .lock-layer {
   display: block; position: fixed; z-index: 20;
@@ -973,12 +962,13 @@ dialog.toc-dlg .dlg-body { display: flex; flex-direction: column; overflow: hidd
 }
 .toc-row:hover { background: color-mix(in srgb, var(--fg) 9%, transparent); }
 .toc-row .n { flex: none; min-width: 2.8em; color: var(--muted); font-variant-numeric: tabular-nums; }
-.toc-row .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.toc-row .t { flex: 1; min-width: 0; display: grid; gap: 1px; padding: 7px 0; }
+.toc-row .t > * { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.toc-row .t small { color: var(--muted); font-size: 0.82rem; font-weight: normal; }
 .toc-row.current { background: color-mix(in srgb, var(--accent) 20%, transparent); box-shadow: inset 3px 0 0 var(--accent); font-weight: 600; }
 .toc-row.current .n { color: var(--accent); }
 .bm-row { align-items: flex-start; padding: 10px 14px; }
-.bm-row .t { white-space: normal; display: grid; gap: 2px; }
-.bm-row .t b, .bm-row .t small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bm-row .t { padding: 0; }
 .bm-row .t small { color: var(--muted); font-family: var(--read-font); font-size: 0.85rem; }
 .toc-empty { text-align: center; padding: 24px 8px; }
 .toc-pager { display: flex; gap: 6px; padding: 10px 18px calc(12px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); flex: none; }
@@ -988,4 +978,22 @@ dialog.toc-dlg .dlg-body { display: flex; flex-direction: column; overflow: hidd
 .toc-pagesel select { height: 100%; text-align: center; text-align-last: center; -webkit-appearance: none; appearance: none; padding: 0 18px 0 4px; font-size: 14px; font-variant-numeric: tabular-nums; }
 .toc-pagesel::after {
   content: ''; position: absolute; right: 7px; top: 50%; margin-top: -2px; border: 5px solid transparent; border-top-color: var(--fg); pointer-events: none;
+}
+
+/* ---------- Bar pindah chapter di awal & akhir chapter ---------- */
+.ch-jump { display: flex; gap: 8px; margin: 0 0 1.6em; font-family: var(--ui-font); }
+.ch-bottom .ch-jump { margin: 2.5em 0 1em; }
+.ch-step, .ch-pick select { height: 46px; border: 0; border-radius: 10px; background: var(--accent); color: var(--accent-fg); cursor: pointer; }
+.ch-step { flex: none; width: 58px; display: inline-flex; align-items: center; justify-content: center; padding: 0; }
+.ch-step svg { width: 24px; height: 24px; stroke-width: 2.6; }
+.ch-step:disabled { opacity: 0.35; cursor: default; }
+.ch-pick { position: relative; flex: 1; min-width: 0; }
+.ch-pick select {
+  width: 100%; padding: 0 34px 0 14px; font-size: 16px; text-align: center; text-align-last: center;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; -webkit-appearance: none; appearance: none;
+}
+.ch-pick select option { background: var(--panel); color: var(--fg); text-align: left; }
+.ch-pick::after {
+  content: ''; position: absolute; right: 15px; top: 50%; width: 8px; height: 8px; margin-top: -6px;
+  border: solid var(--accent-fg); border-width: 0 2px 2px 0; transform: rotate(45deg); pointer-events: none; opacity: 0.85;
 }
