@@ -2277,7 +2277,14 @@ function openSync() {
 }
 
 function openSyncSetup() {
-  const repoIn = el('input', { type: 'text', placeholder: 'namaanda/baca-novel-data', autocapitalize: 'off', autocomplete: 'off' });
+  const repoIn = el('input', {
+    type: 'text',
+    value: sync.DEFAULT_REPO_NAME,
+    placeholder: sync.DEFAULT_REPO_NAME,
+    autocapitalize: 'off',
+    autocomplete: 'off',
+    spellcheck: 'false',
+  });
   const tokenIn = el('input', { type: 'password', placeholder: 'github_pat_…', autocomplete: 'off' });
   const err = el('p', { class: 'error hidden' });
   const link = (href, text) => el('a', { href, target: '_blank', rel: 'noopener' }, text);
@@ -2335,7 +2342,7 @@ function openSyncSetup() {
       el(
         'div',
         { class: 'row-2' },
-        el('label', { class: 'field' }, el('span', null, 'Repo data (pemilik/nama)'), repoIn),
+        el('label', { class: 'field' }, el('span', null, 'Nama repo data (cukup namanya)'), repoIn),
         el('label', { class: 'field' }, el('span', null, 'Token'), tokenIn),
       ),
       err,
@@ -2357,12 +2364,11 @@ function openSyncSetup() {
             err.classList.toggle('hidden', !m);
             return false;
           };
-          const repo = sync.parseRepo(repoIn.value);
           const token = tokenIn.value.trim();
-          if (!repo) return show('Isi repo dengan format pemilik/nama, misalnya budi/baca-novel-data.');
           if (!token) return show('Token masih kosong.');
+          let repo;
           try {
-            await busy('Memeriksa repo…', () => sync.checkRepo({ repo, token }));
+            repo = await busy('Memeriksa repo…', () => sync.resolveRepo(repoIn.value, token));
           } catch (e) {
             return show(e.message);
           }
