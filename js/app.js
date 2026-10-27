@@ -33,6 +33,8 @@ const ICONS = {
   close: 'M6 6l12 12M18 6L6 18',
   chevron: 'M9 6l6 6-6 6',
   home: 'M3 11l9-7 9 7M5 10v10h5v-6h4v6h5V10',
+  sort: 'M7 4v16M3.5 16.5L7 20l3.5-3.5M13 6h8M13 11h6M13 16h4',
+  pin: 'M12 21s-6.5-5.7-6.5-11a6.5 6.5 0 0 1 13 0c0 5.3-6.5 11-6.5 11zM12 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z',
   lock: 'M6 11h12v9H6zM8.5 11V8a3.5 3.5 0 0 1 7 0v3',
   bookmark: 'M7 4h10v16l-5-4-5 4z',
   search: 'M11 18a7 7 0 1 1 0-14 7 7 0 0 1 0 14zM20 20l-4-4',
@@ -2100,42 +2102,143 @@ async function showReader(id, wantNum) {
     });
   }
 
+  // Daftar isi: tab Chapter (cari, urutan, ke chapter sekarang, per halaman 100) dan tab Bookmark.
   function openToc() {
-    const filter = el('input', { type: 'search', placeholder: 'Cari nomor atau judul…', 'aria-label': 'Cari chapter' });
-    const ul = el('ul', { class: 'toc' });
-    const marked = new Set(Object.values(novel.bookmarks || {}).map((b) => b.num));
+    const PAGE = 100;
     let d;
-    const items = novel.toc.map((t, i) => {
-      const b = el(
-        'button',
-        {
-          type: 'button',
-          class: i === idx ? 'current' : '',
-          onclick: () => {
-            d.close();
-            go(i);
-          },
-        },
-        el('span', { class: 'n' }, t.num),
-        el('span', { class: 't' }, t.title || el('i', { class: 'muted' }, '(tanpa judul)')),
-        marked.has(t.num) ? el('span', { class: 'toc-bm', title: 'Ada bookmark' }, icon('bookmark')) : null,
-      );
-      const li = el('li', null, b);
-      li.dataset.q = `${t.num} ${t.title}`.toLowerCase();
-      ul.append(li);
-      return li;
+    let desc = false;
+    let page = 0;
+    let rows = []; // [indeks toc] yang lolos pencarian, sesuai urutan
+    const marked = new Set(Object.values(novel.bookmarks || {}).map((b) => b.num));
+    const pick = (fn) => () => {
+      d.close();
+      fn();
+    };
+
+    const filter = el('input', { type: 'search', placeholder: 'Cari chapter…', 'aria-label': 'Cari nomor atau judul chapter' });
+    const sortBtn = iconBtn('sort', 'Balik urutan', () => {
+      desc = !desc;
+      sortBtn.classList.toggle('on', desc);
+      locate();
     });
-    filter.oninput = () => {
+    const list = el('div', { class: 'toc-list' });
+    const pageSel = el('select', { 'aria-label': 'Pilih halaman', onchange: () => show(Number(pageSel.value)) });
+    const pager = (label, aria, to) => el('button', { type: 'button', class: 'btn', 'aria-label': aria, onclick: () => show(to()) }, label);
+    const pages = () => Math.max(1, Math.ceil(rows.length / PAGE));
+    const nav = [
+      pager('«', 'Halaman pertama', () => 0),
+      pager('‹', 'Halaman sebelumnya', () => page - 1),
+      el('div', { class: 'toc-pagesel' }, pageSel),
+      pager('›', 'Halaman berikutnya', () => page + 1),
+      pager('»', 'Halaman terakhir', () => pages() - 1),
+    ];
+    const pagerBar = el('div', { class: 'toc-pager' }, nav);
+
+    function compute() {
       const q = filter.value.trim().toLowerCase();
-      for (const li of items) li.hidden = !!q && !li.dataset.q.includes(q);
+      rows = novel.toc.map((_, i) => i).filter((i) => !q || `${novel.toc[i].num} ${novel.toc[i].title}`.toLowerCase().includes(q));
+      if (desc) rows.reverse();
+      pageSel.replaceChildren(
+        ...Array.from({ length: pages() }, (_, p) => {
+          const a = novel.toc[rows[p * PAGE]];
+          const b = novel.toc[rows[Math.min(rows.length, (p + 1) * PAGE) - 1]];
+          return el('option', { value: p }, a ? `${a.num}–${b.num}` : '–');
+        }),
+      );
+    }
+    function show(p) {
+      page = Math.max(0, Math.min(pages() - 1, p));
+      pageSel.value = String(page);
+      const [first, prev, , next, last] = nav;
+      first.disabled = prev.disabled = page === 0;
+      next.disabled = last.disabled = page >= pages() - 1;
+      pagerBar.hidden = pages() < 2;
+      const slice = rows.slice(page * PAGE, (page + 1) * PAGE);
+      list.replaceChildren(
+        ...(slice.length
+          ? slice.map((i) => {
+              const t = novel.toc[i];
+              return el(
+                'button',
+                { type: 'button', class: `toc-row${i === idx ? ' current' : ''}`, title: chapterLabel(t.num, t.title), onclick: pick(() => go(i)) },
+                el('span', { class: 'n' }, t.num),
+                el('span', { class: 't' }, t.title || el('i', { class: 'muted' }, '(tanpa judul)')),
+                marked.has(t.num) ? el('span', { class: 'toc-bm', title: 'Ada bookmark' }, icon('bookmark')) : null,
+              );
+            })
+          : [el('p', { class: 'muted toc-empty' }, 'Tidak ada chapter yang cocok.')]),
+      );
+      list.scrollTop = 0;
+    }
+    // Ke halaman berisi chapter yang sedang dibaca, lalu gulir ke barisnya.
+    function locate() {
+      compute();
+      const at = rows.indexOf(idx);
+      show(at < 0 ? 0 : Math.floor(at / PAGE));
+      list.querySelector('.current')?.scrollIntoView({ block: 'center' });
+    }
+    filter.oninput = () => {
+      compute();
+      show(0);
+    };
+    const locateBtn = iconBtn('pin', 'Ke chapter yang sedang dibaca', () => {
+      filter.value = '';
+      locate();
+    });
+
+    // Tab bookmark: lompat ke posisinya. Tambah & hapus tetap lewat tombol Bookmark.
+    const bms = Object.values(novel.bookmarks || {}).sort((a, b) => a.num - b.num || a.para - b.para);
+    const bmPane = el(
+      'div',
+      { class: 'toc-pane toc-list', hidden: true },
+      bms.length
+        ? bms.map((b) =>
+            el(
+              'button',
+              { type: 'button', class: 'toc-row bm-row', onclick: pick(() => goNum(b.num, b.para)) },
+              el('span', { class: 'n' }, b.num),
+              el(
+                'span',
+                { class: 't' },
+                el('b', null, b.note || `Paragraf ${b.para + 1}`),
+                b.text ? el('small', null, b.text) : null,
+              ),
+            ),
+          )
+        : el('p', { class: 'muted toc-empty' }, 'Belum ada bookmark. Tambahkan lewat tombol Bookmark di panel baca.'),
+    );
+    const chPane = el(
+      'div',
+      { class: 'toc-pane' },
+      el('div', { class: 'toc-tools' }, el('label', { class: 'toc-search' }, icon('search'), filter), sortBtn, locateBtn),
+      list,
+      pagerBar,
+    );
+    const tab = (label, pane, other) => {
+      const b = el('button', { type: 'button', role: 'tab', 'aria-selected': String(pane === chPane) }, label);
+      b.onclick = () => {
+        pane.hidden = false;
+        other.hidden = true;
+        b.parentNode.querySelectorAll('button').forEach((x) => x.setAttribute('aria-selected', String(x === b)));
+      };
+      return b;
     };
     dialog({
-      title: `Daftar isi · ${fmtNum(novel.toc.length)} chapter`,
-      className: 'drawer',
-      body: [el('div', { class: 'toc-filter' }, filter), ul],
+      title: novel.title,
+      className: 'toc-dlg',
+      body: [
+        el(
+          'div',
+          { class: 'toc-tabs', role: 'tablist' },
+          tab(`Chapter (${fmtNum(novel.toc.length)})`, chPane, bmPane),
+          tab(`Bookmark (${fmtNum(bms.length)})`, bmPane, chPane),
+        ),
+        chPane,
+        bmPane,
+      ],
       onOpen: (x) => {
         d = x;
-        items[idx]?.scrollIntoView({ block: 'center' });
+        locate();
       },
     });
   }
