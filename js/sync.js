@@ -5,7 +5,7 @@
 // Satu kali sinkron = paling banyak satu commit, dibuat lewat Git Data API.
 
 import * as db from './db.js';
-import { mergeNovel, novelActivity, maxMerge } from './merge.js';
+import { mergeNovel, novelActivity, maxMerge, stableStringify } from './merge.js';
 
 const CFG_KEY = 'baca-novel:sync';
 const API = 'https://api.github.com';
@@ -222,8 +222,8 @@ async function syncOnce(cfg) {
     out.novels[id] = novel;
   }
 
-  const libraryRaw = JSON.stringify(out);
-  if (libraryRaw !== remoteRaw) uploads.set('library.json', libraryRaw);
+  const libraryRaw = stableStringify(out);
+  if (libraryRaw !== (remoteRaw && stableStringify(remote))) uploads.set('library.json', libraryRaw);
 
   await db.applySync(plan);
 

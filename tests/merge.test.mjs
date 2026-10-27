@@ -1,7 +1,7 @@
 // Jalankan: node --test tests/*.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mergeNovel, novelActivity, maxMerge } from '../js/merge.js';
+import { mergeNovel, novelActivity, maxMerge, stableStringify } from '../js/merge.js';
 
 const novel = (over) => ({ id: 'n1', title: 'A', createdAt: 1, updatedAt: 1, mu: 1, toc: [], del: {}, lastRead: null, ...over });
 const ch = (num, u, title = `T${num}`) => ({ num, title, n: 1, u });
@@ -62,4 +62,26 @@ test('data lama tanpa stempel waktu memakai updatedAt', () => {
 test('novelActivity & maxMerge', () => {
   assert.equal(novelActivity(novel({ mu: 3, toc: [ch(1, 8)] })), 8);
   assert.deepEqual(maxMerge({ a: 1, b: 5 }, { a: 3, c: 2 }), { a: 3, b: 5, c: 2 });
+});
+
+test('bookmark: gabungan dari dua sisi, hapusan & ubahan terbaru menang', () => {
+  const L = novel({ bookmarks: { a: { num: 1, para: 2, note: 'lama', at: 10 }, b: { num: 3, para: 0, at: 10 } }, bdel: { c: 50 } });
+  const R = novel({ bookmarks: { a: { num: 1, para: 2, note: 'baru', at: 20 }, c: { num: 5, para: 1, at: 40 } }, bdel: { b: 30 } });
+  const { novel: m } = mergeNovel(L, R);
+  assert.deepEqual(Object.keys(m.bookmarks), ['a']);
+  assert.equal(m.bookmarks.a.note, 'baru');
+  assert.deepEqual(m.bdel, { b: 30, c: 50 });
+});
+
+test('status baca: yang terbaru menang', () => {
+  const { novel: m } = mergeNovel(novel({ status: { v: 'done', at: 9 } }), novel({ status: { v: 'later', at: 4 } }));
+  assert.deepEqual(m.status, { v: 'done', at: 9 });
+  assert.equal(mergeNovel(novel(), novel()).novel.status, undefined);
+});
+
+test('stableStringify: urutan kunci tidak berpengaruh', () => {
+  assert.equal(stableStringify({ b: 1, a: { d: [1, { y: 2, x: 1 }], c: undefined } }), '{"a":{"d":[1,{"x":1,"y":2}]},"b":1}');
+  const a = mergeNovel(novel({ del: { 3: 5, 1: 5 } }), undefined).novel;
+  const b = mergeNovel(novel({ del: { 1: 5, 3: 5 } }), undefined).novel;
+  assert.equal(stableStringify(a), stableStringify(b));
 });

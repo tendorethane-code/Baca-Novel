@@ -18,7 +18,10 @@
       // Terapkan tema sebelum render supaya tidak berkedip.
       try {
         var s = JSON.parse(localStorage.getItem('baca-novel:settings') || '{}');
-        document.documentElement.dataset.theme = s.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        var dark = s.paint ? s.paint.dark : matchMedia('(prefers-color-scheme: dark)').matches;
+        var bg = s.paint ? s.paint.bg : dark ? '#141414' : '#fbfaf7';
+        document.documentElement.style.background = bg;
+        document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
       } catch (e) {}
     </script>
     <script type="module" src="js/app.js"></script>

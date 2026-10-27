@@ -4,7 +4,7 @@ import { readZip, writeZip } from './zip.js';
 import { buildEpub } from './epub.js';
 import * as sync from './sync.js';
 
-const APP_VERSION = '1.1.0';
+const APP_VERSION = '1.2.0';
 const app = document.getElementById('app');
 history.scrollRestoration = 'manual';
 
@@ -33,6 +33,9 @@ const ICONS = {
   close: 'M6 6l12 12M18 6L6 18',
   chevron: 'M9 6l6 6-6 6',
   lock: 'M6 11h12v9H6zM8.5 11V8a3.5 3.5 0 0 1 7 0v3',
+  bookmark: 'M7 4h10v16l-5-4-5 4z',
+  search: 'M11 18a7 7 0 1 1 0-14 7 7 0 0 1 0 14zM20 20l-4-4',
+  sun: 'M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4',
   sync: 'M20 11a8 8 0 0 0-14.3-4.9L4 8M4 4v4h4M4 13a8 8 0 0 0 14.3 4.9L20 16M20 20v-4h-4',
 };
 function icon(name) {
@@ -68,7 +71,9 @@ function toast(msg, action) {
         action.label,
       ),
     );
-  document.getElementById('toasts').append(t);
+  const box = document.getElementById('toasts');
+  box.append(t);
+  while (box.childElementCount > 2) box.firstElementChild.remove();
   setTimeout(() => t.remove(), action ? 12000 : 3500);
 }
 
@@ -236,11 +241,47 @@ const FONTS = {
   sans: { label: 'Sans', css: 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' },
   mono: { label: 'Mono', css: 'ui-monospace, Menlo, Consolas, "Liberation Mono", monospace' },
 };
+// Tema latar: cukup warna latar (bg) dan teks (fg); warna lain diturunkan otomatis.
 const THEMES = {
-  light: { label: 'Terang', color: '#fbfaf7' },
-  sepia: { label: 'Sepia', color: '#f4ecd8' },
-  dark: { label: 'Gelap', color: '#141414' },
+  light: { label: 'Terang', bg: '#fbfaf7', fg: '#1f1f1c' },
+  paper: { label: 'Kertas', bg: '#f1ece1', fg: '#2d2a25' },
+  sepia: { label: 'Sepia', bg: '#f4ecd8', fg: '#4a3a28', accent: '#8a5a2b' },
+  mint: { label: 'Hijau', bg: '#e2ede3', fg: '#1e3325' },
+  sky: { label: 'Biru muda', bg: '#e4ecf4', fg: '#1d2b3a', accent: '#2f5f8a' },
+  gray: { label: 'Abu', bg: '#d6d6d2', fg: '#22221f' },
+  dusk: { label: 'Senja', bg: '#2b2530', fg: '#ddd4e1', accent: '#c9a6e0' },
+  navy: { label: 'Biru malam', bg: '#141d2b', fg: '#cdd7e3', accent: '#8cb8e8' },
+  dark: { label: 'Gelap', bg: '#141414', fg: '#d5d3ce' },
+  black: { label: 'Hitam', bg: '#000000', fg: '#b8b8b8' },
+  custom: { label: 'Kustom' },
 };
+
+function hexRgb(hex) {
+  const h = hex.replace('#', '');
+  const n = parseInt(h.length === 3 ? [...h].map((c) => c + c).join('') : h, 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+function luminance(hex) {
+  const [r, g, b] = hexRgb(hex).map((v) => {
+    v /= 255;
+    return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+const contrast = (a, b) => {
+  const [x, y] = [luminance(a), luminance(b)].sort((p, q) => q - p);
+  return (x + 0.05) / (y + 0.05);
+};
+const autoFg = (bg) => (luminance(bg) < 0.25 ? '#d8d6d0' : '#1f1f1c');
+
+function themeColors() {
+  const t = THEMES[settings.theme];
+  const bg = settings.theme === 'custom' ? settings.customBg : t.bg;
+  const fg = settings.theme === 'custom' ? settings.customFg || autoFg(bg) : t.fg;
+  const dark = luminance(bg) < 0.25;
+  return { bg, fg, dark, accent: t.accent || (dark ? '#7fc4ae' : '#2f6f5e') };
+}
+
 const SETTINGS_KEY = 'baca-novel:settings';
 const DEFAULTS = {
   font: 'book',
@@ -251,8 +292,25 @@ const DEFAULTS = {
   paraSpace: 0.9,
   changeLock: false,
   theme: matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light',
+  customBg: '#e9e4f0',
+  customFg: '',
   recapCount: 3,
   recapOpen: true,
+  dim: 0,
+  barOrder: ['lock', 'bookmark', 'search', 'toc', 'brightness', 'settings'],
+  barHidden: ['search', 'brightness'],
+  libSort: 'recent',
+  libFilter: 'all',
+};
+
+// Tombol yang bisa dipasang di bar layar baca. Semuanya juga selalu ada di menu ⋯.
+const BAR_ITEMS = {
+  lock: { label: 'Kunci sentuhan', icon: 'lock' },
+  bookmark: { label: 'Bookmark', icon: 'bookmark' },
+  search: { label: 'Cari teks', icon: 'search' },
+  toc: { label: 'Daftar isi', icon: 'toc' },
+  brightness: { label: 'Kecerahan', icon: 'sun' },
+  settings: { label: 'Pengaturan', icon: 'type' },
 };
 
 let settings = { ...DEFAULTS };
@@ -261,6 +319,11 @@ try {
 } catch {}
 if (!FONTS[settings.font]) settings.font = DEFAULTS.font;
 if (!THEMES[settings.theme]) settings.theme = DEFAULTS.theme;
+// Tombol bar baru (dari versi aplikasi yang lebih baru) ikut muncul di urutan.
+settings.barOrder = [
+  ...settings.barOrder.filter((k) => BAR_ITEMS[k]),
+  ...Object.keys(BAR_ITEMS).filter((k) => !settings.barOrder.includes(k)),
+];
 
 function saveSettings() {
   try {
@@ -270,15 +333,38 @@ function saveSettings() {
 
 function applySettings() {
   const r = document.documentElement;
-  r.dataset.theme = settings.theme;
-  r.style.setProperty('--read-font', FONTS[settings.font].css);
-  r.style.setProperty('--read-size', `${settings.size}px`);
-  r.style.setProperty('--read-lh', settings.lh);
-  r.style.setProperty('--read-width', `${settings.width}px`);
-  r.style.setProperty('--read-align', settings.justify ? 'justify' : 'left');
-  r.style.setProperty('--read-para', `${settings.paraSpace}em`);
-  document.querySelector('meta[name="theme-color"]').content = THEMES[settings.theme].color;
+  const c = themeColors();
+  const mix = (a, b, pct) => `color-mix(in srgb, ${a} ${pct}%, ${b})`;
+  const vars = {
+    '--bg': c.bg,
+    '--fg': c.fg,
+    '--panel': c.dark ? mix(c.bg, '#ffffff', 94) : mix(c.bg, '#ffffff', 45),
+    '--line': mix(c.fg, c.bg, c.dark ? 14 : 13),
+    '--muted': mix(c.fg, c.bg, 62),
+    '--accent': c.accent,
+    '--accent-fg': c.dark ? '#111111' : '#ffffff',
+    '--danger': c.dark ? '#f2827a' : '#b3261e',
+    '--warn-bg': c.dark ? '#3a3017' : '#fff1cc',
+    '--warn-fg': c.dark ? '#f1d68b' : '#6b4e00',
+    '--read-font': FONTS[settings.font].css,
+    '--read-size': `${settings.size}px`,
+    '--read-lh': settings.lh,
+    '--read-width': `${settings.width}px`,
+    '--read-align': settings.justify ? 'justify' : 'left',
+    '--read-para': `${settings.paraSpace}em`,
+  };
+  for (const [k, v] of Object.entries(vars)) r.style.setProperty(k, v);
+  r.style.background = c.bg;
+  r.style.colorScheme = c.dark ? 'dark' : 'light';
+  r.toggleAttribute('data-dark', c.dark);
+  document.querySelector('meta[name="theme-color"]').content = c.bg;
+  dimLayer.style.opacity = settings.dim;
+  // Disimpan untuk skrip kecil di index.html yang mewarnai latar sebelum aplikasi dimuat.
+  settings.paint = { bg: c.bg, dark: c.dark };
 }
+const dimLayer = document.createElement('div');
+dimLayer.className = 'dim-layer';
+document.body.append(dimLayer);
 applySettings();
 
 // Dipasang oleh tampilan pembaca supaya posisi baca tetap saat ukuran teks berubah.
@@ -349,6 +435,70 @@ function openSettings() {
     onLockChange();
   };
 
+  // Tema: contoh warna yang bisa diketuk, plus tema kustom dengan pemilih warna.
+  const customBox = el('div', { class: 'custom-theme' });
+  const contrastNote = el('p', { class: 'small' });
+  const bgIn = el('input', { type: 'color', value: settings.customBg, 'aria-label': 'Warna latar' });
+  const fgIn = el('input', { type: 'color', value: settings.customFg || autoFg(settings.customBg), 'aria-label': 'Warna teks' });
+  const showContrast = () => {
+    const c = themeColors();
+    const ratio = contrast(c.bg, c.fg);
+    contrastNote.textContent =
+      ratio < 4.5 ? `Kontras rendah (${ratio.toFixed(1)}:1), teks bisa sulit dibaca.` : `Kontras ${ratio.toFixed(1)}:1`;
+    contrastNote.className = ratio < 4.5 ? 'small error' : 'small muted';
+  };
+  bgIn.oninput = () => {
+    update({ customBg: bgIn.value });
+    if (!settings.customFg) fgIn.value = autoFg(bgIn.value);
+    showContrast();
+  };
+  fgIn.oninput = () => {
+    update({ customFg: fgIn.value });
+    showContrast();
+  };
+  const resetFg = el(
+    'button',
+    {
+      type: 'button',
+      class: 'btn',
+      onclick: () => {
+        update({ customFg: '' });
+        fgIn.value = autoFg(settings.customBg);
+        showContrast();
+      },
+    },
+    'Teks otomatis',
+  );
+  customBox.append(
+    el('label', { class: 'color-field' }, bgIn, 'Latar'),
+    el('label', { class: 'color-field' }, fgIn, 'Teks'),
+    resetFg,
+    contrastNote,
+  );
+  const swatches = el('div', { class: 'swatches', role: 'radiogroup', 'aria-label': 'Tema' });
+  const syncSwatches = () => {
+    swatches.querySelectorAll('button').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.k === settings.theme)));
+    customBox.classList.toggle('hidden', settings.theme !== 'custom');
+    showContrast();
+  };
+  for (const [k, t] of Object.entries(THEMES)) {
+    const b = el(
+      'button',
+      { type: 'button', role: 'radio', class: 'swatch', title: t.label },
+      el('span', { class: 'sw-a' }, 'Aa'),
+      t.label,
+    );
+    b.dataset.k = k;
+    const bg = k === 'custom' ? settings.customBg : t.bg;
+    b.querySelector('.sw-a').style.cssText = `background:${bg};color:${k === 'custom' ? settings.customFg || autoFg(bg) : t.fg}`;
+    b.onclick = () => {
+      update({ theme: k });
+      syncSwatches();
+    };
+    swatches.append(b);
+  }
+  syncSwatches();
+
   const storageInfo = el('p', { class: 'small muted' });
   showStorageInfo(storageInfo);
 
@@ -356,8 +506,11 @@ function openSettings() {
     title: 'Pengaturan',
     className: 'sheet',
     body: [
-      el('div', { class: 'section-label' }, 'Tema'),
-      seg(THEMES, 'theme', 't'),
+      el('div', { class: 'section-label' }, 'Tema latar'),
+      swatches,
+      customBox,
+      el('div', { class: 'section-label' }, 'Kecerahan'),
+      dimSlider(update),
       el('div', { class: 'section-label' }, 'Huruf'),
       seg(FONTS, 'font'),
       el('div', { class: 'section-label' }, 'Teks'),
@@ -369,16 +522,128 @@ function openSettings() {
       el('div', { class: 'section-label' }, 'Pengingat chapter sebelumnya'),
       slider('Jumlah paragraf terakhir yang ditampilkan (0 = mati)', 'recapCount', 0, 15, 1, (v) => String(v)),
       check('Tampilkan terbuka', 'recapOpen'),
+      el('div', { class: 'section-label' }, 'Tombol di bar layar baca'),
+      barEditor(),
       el('div', { class: 'section-label' }, 'Kunci perubahan'),
       el('label', { class: 'check' }, lockBox, 'Kunci perubahan (mode baca-saja)'),
       el(
         'p',
         { class: 'small muted' },
-        'Saat terkunci: edit chapter, hapus, ganti judul, dan impor yang menimpa chapter tidak bisa dipakai. Impor chapter baru dan sinkron tetap jalan.',
+        'Saat terkunci: edit chapter, hapus, ganti judul, dan impor yang menimpa chapter tidak bisa dipakai. Impor chapter baru, bookmark, dan sinkron tetap jalan.',
       ),
       storageInfo,
     ],
   });
+}
+
+/** Slider peredup. Browser tidak boleh mengubah kecerahan layar asli, jadi ini lapisan gelap di atas halaman. */
+function dimSlider(update) {
+  const out = el('output', null, '');
+  const fmt = () => (out.textContent = settings.dim ? `diredupkan ${Math.round(settings.dim * 100)}%` : 'normal');
+  const input = el('input', {
+    type: 'range',
+    min: 0,
+    max: 0.8,
+    step: 0.05,
+    value: settings.dim,
+    'aria-label': 'Redupkan layar',
+    oninput: () => {
+      update({ dim: Number(input.value) });
+      fmt();
+    },
+  });
+  fmt();
+  return el(
+    'div',
+    null,
+    el('label', { class: 'slider' }, el('span', null, 'Redupkan layar'), out, input),
+    el(
+      'p',
+      { class: 'small muted' },
+      'Aplikasi web tidak bisa mengatur kecerahan layar yang sebenarnya; ini hanya menggelapkan tampilan (tidak bisa lebih terang dari setelan HP). Untuk menambah terang, pakai setelan kecerahan perangkat.',
+    ),
+  );
+}
+
+function openBrightness() {
+  dialog({
+    title: 'Kecerahan',
+    className: 'sheet',
+    body: dimSlider((patch) => {
+      Object.assign(settings, patch);
+      applySettings();
+      saveSettings();
+    }),
+  });
+}
+
+/** Atur tombol apa saja yang tampil di bar layar baca dan urutannya. */
+function barEditor() {
+  const list = el('div', { class: 'bar-editor' });
+  const render = () => {
+    list.replaceChildren(
+      ...settings.barOrder.map((k, i) =>
+        el(
+          'div',
+          { class: 'bar-row' },
+          el(
+            'label',
+            { class: 'check' },
+            el('input', {
+              type: 'checkbox',
+              checked: !settings.barHidden.includes(k),
+              onchange: (e) => {
+                settings.barHidden = e.target.checked ? settings.barHidden.filter((x) => x !== k) : [...settings.barHidden, k];
+                done();
+              },
+            }),
+            icon(BAR_ITEMS[k].icon),
+            BAR_ITEMS[k].label,
+          ),
+          el(
+            'button',
+            {
+              type: 'button',
+              class: 'icon-btn',
+              'aria-label': `Naikkan ${BAR_ITEMS[k].label}`,
+              disabled: i === 0,
+              onclick: () => move(i, -1),
+            },
+            '▲',
+          ),
+          el(
+            'button',
+            {
+              type: 'button',
+              class: 'icon-btn',
+              'aria-label': `Turunkan ${BAR_ITEMS[k].label}`,
+              disabled: i === settings.barOrder.length - 1,
+              onclick: () => move(i, 1),
+            },
+            '▼',
+          ),
+        ),
+      ),
+      el(
+        'p',
+        { class: 'small muted' },
+        'Tombol yang disembunyikan tetap bisa dibuka dari menu ⋯. Di layar HP sebaiknya maksimal 4 tombol.',
+      ),
+    );
+  };
+  const move = (i, d) => {
+    const o = [...settings.barOrder];
+    [o[i], o[i + d]] = [o[i + d], o[i]];
+    settings.barOrder = o;
+    done();
+  };
+  const done = () => {
+    saveSettings();
+    readerHooks?.rebuildBar();
+    render();
+  };
+  render();
+  return list;
 }
 
 async function showStorageInfo(target) {
@@ -440,11 +705,8 @@ async function showLibrary() {
     el('button', { type: 'button', class: 'btn primary', onclick: () => openImport() }, icon('plus'), 'Impor'),
   );
 
-  const list = el('div', { class: 'cards' });
-  for (const n of novels) list.append(novelCard(n));
-
   const body = novels.length
-    ? list
+    ? libraryList(novels)
     : el(
         'div',
         { class: 'empty' },
@@ -469,6 +731,74 @@ async function showLibrary() {
   setView([bar, el('main', { class: 'page library' }, body, syncLine(), foot)]);
 }
 
+const STATUSES = { reading: 'Sedang dibaca', later: 'Nanti', done: 'Selesai' };
+const statusOf = (n) => n.status?.v || (n.lastRead ? 'reading' : 'later');
+const SORTS = {
+  recent: { label: 'Terakhir dibaca', fn: (a, b) => (b.lastRead?.at || b.updatedAt) - (a.lastRead?.at || a.updatedAt) },
+  title: { label: 'Judul A–Z', fn: (a, b) => naturalCompare(a.title, b.title) },
+  added: { label: 'Baru ditambah', fn: (a, b) => b.createdAt - a.createdAt },
+};
+const fold = (s) =>
+  s
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+let libQuery = '';
+
+/** Perpustakaan: cari judul/pengarang, urutkan, dan saring menurut status baca. */
+function libraryList(novels) {
+  const cards = el('div', { class: 'cards' });
+  const search = el('input', { type: 'search', placeholder: 'Cari judul atau pengarang…', value: libQuery, 'aria-label': 'Cari novel' });
+  const sort = el(
+    'select',
+    { 'aria-label': 'Urutkan' },
+    Object.entries(SORTS).map(([k, v]) => el('option', { value: k, selected: settings.libSort === k }, v.label)),
+  );
+  const chips = el('div', { class: 'chips', role: 'tablist' });
+  const counts = { all: novels.length };
+  for (const n of novels) counts[statusOf(n)] = (counts[statusOf(n)] || 0) + 1;
+  const renderChips = () =>
+    chips.replaceChildren(
+      ...Object.entries({ all: 'Semua', ...STATUSES }).map(([k, label]) =>
+        el(
+          'button',
+          {
+            type: 'button',
+            role: 'tab',
+            'aria-selected': String(settings.libFilter === k),
+            onclick: () => {
+              settings.libFilter = k;
+              saveSettings();
+              renderChips();
+              renderCards();
+            },
+          },
+          `${label} ${counts[k] || 0}`,
+        ),
+      ),
+    );
+  const renderCards = () => {
+    const q = fold(libQuery.trim());
+    const shown = novels
+      .filter((n) => settings.libFilter === 'all' || statusOf(n) === settings.libFilter)
+      .filter((n) => !q || fold(`${n.title} ${n.author || ''}`).includes(q))
+      .sort(SORTS[settings.libSort]?.fn || SORTS.recent.fn);
+    cards.replaceChildren(...(shown.length ? shown.map(novelCard) : [el('p', { class: 'empty small' }, 'Tidak ada novel yang cocok.')]));
+  };
+  search.oninput = () => {
+    libQuery = search.value;
+    renderCards();
+  };
+  sort.onchange = () => {
+    settings.libSort = sort.value;
+    saveSettings();
+    renderCards();
+  };
+  renderChips();
+  renderCards();
+  return el('div', null, el('div', { class: 'lib-tools' }, search, sort), chips, cards);
+}
+
 function novelCard(n) {
   const total = n.toc.length;
   const idx = n.lastRead ? n.toc.findIndex((t) => t.num === n.lastRead.num) : -1;
@@ -477,12 +807,21 @@ function novelCard(n) {
   const meta = [`${fmtNum(total)} chapter`];
   if (total) meta.push(`Ch ${n.toc[0].num}–${n.toc[total - 1].num}`);
   if (idx >= 0) meta.push(`terakhir dibaca: Chapter ${n.lastRead.num}`);
+  const st = statusOf(n);
+  const marks = Object.keys(n.bookmarks || {}).length;
   return el(
     'section',
     { class: 'card' },
-    el('h2', { onclick: total ? read : null }, n.title),
+    el('h2', { onclick: total ? read : null }, n.title, n.author ? el('small', { class: 'author' }, n.author) : null),
     iconBtn('more', 'Menu novel', () => novelMenu(n)),
-    el('div', { class: 'meta' }, meta.join(' · ')),
+    el(
+      'div',
+      { class: 'meta' },
+      el('span', { class: `badge st-${st}` }, STATUSES[st]),
+      ' ',
+      meta.join(' · '),
+      marks ? ` · ${fmtNum(marks)} bookmark` : '',
+    ),
     el('div', { class: 'progress', title: `${Math.round(pct)}%` }, el('div', { style: `width:${pct}%` })),
     el(
       'div',
@@ -514,9 +853,32 @@ function novelMenu(n) {
       label,
     );
   let d;
+  const statusSeg = el(
+    'div',
+    { class: 'seg', role: 'radiogroup', 'aria-label': 'Status baca' },
+    Object.entries(STATUSES).map(([k, label]) =>
+      el(
+        'button',
+        {
+          type: 'button',
+          'aria-pressed': String(statusOf(n) === k),
+          onclick: async () => {
+            await db.setStatus(n.id, k);
+            changed();
+            d.close();
+            route();
+          },
+        },
+        label,
+      ),
+    ),
+  );
   const body = el(
     'div',
     { class: 'menu-list' },
+    el('div', { class: 'section-label' }, 'Status baca'),
+    statusSeg,
+    el('div', { class: 'section-label' }, 'Aksi'),
     act('Impor / tambah chapter', () => openImport(n.id)),
     act('Compile ke EPUB', () => openEpub(n), { disabled: !has }),
     act('Ekspor sebagai .zip (txt)', () => exportTxt(n), { disabled: !has }),
@@ -1080,6 +1442,24 @@ function holdButton(label, ms, onDone, cls = '') {
   return b;
 }
 
+let lastSearch = '';
+const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/** Pecah teks menjadi node dengan kata yang dicari diberi <mark>. */
+function highlightText(text, q) {
+  if (!q) return [text];
+  const parts = text.split(new RegExp(`(${escapeRe(q)})`, 'gi'));
+  return parts.map((part, i) => (i % 2 ? el('mark', null, part) : part)).filter((x) => x !== '');
+}
+
+function snippetAround(text, q, pad = 70) {
+  const at = text.toLowerCase().indexOf(q.toLowerCase());
+  if (at < 0 || text.length <= pad * 2) return text.length > pad * 2 ? text.slice(0, pad * 2) + '…' : text;
+  const start = Math.max(0, at - pad);
+  const end = Math.min(text.length, at + q.length + pad);
+  return (start ? '…' : '') + text.slice(start, end) + (end < text.length ? '…' : '');
+}
+
 async function showReader(id, wantNum) {
   const novel = await db.getNovel(id);
   if (!novel) {
@@ -1105,14 +1485,28 @@ async function showReader(id, wantNum) {
   }
 
   const titleBtn = el('button', { type: 'button', class: 'bar-title', onclick: () => openToc() });
+  const actions = {
+    lock: () => setTouchLock(true),
+    bookmark: () => openBookmarks(),
+    search: () => openSearch(),
+    toc: () => openToc(),
+    brightness: openBrightness,
+    settings: openSettings,
+  };
+  const barSlot = el('span', { class: 'bar-actions' });
+  const rebuildBar = () =>
+    barSlot.replaceChildren(
+      ...settings.barOrder
+        .filter((k) => !settings.barHidden.includes(k))
+        .map((k) => iconBtn(BAR_ITEMS[k].icon, BAR_ITEMS[k].label, actions[k])),
+    );
+  rebuildBar();
   const bar = el(
     'header',
     { class: 'bar' },
     iconBtn('back', 'Kembali ke perpustakaan', () => (location.hash = '#/')),
     titleBtn,
-    iconBtn('lock', 'Kunci sentuhan', () => setTouchLock(true)),
-    iconBtn('toc', 'Daftar isi', () => openToc()),
-    iconBtn('type', 'Pengaturan', openSettings),
+    barSlot,
     iconBtn('more', 'Menu lainnya', () => openMore()),
   );
   const main = el('main', { class: 'page reader' });
@@ -1147,7 +1541,13 @@ async function showReader(id, wantNum) {
 
   // Posisi = indeks paragraf pertama yang terlihat di bawah bar (lebih tahan perubahan ukuran huruf daripada scrollY).
   const topOffset = () => bar.offsetHeight + 4;
+  // Setelah lompat ke paragraf tertentu (hasil cari/bookmark/posisi terakhir), paragraf itu yang dianggap
+  // posisi sekarang sampai pengguna menggulir sendiri. Kalau tidak, paragraf di akhir chapter (yang tidak bisa
+  // digulir sampai ke atas layar) tersimpan sebagai beberapa paragraf sebelumnya.
+  let pinned = null;
   function anchor() {
+    if (pinned && Math.abs(window.scrollY - pinned.y) < 40) return pinned.para;
+    pinned = null;
     const ps = article?.children;
     if (!ps?.length) return 0;
     const top = topOffset();
@@ -1167,6 +1567,7 @@ async function showReader(id, wantNum) {
     const target = article?.children[p];
     if (!p || !target) return window.scrollTo(0, 0);
     window.scrollTo(0, target.getBoundingClientRect().top + window.scrollY - topOffset());
+    if (pinned?.para === p) pinned.y = window.scrollY;
   }
 
   let saveTimer = 0;
@@ -1259,7 +1660,18 @@ async function showReader(id, wantNum) {
     ].filter(Boolean);
   }
 
-  async function render(startPara) {
+  // Penanda bookmark di paragraf chapter yang sedang dibuka.
+  function markBookmarks() {
+    if (!article || !current) return;
+    const marked = new Set(
+      Object.values(novel.bookmarks || {})
+        .filter((b) => b.num === current.entry.num)
+        .map((b) => b.para),
+    );
+    [...article.children].forEach((p, i) => p.classList.toggle('bm', marked.has(i)));
+  }
+
+  async function render(startPara, highlight) {
     const my = ++token;
     const entry = novel.toc[idx];
     const chapter = await db.getChapter(novel.id, entry.num);
@@ -1293,7 +1705,14 @@ async function showReader(id, wantNum) {
     );
     history.replaceState(null, '', `#/read/${encodeURIComponent(novel.id)}/${entry.num}`);
     if (!touchLocked) bar.classList.remove('hide');
+    markBookmarks();
+    const target = article.children[startPara];
+    if (highlight && target) {
+      target.replaceChildren(...highlightText(target.textContent, highlight));
+      target.classList.add('flash');
+    }
     restore(startPara);
+    pinned = startPara ? { para: startPara, y: window.scrollY } : null;
     lastY = window.scrollY;
     // Posisi awal = posisi tersimpan? Jangan dianggap perubahan.
     const lr = novel.lastRead;
@@ -1301,16 +1720,200 @@ async function showReader(id, wantNum) {
     saveNow();
   }
 
-  function go(i) {
-    if (i < 0 || i >= novel.toc.length || i === idx) return;
+  function go(i, para = 0, highlight) {
+    if (i < 0 || i >= novel.toc.length) return;
+    if (i === idx && !para && !highlight) return;
     saveNow();
     idx = i;
-    render(0);
+    render(para, highlight);
+  }
+  const goNum = (num, para, highlight) => {
+    const i = novel.toc.findIndex((t) => t.num === num);
+    if (i < 0) return toast(`Chapter ${num} sudah tidak ada.`);
+    go(i, para, highlight);
+  };
+
+  // ----- Bookmark -----
+  function openBookmarks() {
+    let d;
+    const para = anchor();
+    const text = article?.children[para]?.textContent || '';
+    const note = el('input', { type: 'text', placeholder: 'Catatan (opsional)' });
+    const list = el('div', { class: 'bm-list' });
+    const renderList = () => {
+      const all = Object.entries(novel.bookmarks || {}).sort(([, a], [, b]) => a.num - b.num || a.para - b.para);
+      list.replaceChildren(
+        ...(all.length
+          ? all.map(([id, b]) =>
+              el(
+                'div',
+                { class: 'bm-item' },
+                el(
+                  'button',
+                  {
+                    type: 'button',
+                    class: 'bm-go',
+                    onclick: () => {
+                      d.close();
+                      goNum(b.num, b.para);
+                    },
+                  },
+                  el('b', null, `Chapter ${b.num}`, el('span', { class: 'muted' }, ` · paragraf ${b.para + 1}`)),
+                  b.note ? el('span', { class: 'bm-note' }, b.note) : null,
+                  b.text ? el('span', { class: 'bm-text' }, b.text) : null,
+                  el('span', { class: 'small muted' }, fmtTime(b.at)),
+                ),
+                el(
+                  'button',
+                  {
+                    type: 'button',
+                    class: 'icon-btn',
+                    'aria-label': `Hapus bookmark Chapter ${b.num}`,
+                    onclick: async () => {
+                      await db.removeBookmark(novel.id, id);
+                      Object.assign(novel, await db.getNovel(novel.id));
+                      changed();
+                      markBookmarks();
+                      renderList();
+                    },
+                  },
+                  icon('close'),
+                ),
+              ),
+            )
+          : [el('p', { class: 'muted small' }, 'Belum ada bookmark di novel ini.')]),
+      );
+    };
+    renderList();
+    dialog({
+      title: 'Bookmark',
+      className: 'drawer',
+      body: [
+        el(
+          'div',
+          { class: 'bm-add' },
+          el('div', { class: 'small muted' }, `Posisi sekarang: Chapter ${current.entry.num}, paragraf ${para + 1}`),
+          text ? el('div', { class: 'bm-text' }, text) : null,
+          note,
+          el(
+            'button',
+            {
+              type: 'button',
+              class: 'btn primary',
+              onclick: async () => {
+                await db.saveBookmark(novel.id, { num: current.entry.num, para, note: note.value.trim(), text: text.slice(0, 140) });
+                Object.assign(novel, await db.getNovel(novel.id));
+                note.value = '';
+                changed();
+                markBookmarks();
+                renderList();
+                toast('Bookmark ditambahkan.');
+              },
+            },
+            icon('bookmark'),
+            'Tandai posisi ini',
+          ),
+        ),
+        el('div', { class: 'section-label' }, 'Semua bookmark'),
+        list,
+      ],
+      onOpen: (x) => (d = x),
+    });
+  }
+
+  // ----- Pencarian teks -----
+  function openSearch() {
+    let d;
+    let timer = 0;
+    let seq = 0;
+    const input = el('input', { type: 'search', placeholder: 'Ketik minimal 2 huruf…', 'aria-label': 'Cari teks', value: lastSearch });
+    let scope = 'all';
+    const scopeSeg = el(
+      'div',
+      { class: 'seg' },
+      [
+        ['all', 'Semua chapter'],
+        ['here', 'Chapter ini'],
+      ].map(([k, label]) =>
+        el(
+          'button',
+          {
+            type: 'button',
+            'aria-pressed': String(scope === k),
+            onclick: (e) => {
+              scope = k;
+              e.currentTarget.parentNode
+                .querySelectorAll('button')
+                .forEach((b) => b.setAttribute('aria-pressed', String(b === e.currentTarget)));
+              run();
+            },
+          },
+          label,
+        ),
+      ),
+    );
+    const info = el('p', { class: 'small muted' });
+    const results = el('div', { class: 'search-results' });
+    const run = async () => {
+      const q = input.value.trim();
+      lastSearch = q;
+      const my = ++seq;
+      if (q.length < 2) {
+        info.textContent = '';
+        results.replaceChildren();
+        return;
+      }
+      info.textContent = 'Mencari…';
+      const here = current.entry.num;
+      const { results: found, more } = await db.searchChapters(novel.id, q, scope === 'here' ? { from: here, to: here } : {});
+      if (my !== seq) return;
+      info.textContent = found.length
+        ? `${fmtNum(found.length)}${more ? '+' : ''} hasil${more ? ' (perjelas kata kuncinya untuk melihat sisanya)' : ''}`
+        : 'Tidak ditemukan.';
+      let lastNum = null;
+      const nodes = [];
+      for (const r of found) {
+        if (r.num !== lastNum) {
+          nodes.push(el('div', { class: 'sr-head' }, chapterLabel(r.num, r.title)));
+          lastNum = r.num;
+        }
+        nodes.push(
+          el(
+            'button',
+            {
+              type: 'button',
+              class: 'sr-item',
+              onclick: () => {
+                d.close();
+                goNum(r.num, r.para, q);
+              },
+            },
+            highlightText(snippetAround(r.text, q), q),
+          ),
+        );
+      }
+      results.replaceChildren(...nodes);
+    };
+    input.oninput = () => {
+      clearTimeout(timer);
+      timer = setTimeout(run, 250);
+    };
+    dialog({
+      title: 'Cari teks',
+      className: 'drawer',
+      body: [el('div', { class: 'toc-filter' }, input, scopeSeg, info), results],
+      onOpen: (x) => {
+        d = x;
+        input.focus();
+        if (input.value) run();
+      },
+    });
   }
 
   function openToc() {
     const filter = el('input', { type: 'search', placeholder: 'Cari nomor atau judul…', 'aria-label': 'Cari chapter' });
     const ul = el('ul', { class: 'toc' });
+    const marked = new Set(Object.values(novel.bookmarks || {}).map((b) => b.num));
     let d;
     const items = novel.toc.map((t, i) => {
       const b = el(
@@ -1325,6 +1928,7 @@ async function showReader(id, wantNum) {
         },
         el('span', { class: 'n' }, t.num),
         el('span', { class: 't' }, t.title || el('i', { class: 'muted' }, '(tanpa judul)')),
+        marked.has(t.num) ? el('span', { class: 'toc-bm', title: 'Ada bookmark' }, icon('bookmark')) : null,
       );
       const li = el('li', null, b);
       li.dataset.q = `${t.num} ${t.title}`.toLowerCase();
@@ -1356,18 +1960,20 @@ async function showReader(id, wantNum) {
       body: el(
         'div',
         { class: 'menu-list' },
-        el(
-          'button',
-          {
-            type: 'button',
-            class: 'btn',
-            onclick: () => {
-              d.close();
-              setTouchLock(true);
+        settings.barOrder.map((k) =>
+          el(
+            'button',
+            {
+              type: 'button',
+              class: 'btn',
+              onclick: () => {
+                d.close();
+                actions[k]();
+              },
             },
-          },
-          icon('lock'),
-          'Kunci sentuhan (hanya scroll)',
+            icon(BAR_ITEMS[k].icon),
+            k === 'lock' ? 'Kunci sentuhan (hanya scroll)' : BAR_ITEMS[k].label,
+          ),
         ),
         el('div', { class: 'section-label danger-zone' }, 'Ubah isi'),
         el(
@@ -1444,7 +2050,8 @@ async function showReader(id, wantNum) {
     const fresh = await db.getNovel(novel.id);
     if (!fresh || !current) return;
     const mine = novel.lastRead;
-    Object.assign(novel, { title: fresh.title, toc: fresh.toc });
+    Object.assign(novel, { title: fresh.title, toc: fresh.toc, bookmarks: fresh.bookmarks });
+    markBookmarks();
     const at = novel.toc.findIndex((t) => t.num === current.entry.num);
     if (at >= 0) idx = at;
     navSlot?.replaceChildren(...buildNav());
@@ -1463,7 +2070,7 @@ async function showReader(id, wantNum) {
     }
   }
 
-  readerHooks = { anchor: () => anchor(), restore, refreshRecap, onSynced };
+  readerHooks = { anchor: () => anchor(), restore, refreshRecap, onSynced, rebuildBar };
   await render(para);
 }
 

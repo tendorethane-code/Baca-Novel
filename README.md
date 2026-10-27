@@ -14,7 +14,12 @@ Repo ini hanya berisi kode. Jangan commit teks novel; `.gitignore` sudah menolak
   - File `.txt` tanpa baris judul dianggap satu chapter; nomornya diambil dari nama file (`012.txt`, `Chapter 12 - Judul.txt`).
   - **Pratinjau** sebelum disimpan: jumlah chapter/paragraf, cuplikan isi, peringatan (teks sebelum chapter pertama, nomor kembar, nomor yang hilang, chapter kosong). Chapter bisa dicentang/dilepas.
   - Kalau nomor chapter sudah ada di novel tujuan, aplikasi bertanya per chapter: **ganti** atau **lewati** (bawaan: lewati).
-- **Tampilan**: tema terang/sepia/gelap, jenis huruf, ukuran huruf, jarak baris, jarak antarparagraf, lebar teks, rata kiri-kanan.
+- **Perpustakaan**: cari judul/pengarang, urutkan (terakhir dibaca / judul / baru ditambah), status baca (*Sedang dibaca*, *Nanti*, *Selesai*) dengan filter. Status diubah lewat menu ⋯ di kartu novel.
+- **Tampilan**: 10 tema latar + tema kustom (pilih warna latar & teks, dengan peringatan kontras rendah), jenis huruf, ukuran huruf, jarak baris, jarak antarparagraf, lebar teks, rata kiri-kanan.
+- **Kecerahan**: peredup layar. Aplikasi web tidak bisa mengubah kecerahan layar asli, jadi ini lapisan gelap di atas halaman (hanya bisa lebih redup dari setelan perangkat).
+- **Bookmark**: tandai posisi (chapter + paragraf) dengan catatan opsional; daftar bookmark, penanda di paragraf dan di daftar isi. Ikut tersinkron.
+- **Cari teks** di semua chapter atau chapter yang sedang dibuka; ketuk hasil untuk lompat ke paragrafnya (kata yang dicari ditandai).
+- **Tombol bar bisa diatur** (Pengaturan → *Tombol di bar layar baca*): pilih tombol yang tampil dan urutannya. Semua aksi tetap ada di menu ⋯.
 - **Edit teks chapter**: lewat menu ⋯ di layar baca → *Edit teks chapter ini…* (sengaja dipisah dari tombol biasa). Tiap baris tidak kosong = satu paragraf. Menutup editor dengan perubahan yang belum disimpan selalu minta konfirmasi.
 - **Kunci sentuhan**: ikon gembok di layar baca. Kontrol disembunyikan dan tap diabaikan, hanya bisa scroll. Pindah chapter dan membuka kunci harus dengan *menahan* tombol.
 - **Kunci perubahan** (Pengaturan): mode baca-saja. Edit, hapus, ganti judul, dan impor yang menimpa chapter dimatikan sampai kunci dibuka.
@@ -26,7 +31,7 @@ Repo ini hanya berisi kode. Jangan commit teks novel; `.gitignore` sudah menolak
 
 ## Sinkronisasi
 
-Novel, chapter, hasil edit, hapusan, dan posisi baca bisa disamakan di semua perangkat lewat repo GitHub **privat**
+Novel, chapter, hasil edit, hapusan, posisi baca, bookmark, dan status baca bisa disamakan di semua perangkat lewat repo GitHub **privat**
 yang **terpisah** dari repo kode ini. Pengaturan tampilan dan kunci tidak ikut (tiap perangkat boleh beda).
 
 1. Buat repo baru di <https://github.com/new>, misalnya `baca-novel-data`, pilih **Private**.

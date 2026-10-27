@@ -2,6 +2,7 @@
 // novels:   { id, title, author, lang, createdAt, updatedAt, mu, toc: [{num, title, n, u}], del: {num: waktu}, lastRead: {num, para, at} }
 //           `u` = waktu chapter terakhir diubah, `del` = catatan chapter yang dihapus, `mu` = waktu ubah judul/pengarang.
 //           Ketiganya dipakai sinkronisasi untuk memutuskan versi mana yang terbaru.
+//           bookmarks: { id: {num, para, note, text, at} }, bdel: { id: waktu hapus }, status: { v: 'reading'|'later'|'done', at }
 // chapters: { novelId, num, title, paragraphs: string[], u }   key: [novelId, num]
 // meta:     { key: 'deletedNovels', value: { novelId: waktu } }
 
@@ -96,6 +97,65 @@ async function patchNovel(id, fn) {
 export const updateMeta = (id, patch) => patchNovel(id, (n) => Object.assign(n, patch, { mu: stamp(), updatedAt: Date.now() }));
 
 export const setLastRead = (id, lastRead) => patchNovel(id, (n) => void (n.lastRead = lastRead));
+
+export const setStatus = (id, v) => patchNovel(id, (n) => void (n.status = { v, at: stamp() }));
+
+/** Tambah atau ubah bookmark (catatan). `bm`: { id?, num, para, note, text } */
+export async function saveBookmark(novelId, bm) {
+  const id = bm.id || newId();
+  await patchNovel(novelId, (n) => {
+    n.bookmarks ||= {};
+    n.bookmarks[id] = { num: bm.num, para: bm.para, note: bm.note || '', text: bm.text || '', at: stamp() };
+  });
+  return id;
+}
+
+export const removeBookmark = (novelId, id) =>
+  patchNovel(novelId, (n) => {
+    if (n.bookmarks) delete n.bookmarks[id];
+    n.bdel ||= {};
+    n.bdel[id] = stamp();
+  });
+
+const fold = (s) =>
+  s
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+
+/**
+ * Cari teks di chapter sebuah novel (tanpa membedakan huruf besar/kecil & aksen).
+ * Mengembalikan { results: [{num, title, para, text}], more: boolean }.
+ */
+export async function searchChapters(novelId, query, { from = -Infinity, to = Infinity, limit = 300 } = {}) {
+  const q = fold(query.trim());
+  const db = await open();
+  const results = [];
+  let more = false;
+  if (!q) return { results, more };
+  await new Promise((resolve, reject) => {
+    const req = db
+      .transaction('chapters')
+      .objectStore('chapters')
+      .openCursor(range(novelId, from, to));
+    req.onerror = () => reject(req.error);
+    req.onsuccess = () => {
+      const cur = req.result;
+      if (!cur) return resolve();
+      const c = cur.value;
+      for (let i = 0; i < c.paragraphs.length; i++) {
+        if (!fold(c.paragraphs[i]).includes(q)) continue;
+        if (results.length >= limit) {
+          more = true;
+          return resolve();
+        }
+        results.push({ num: c.num, title: c.title, para: i, text: c.paragraphs[i] });
+      }
+      cur.continue();
+    };
+  });
+  return { results, more };
+}
 
 export async function deleteNovel(id) {
   const db = await open();
