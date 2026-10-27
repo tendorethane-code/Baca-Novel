@@ -1,3 +1,30 @@
+/* Huruf yang disertakan (semuanya SIL OFL, lisensi di fonts/LICENSE-*), supaya tampil sama di semua perangkat
+   dan tetap ada saat offline. Huruf Latin saja; karakter lain (mis. Hanzi di catatan penerjemah) otomatis
+   memakai huruf cadangan sistem. */
+@font-face {
+  font-family: 'Noto Serif';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url(../fonts/noto-serif-latin.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Source Serif 4';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 200 900;
+  src: url(../fonts/source-serif-4-latin.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Roboto';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url(../fonts/roboto-latin.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
 :root {
   --bg: #fbfaf7;
   --fg: #1f1f1c;
@@ -9,9 +36,9 @@
   --danger: #b3261e;
   --warn-bg: #fff4d6;
   --warn-fg: #6b4e00;
-  --read-font: 'Iowan Old Style', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
-  --read-size: 19px;
-  --read-lh: 1.7;
+  --read-font: 'Noto Serif', Georgia, serif;
+  --read-size: 17px;
+  --read-lh: 1.5;
   --read-width: 680px;
   --read-align: left;
   --bar-h: 52px;
@@ -257,7 +284,16 @@ label.field > span {
   margin: 0 auto;
   font-family: var(--read-font);
   font-size: var(--read-size);
+  font-weight: var(--read-weight, 400);
   line-height: var(--read-lh);
+}
+.page.reader {
+  padding-left: max(20px, env(safe-area-inset-left));
+  padding-right: max(20px, env(safe-area-inset-right));
+}
+.reader article,
+.recap {
+  color: var(--read-fg, var(--fg));
 }
 .reader article p,
 .recap p {
@@ -448,22 +484,28 @@ dialog.drawer {
 .slider {
   display: grid;
   grid-template-columns: 1fr auto;
-  gap: 2px 10px;
+  gap: 2px 14px;
   align-items: center;
   margin-bottom: 12px;
 }
 .slider span {
+  grid-column: 1 / -1;
   font-size: 0.85em;
   color: var(--muted);
 }
-.slider output {
-  font-size: 0.85em;
-  font-variant-numeric: tabular-nums;
-}
 .slider input {
-  grid-column: 1 / -1;
+  grid-row: 2;
+  grid-column: 1;
   width: 100%;
   accent-color: var(--accent);
+}
+.slider output {
+  grid-row: 2;
+  grid-column: 2;
+  min-width: 3.2em;
+  text-align: right;
+  font-size: 0.95em;
+  font-variant-numeric: tabular-nums;
 }
 .check {
   display: flex;
@@ -732,7 +774,7 @@ dialog.drawer {
 /* ---------- v1.1: jarak paragraf, kunci, edit, sinkron ---------- */
 .reader article p,
 .recap p {
-  margin-bottom: var(--read-para, 0.9em);
+  margin-bottom: var(--read-para, 16px);
 }
 
 .lock-badge { display: inline-flex; vertical-align: middle; margin-left: 6px; color: var(--muted); }
@@ -845,3 +887,45 @@ textarea.editor {
 mark { background: color-mix(in srgb, #f5c542 55%, transparent); color: inherit; border-radius: 2px; padding: 0 1px; }
 .reader article p.flash { animation: flash 2.4s ease-out; }
 @keyframes flash { from { background: color-mix(in srgb, var(--accent) 22%, transparent); } to { background: transparent; } }
+
+/* ---------- Pengaturan huruf: pemilih ukuran bertitik, pilihan huruf & kecerahan teks ---------- */
+.size-pick { display: flex; align-items: center; gap: 6px; margin: 4px 0 14px; }
+.size-btn {
+  flex: none; width: 38px; height: 44px; margin-top: -18px; border: 0; border-radius: 10px; background: none; cursor: pointer;
+  font-family: var(--ui-font); font-size: 24px; line-height: 1; color: var(--fg); padding: 0;
+}
+.size-btn:first-child { font-size: 19px; }
+.size-btn sup { font-size: 0.6em; vertical-align: 0.55em; line-height: 0; margin-left: 1px; }
+.size-btn:disabled { opacity: 0.35; cursor: default; }
+.size-track { position: relative; flex: 1; min-width: 0; height: 46px; }
+.size-ticks { position: absolute; left: 13px; right: 13px; top: 0; height: 26px; pointer-events: none; }
+.size-ticks i {
+  position: absolute; top: 50%; width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; border-radius: 50%;
+  background: color-mix(in srgb, var(--fg) 35%, transparent);
+}
+.size-ticks i.on { background: var(--accent); }
+.size-ticks b {
+  position: absolute; top: 28px; transform: translateX(-50%); font: 500 12px/1 var(--ui-font);
+  color: var(--muted); font-variant-numeric: tabular-nums;
+}
+.size-ticks b.on { color: var(--accent); font-weight: 700; }
+.size-range {
+  position: absolute; inset: 0 0 auto; width: 100%; height: 26px; margin: 0; background: none; cursor: pointer;
+  -webkit-appearance: none; appearance: none;
+}
+.size-range::-webkit-slider-runnable-track {
+  height: 3px; border-radius: 2px;
+  background: linear-gradient(to right, var(--accent) var(--p), color-mix(in srgb, var(--fg) 25%, transparent) var(--p));
+}
+.size-range::-moz-range-track { height: 3px; border-radius: 2px; background: color-mix(in srgb, var(--fg) 25%, transparent); }
+.size-range::-moz-range-progress { height: 3px; border-radius: 2px; background: var(--accent); }
+.size-range::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none; width: 26px; height: 26px; margin-top: -11.5px; border: 0; border-radius: 50%;
+  background: var(--accent); position: relative; z-index: 1;
+}
+.size-range::-moz-range-thumb { width: 26px; height: 26px; border: 0; border-radius: 50%; background: var(--accent); }
+.size-range:focus-visible { outline: none; }
+.size-range:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent); }
+.pick-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+.pick-row label { display: grid; gap: 6px; font-size: 0.85em; color: var(--muted); }
+.pick-row select { color: var(--fg); font-size: 1rem; }

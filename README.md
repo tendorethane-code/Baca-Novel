@@ -15,7 +15,10 @@ Repo ini hanya berisi kode. Jangan commit teks novel; `.gitignore` sudah menolak
   - **Pratinjau** sebelum disimpan: jumlah chapter/paragraf, cuplikan isi, peringatan (teks sebelum chapter pertama, nomor kembar, nomor yang hilang, chapter kosong). Chapter bisa dicentang/dilepas.
   - Kalau nomor chapter sudah ada di novel tujuan, aplikasi bertanya per chapter: **ganti** atau **lewati** (bawaan: lewati).
 - **Perpustakaan**: cari judul/pengarang, urutkan (terakhir dibaca / judul / baru ditambah), status baca (*Sedang dibaca*, *Nanti*, *Selesai*) dengan filter. Status diubah lewat menu ⋯ di kartu novel.
-- **Tampilan**: 10 tema latar + tema kustom (pilih warna latar & teks, dengan peringatan kontras rendah), jenis huruf, ukuran huruf, jarak baris, jarak antarparagraf, lebar teks, rata kiri-kanan.
+- **Tampilan**: 11 tema latar (termasuk *Claude*: latar #151515, teks #f9f9f7) + tema kustom (pilih warna latar & teks, dengan peringatan kontras rendah).
+  - **Ukuran huruf** lewat tombol A−/A+ atau garis bertitik (14–34px), **jenis huruf** dan **kecerahan teks** (Terang/Sedang/Redup/Sangat redup) dari menu pilihan, jarak baris, jarak antarparagraf (px), lebar teks, rata kiri-kanan.
+  - Huruf *Noto Serif*, *Source Serif*, dan *Roboto* disertakan di aplikasi (`fonts/`), jadi tampil sama di semua perangkat dan tetap ada saat offline. Pilihan lain bergantung pada huruf perangkat.
+  - **Bawaan meniru tampilan baca aplikasi Claude** (diukur dari tangkapan layar Android): Noto Serif 17px tebal 450, jarak baris 1,5, jarak paragraf 16px, tepi 20px, rata kiri; di mode gelap memakai tema Claude. Setelan tipografi lama otomatis pindah ke bawaan ini sekali saat pembaruan.
 - **Kembalikan ke bawaan** (tombol di bawah Pengaturan): mengembalikan semua setelan tampilan; bisa dibatalkan lewat notifikasi. Novel, bookmark, posisi, kunci, dan sinkron tidak tersentuh.
 - **Kecerahan**: peredup layar. Aplikasi web tidak bisa mengubah kecerahan layar asli, jadi ini lapisan gelap di atas halaman (hanya bisa lebih redup dari setelan perangkat).
 - **Bookmark**: tandai posisi (chapter + paragraf) dengan catatan opsional; daftar bookmark, penanda di paragraf dan di daftar isi. Ikut tersinkron.
@@ -84,4 +87,5 @@ node --test tests/*.test.mjs    # unit test parser, zip, dan EPUB
 | `js/db.js` | Penyimpanan IndexedDB |
 | `js/merge.js`, `js/sync.js` | Aturan gabung data antarperangkat, sinkron ke repo GitHub privat |
 | `js/zip.js`, `js/epub.js` | Baca/tulis ZIP, susun EPUB |
+| `fonts/` | Huruf Noto Serif, Source Serif 4, Roboto (semuanya SIL Open Font License, `fonts/LICENSE-*`) |
 | `sw.js`, `manifest.webmanifest`, `icons/` | PWA / offline |
