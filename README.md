@@ -39,7 +39,8 @@ yang **terpisah** dari repo kode ini. Pengaturan tampilan dan kunci tidak ikut (
 2. Buat token di <https://github.com/settings/personal-access-tokens/new>:
    *Repository access* → **Only select repositories** → repo data tadi;
    *Permissions → Repository permissions* → **Contents: Read and write**. Salin tokennya.
-3. Di aplikasi, ketuk ikon panah melingkar → isi repo dan token → *Hubungkan*. Ulangi di tiap perangkat dengan token yang sama.
+3. Di aplikasi, ketuk ikon panah melingkar → isi repo dan token → *Hubungkan*.
+4. Di perangkat lain, ulangi langkah 2–3. Paling mudah buat token baru langsung di perangkat itu (token hanya ditampilkan sekali, dan tiap token bisa dicabut sendiri-sendiri).
 
 Catatan:
 - Aplikasi menolak repo publik.
@@ -77,7 +78,7 @@ node --test tests/*.test.mjs    # unit test parser, zip, dan EPUB
 
 | File | Isi |
 | --- | --- |
-| `index.html`, `css/app.css` | Kerangka halaman dan gaya (tema lewat `data-theme`) |
+| `index.html`, `css/app.css` | Kerangka halaman dan gaya (warna tema diisi lewat variabel CSS dari `js/app.js`) |
 | `js/app.js` | Antarmuka: perpustakaan, impor/pratinjau/konflik, pembaca, pengaturan, ekspor |
 | `js/parse.js` | Dekode teks, potong chapter, susun hasil impor |
 | `js/db.js` | Penyimpanan IndexedDB |
