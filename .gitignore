@@ -1,0 +1,6 @@
+# Repo ini hanya berisi kode. Jangan commit teks novel atau hasil ekspor.
+*.txt
+*.zip
+*.epub
+node_modules/
+.DS_Store
