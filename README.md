@@ -23,6 +23,8 @@ Repo ini hanya berisi kode. Jangan commit teks novel; `.gitignore` sudah menolak
 - **Kecerahan**: peredup layar. Aplikasi web tidak bisa mengubah kecerahan layar asli, jadi ini lapisan gelap di atas halaman (hanya bisa lebih redup dari setelan perangkat).
 - **Bookmark**: tandai posisi (chapter + paragraf) dengan catatan opsional; daftar bookmark, penanda di paragraf dan di daftar isi. Ikut tersinkron.
 - **Cari teks** di semua chapter atau chapter yang sedang dibuka; ketuk hasil untuk lompat ke paragrafnya (kata yang dicari ditandai).
+- **Layar baca bersih**: bar atas dan bar pindah chapter tersembunyi selama membaca. **Ketuk teks** untuk memunculkan/menyembunyikan; menggulir ke bawah juga menyembunyikannya.
+  - Bar pindah chapter: tombol ‹ / › dan daftar pilihan semua chapter.
 - **Tombol bar bisa diatur** (Pengaturan → *Tombol di bar layar baca*): pilih tombol yang tampil dan urutannya. Semua aksi tetap ada di menu ⋯.
 - **Edit teks chapter**: lewat menu ⋯ di layar baca → *Edit teks chapter ini…* (sengaja dipisah dari tombol biasa). Tiap baris tidak kosong = satu paragraf. Menutup editor dengan perubahan yang belum disimpan selalu minta konfirmasi.
 - **Kunci sentuhan**: ikon gembok di layar baca. Kontrol disembunyikan dan tap diabaikan, hanya bisa scroll. Pindah chapter dan membuka kunci harus dengan *menahan* tombol.

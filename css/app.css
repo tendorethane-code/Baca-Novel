@@ -288,6 +288,8 @@ label.field > span {
   line-height: var(--read-lh);
 }
 .page.reader {
+  /* Bar atas tersembunyi saat membaca (muncul menimpa teks saat diketuk), jadi tidak perlu ruang untuknya. */
+  padding-top: calc(env(safe-area-inset-top) + 28px);
   padding-left: max(20px, env(safe-area-inset-left));
   padding-right: max(20px, env(safe-area-inset-right));
 }
@@ -801,7 +803,8 @@ html.touch-locked { touch-action: pan-y; }
 html.touch-locked .reader { pointer-events: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 html.touch-locked .reader .locked-next { display: block; pointer-events: auto; }
 html.touch-locked .reader .ch-nav { display: none; }
-html.touch-locked .bar { pointer-events: none; }
+html.touch-locked .bar,
+html.touch-locked .ch-bar { pointer-events: none; }
 html.touch-locked .lock-layer {
   display: block; position: fixed; z-index: 20;
   right: max(14px, env(safe-area-inset-right)); bottom: calc(14px + env(safe-area-inset-bottom));
@@ -929,3 +932,34 @@ mark { background: color-mix(in srgb, #f5c542 55%, transparent); color: inherit;
 .pick-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
 .pick-row label { display: grid; gap: 6px; font-size: 0.85em; color: var(--muted); }
 .pick-row select { color: var(--fg); font-size: 1rem; }
+
+/* ---------- Bar pindah chapter (muncul bersama bar atas saat teks diketuk) ---------- */
+.ch-bar {
+  position: fixed; z-index: 9; left: 0; right: 0;
+  top: calc(var(--bar-h) + env(safe-area-inset-top));
+  display: flex; gap: 8px;
+  padding: 8px max(12px, env(safe-area-inset-right)) 10px max(12px, env(safe-area-inset-left));
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--line);
+  font-family: var(--ui-font);
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+.ch-bar.hide { transform: translateY(calc(-100% - var(--bar-h) - env(safe-area-inset-top))); opacity: 0; pointer-events: none; }
+.ch-step, .ch-pick select {
+  height: 44px; border: 0; border-radius: 10px; background: var(--accent); color: var(--accent-fg); cursor: pointer;
+}
+.ch-step { flex: none; width: 56px; display: inline-flex; align-items: center; justify-content: center; padding: 0; }
+.ch-step svg { width: 24px; height: 24px; stroke-width: 2.6; }
+.ch-step:disabled { opacity: 0.35; cursor: default; }
+.ch-pick { position: relative; flex: 1; min-width: 0; }
+.ch-pick select {
+  width: 100%; padding: 0 34px; font-size: 16px; text-align: center; text-align-last: center;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  -webkit-appearance: none; appearance: none;
+}
+.ch-pick select option { background: var(--panel); color: var(--fg); text-align: left; }
+.ch-pick::after {
+  content: ''; position: absolute; right: 14px; top: 50%; width: 8px; height: 8px; margin-top: -6px;
+  border: solid var(--accent-fg); border-width: 0 2px 2px 0; transform: rotate(45deg); pointer-events: none; opacity: 0.85;
+}

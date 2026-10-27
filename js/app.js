@@ -1632,7 +1632,32 @@ async function showReader(id, wantNum) {
     barSlot,
     iconBtn('more', 'Menu lainnya', () => openMore()),
   );
-  const main = el('main', { class: 'page reader' });
+  // Bar pindah chapter di bawah bar atas: ‹ [pilih chapter] ›
+  const chSelect = el('select', { 'aria-label': 'Pilih chapter', onchange: () => go(Number(chSelect.value)) });
+  const fillChSelect = () =>
+    chSelect.replaceChildren(...novel.toc.map((t, i) => el('option', { value: i }, chapterLabel(t.num, t.title))));
+  fillChSelect();
+  const chPrev = el('button', { type: 'button', class: 'ch-step', 'aria-label': 'Chapter sebelumnya', onclick: () => go(idx - 1) }, icon('back'));
+  const chNext = el('button', { type: 'button', class: 'ch-step', 'aria-label': 'Chapter berikutnya', onclick: () => go(idx + 1) }, icon('chevron'));
+  const chBar = el('div', { class: 'ch-bar hide' }, chPrev, el('div', { class: 'ch-pick' }, chSelect), chNext);
+  bar.classList.add('hide');
+
+  // Kontrol (bar atas + bar chapter) tersembunyi saat membaca; ketuk teks untuk menampilkan/menyembunyikan.
+  let controls = false;
+  function showControls(on) {
+    controls = on;
+    bar.classList.toggle('hide', !on);
+    chBar.classList.toggle('hide', !on);
+  }
+
+  const main = el('main', {
+    class: 'page reader',
+    onclick: (e) => {
+      if (touchLocked || e.target.closest('button, a, summary, input, select, textarea, label, .hold')) return;
+      if (String(getSelection?.() || '').trim()) return; // sedang memilih teks
+      showControls(!controls);
+    },
+  });
   const unlock = holdButton('Tahan untuk membuka kunci', 900, () => setTouchLock(false), 'unlock');
   const lockLayer = el('div', { class: 'lock-layer' }, unlock);
   let article = null;
@@ -1641,7 +1666,7 @@ async function showReader(id, wantNum) {
   let current = null; // { entry, chapter }
   let token = 0;
 
-  setView([bar, main, lockLayer], () => {
+  setView([bar, chBar, main, lockLayer], () => {
     saveNow();
     setTouchLock(false);
     window.removeEventListener('scroll', onScroll);
@@ -1651,15 +1676,19 @@ async function showReader(id, wantNum) {
     scheduleSync(1500);
   });
 
+  if (!settings.tapHint) {
+    toast('Ketuk teks untuk menampilkan menu dan pindah chapter.');
+    settings.tapHint = true;
+    saveSettings();
+  }
+
   // ----- Kunci sentuhan: sembunyikan kontrol, abaikan tap, hanya bisa scroll -----
   let touchLocked = false;
   function setTouchLock(on) {
     touchLocked = on;
     document.documentElement.classList.toggle('touch-locked', on);
-    if (on) {
-      bar.classList.add('hide');
-      toast('Layar terkunci. Hanya bisa scroll. Tahan tombol gembok untuk membuka.');
-    } else bar.classList.remove('hide');
+    showControls(false);
+    if (on) toast('Layar terkunci. Hanya bisa scroll. Tahan tombol gembok untuk membuka.');
   }
 
   // Posisi = indeks paragraf pertama yang terlihat di bawah bar (lebih tahan perubahan ukuran huruf daripada scrollY).
@@ -1715,10 +1744,8 @@ async function showReader(id, wantNum) {
   let lastY = window.scrollY;
   function onScroll() {
     const y = window.scrollY;
-    if (!touchLocked) {
-      if (y > lastY + 8 && y > 120) bar.classList.add('hide');
-      else if (y < lastY - 8 || y < 60) bar.classList.remove('hide');
-    }
+    // Kontrol hanya muncul lewat ketukan; menggulir ke bawah menyembunyikannya lagi.
+    if (controls && y > lastY + 8) showControls(false);
     lastY = y;
     scheduleSave();
   }
@@ -1827,7 +1854,10 @@ async function showReader(id, wantNum) {
       ].filter(Boolean),
     );
     history.replaceState(null, '', `#/read/${encodeURIComponent(novel.id)}/${entry.num}`);
-    if (!touchLocked) bar.classList.remove('hide');
+    fillChSelect(); // daftar isi bisa berubah (edit, hapus, sinkron)
+    chSelect.value = String(idx);
+    chPrev.disabled = idx === 0;
+    chNext.disabled = idx === novel.toc.length - 1;
     markBookmarks();
     const target = article.children[startPara];
     if (highlight && target) {
