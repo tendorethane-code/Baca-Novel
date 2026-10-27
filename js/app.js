@@ -533,7 +533,56 @@ function openSettings() {
       ),
       storageInfo,
     ],
+    actions: [
+      {
+        label: 'Kembalikan ke bawaan',
+        danger: true,
+        run: async () => {
+          const ok = await confirmDialog(
+            'Kembalikan ke bawaan?',
+            'Tema, huruf, ukuran, jarak baris & paragraf, lebar, kecerahan, pengingat, dan tombol bar kembali seperti awal. Novel, bookmark, posisi baca, kunci perubahan, dan sinkron tidak berubah.',
+            'Kembalikan',
+          );
+          if (!ok) return false;
+          resetSettings();
+        },
+      },
+      { spacer: true },
+      { label: 'Selesai', primary: true },
+    ],
   });
+}
+
+// Pengaturan yang ikut dikembalikan oleh "Kembalikan ke bawaan".
+const RESETTABLE = [
+  'font',
+  'size',
+  'lh',
+  'width',
+  'justify',
+  'paraSpace',
+  'theme',
+  'customBg',
+  'customFg',
+  'recapCount',
+  'recapOpen',
+  'dim',
+  'barOrder',
+  'barHidden',
+];
+
+function resetSettings() {
+  const before = structuredClone(settings);
+  const apply = (values) => {
+    const anchor = readerHooks?.anchor();
+    for (const k of RESETTABLE) settings[k] = structuredClone(values[k]);
+    applySettings();
+    saveSettings();
+    readerHooks?.rebuildBar();
+    readerHooks?.refreshRecap().then(() => anchor != null && readerHooks?.restore(anchor));
+  };
+  apply(DEFAULTS);
+  toast('Pengaturan dikembalikan ke bawaan.', { label: 'Batalkan', run: () => apply(before) });
 }
 
 /** Slider peredup. Browser tidak boleh mengubah kecerahan layar asli, jadi ini lapisan gelap di atas halaman. */
@@ -2259,8 +2308,11 @@ function openSyncSetup() {
         el(
           'li',
           null,
-          link('https://github.com/settings/personal-access-tokens/new', 'Buat token (fine-grained)'),
-          ': beri nama bebas, pilih masa berlaku, lalu di ',
+          link(
+            `https://github.com/settings/personal-access-tokens/new?name=${encodeURIComponent(`Baca Novel ${sync.deviceName()}`)}&description=${encodeURIComponent('Sinkron aplikasi Baca Novel')}&contents=write`,
+            'Buat token (fine-grained)',
+          ),
+          ': beri nama bebas (misalnya "Baca Novel iPad"), pilih masa berlaku, lalu di ',
           el('i', null, 'Repository access'),
           ' pilih ',
           el('b', null, 'Only select repositories'),
@@ -2272,9 +2324,13 @@ function openSyncSetup() {
           el('b', null, 'Read and write'),
           '. Klik ',
           el('i', null, 'Generate token'),
-          ' lalu salin.',
+          ' lalu salin. Token hanya ditampilkan sekali.',
         ),
-        el('li', null, 'Isi kolom di bawah, lalu ulangi langkah ini (pakai token yang sama) di perangkat lain.'),
+        el(
+          'li',
+          null,
+          'Tempel di kolom di bawah, lalu ketuk Hubungkan. Untuk perangkat lain, paling gampang buat token baru langsung di perangkat itu (langkah 2 saja; repo-nya pakai yang sama).',
+        ),
       ),
       el(
         'div',
