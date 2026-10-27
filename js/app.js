@@ -235,13 +235,26 @@ function downloadOrShare(data, filename, mime) {
 
 // ---------- Pengaturan tampilan ----------
 
+// noto, source, roboto disertakan di fonts/ (lihat css/app.css); sisanya bergantung pada huruf perangkat.
+// weight: ketebalan teks bacaan. Noto Serif sedikit ditebalkan supaya mendekati teks di aplikasi Claude.
 const FONTS = {
-  book: { label: 'Buku', css: '"Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif' },
-  source: { label: 'Source', css: '"Source Serif 4", Georgia, serif' },
-  serif: { label: 'Serif', css: 'Georgia, "Times New Roman", Times, serif' },
-  sans: { label: 'Sans', css: 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' },
+  noto: { label: 'Noto Serif', css: '"Noto Serif", Georgia, serif', weight: 450 },
+  source: { label: 'Source Serif', css: '"Source Serif 4", Georgia, serif' },
+  roboto: { label: 'Roboto', css: 'Roboto, system-ui, sans-serif' },
+  book: { label: 'Buku (Palatino)', css: '"Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif' },
+  serif: { label: 'Georgia', css: 'Georgia, "Times New Roman", Times, serif' },
+  sans: { label: 'Sans perangkat', css: 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' },
   mono: { label: 'Mono', css: 'ui-monospace, Menlo, Consolas, "Liberation Mono", monospace' },
 };
+// Kecerahan teks bacaan: persen warna teks tema yang dipakai (sisanya warna latar).
+const TEXT_LEVELS = {
+  100: { label: 'Terang' },
+  85: { label: 'Sedang' },
+  70: { label: 'Redup' },
+  55: { label: 'Sangat redup' },
+};
+const SIZE_MIN = 14;
+const SIZE_MAX = 34;
 // Tema latar: cukup warna latar (bg) dan teks (fg); warna lain diturunkan otomatis.
 const THEMES = {
   light: { label: 'Terang', bg: '#fbfaf7', fg: '#1f1f1c' },
@@ -250,6 +263,7 @@ const THEMES = {
   mint: { label: 'Hijau', bg: '#e2ede3', fg: '#1e3325' },
   sky: { label: 'Biru muda', bg: '#e4ecf4', fg: '#1d2b3a', accent: '#2f5f8a' },
   gray: { label: 'Abu', bg: '#d6d6d2', fg: '#22221f' },
+  claude: { label: 'Claude', bg: '#151515', fg: '#f9f9f7' },
   dusk: { label: 'Senja', bg: '#2b2530', fg: '#ddd4e1', accent: '#c9a6e0' },
   navy: { label: 'Biru malam', bg: '#141d2b', fg: '#cdd7e3', accent: '#8cb8e8' },
   dark: { label: 'Gelap', bg: '#141414', fg: '#d5d3ce' },
@@ -284,15 +298,19 @@ function themeColors() {
 }
 
 const SETTINGS_KEY = 'baca-novel:settings';
+// Bawaan tipografi meniru tampilan baca di aplikasi Claude (diukur dari tangkapan layar Android):
+// tinggi huruf kecil ±9,5px, jarak antarbaris ±25,7px, tepi kiri-kanan ±20px, teks rata kiri.
+const SETTINGS_VERSION = 2;
 const DEFAULTS = {
-  font: 'book',
-  size: 19,
-  lh: 1.7,
+  font: 'noto',
+  size: 17,
+  lh: 1.5,
   width: 680,
   justify: false,
-  paraSpace: 0.9,
+  paraGap: 16,
+  textLevel: 100,
   changeLock: false,
-  theme: matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light',
+  theme: matchMedia('(prefers-color-scheme: dark)').matches ? 'claude' : 'light',
   customBg: '#e9e4f0',
   customFg: '',
   recapCount: 3,
@@ -316,9 +334,20 @@ const BAR_ITEMS = {
 
 let settings = { ...DEFAULTS };
 try {
-  Object.assign(settings, JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}'));
+  const stored = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
+  Object.assign(settings, stored);
+  // Versi 1 → 2: tipografi pindah ke bawaan baru (mirip Claude) sekali saja; tema gelap lama ikut jadi tema Claude.
+  if (Object.keys(stored).length && !(stored.v >= 2)) {
+    for (const k of ['font', 'size', 'lh', 'paraGap', 'justify', 'textLevel']) settings[k] = DEFAULTS[k];
+    if (settings.theme === 'dark') settings.theme = 'claude';
+  }
 } catch {}
+const migrated = settings.v !== SETTINGS_VERSION;
+settings.v = SETTINGS_VERSION;
+delete settings.paraSpace;
 if (!FONTS[settings.font]) settings.font = DEFAULTS.font;
+if (!TEXT_LEVELS[settings.textLevel]) settings.textLevel = DEFAULTS.textLevel;
+settings.size = Math.min(SIZE_MAX, Math.max(SIZE_MIN, settings.size));
 if (!THEMES[settings.theme]) settings.theme = DEFAULTS.theme;
 // Tombol bar baru (dari versi aplikasi yang lebih baru) ikut muncul di urutan.
 settings.barOrder = [
@@ -348,13 +377,15 @@ function applySettings() {
     '--warn-bg': c.dark ? '#3a3017' : '#fff1cc',
     '--warn-fg': c.dark ? '#f1d68b' : '#6b4e00',
     '--read-font': FONTS[settings.font].css,
+    '--read-weight': FONTS[settings.font].weight || 400,
+    '--read-fg': settings.textLevel < 100 ? mix(c.fg, c.bg, settings.textLevel) : c.fg,
     '--read-size': `${settings.size}px`,
     '--read-lh': settings.lh,
     '--read-width': `${settings.width}px`,
     '--read-align': settings.justify ? 'justify' : 'left',
-    '--read-para': `${settings.paraSpace}em`,
+    '--read-para': `${settings.paraGap}px`,
   };
-  for (const [k, v] of Object.entries(vars)) r.style.setProperty(k, v);
+  for (const [k, v] of Object.entries(vars)) r.style.setProperty(k, String(v));
   r.style.background = c.bg;
   r.style.colorScheme = c.dark ? 'dark' : 'light';
   r.toggleAttribute('data-dark', c.dark);
@@ -367,6 +398,7 @@ const dimLayer = document.createElement('div');
 dimLayer.className = 'dim-layer';
 document.body.append(dimLayer);
 applySettings();
+if (migrated) saveSettings();
 
 // Dipasang oleh tampilan pembaca supaya posisi baca tetap saat ukuran teks berubah.
 let readerHooks = null;
@@ -381,18 +413,13 @@ function openSettings() {
     if (anchor != null) readerHooks?.restore(anchor);
   };
 
-  const seg = (items, key, cls) => {
-    const wrap = el('div', { class: 'seg' });
-    for (const [k, v] of Object.entries(items)) {
-      const b = el('button', { type: 'button', class: cls ? `${cls}-${k}` : '', 'aria-pressed': String(settings[key] === k) }, v.label);
-      if (key === 'font') b.style.fontFamily = v.css;
-      b.onclick = () => {
-        update({ [key]: k });
-        wrap.querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
-      };
-      wrap.append(b);
-    }
-    return wrap;
+  const picker = (label, entries, key) => {
+    const sel = el(
+      'select',
+      { onchange: () => update({ [key]: typeof settings[key] === 'number' ? Number(sel.value) : sel.value }) },
+      entries.map(([k, v]) => el('option', { value: k, selected: String(settings[key]) === k }, v.label)),
+    );
+    return el('label', null, label, sel);
   };
 
   const slider = (label, key, min, max, step, fmt) => {
@@ -409,7 +436,7 @@ function openSettings() {
         out.textContent = fmt(settings[key]);
       },
     });
-    return el('label', { class: 'slider' }, el('span', null, label), out, input);
+    return el('label', { class: 'slider' }, el('span', null, label), input, out);
   };
 
   const check = (label, key) =>
@@ -512,12 +539,15 @@ function openSettings() {
       customBox,
       el('div', { class: 'section-label' }, 'Kecerahan'),
       dimSlider(update),
-      el('div', { class: 'section-label' }, 'Huruf'),
-      seg(FONTS, 'font'),
-      el('div', { class: 'section-label' }, 'Teks'),
-      slider('Ukuran huruf', 'size', 13, 34, 1, (v) => `${v}px`),
+      sizePicker(update),
+      el(
+        'div',
+        { class: 'pick-row' },
+        picker('Jenis huruf', Object.entries(FONTS), 'font'),
+        picker('Kecerahan teks', Object.entries(TEXT_LEVELS).reverse(), 'textLevel'),
+      ),
       slider('Jarak baris', 'lh', 1.2, 2.4, 0.05, (v) => v.toFixed(2)),
-      slider('Jarak antarparagraf', 'paraSpace', 0, 2.5, 0.1, (v) => `${v.toFixed(1)} baris`),
+      slider('Jarak antarparagraf', 'paraGap', 0, 48, 1, (v) => `${v}px`),
       slider('Lebar teks', 'width', 360, 1200, 20, (v) => `${v}px`),
       check('Rata kiri-kanan', 'justify'),
       el('div', { class: 'section-label' }, 'Pengingat chapter sebelumnya'),
@@ -541,7 +571,7 @@ function openSettings() {
         run: async () => {
           const ok = await confirmDialog(
             'Kembalikan ke bawaan?',
-            'Tema, huruf, ukuran, jarak baris & paragraf, lebar, kecerahan, pengingat, dan tombol bar kembali seperti awal. Novel, bookmark, posisi baca, kunci perubahan, dan sinkron tidak berubah.',
+            'Tema, huruf, ukuran, kecerahan teks, jarak baris & paragraf, lebar, kecerahan, pengingat, dan tombol bar kembali seperti awal. Novel, bookmark, posisi baca, kunci perubahan, dan sinkron tidak berubah.',
             'Kembalikan',
           );
           if (!ok) return false;
@@ -561,7 +591,8 @@ const RESETTABLE = [
   'lh',
   'width',
   'justify',
-  'paraSpace',
+  'paraGap',
+  'textLevel',
   'theme',
   'customBg',
   'customFg',
@@ -584,6 +615,48 @@ function resetSettings() {
   };
   apply(DEFAULTS);
   toast('Pengaturan dikembalikan ke bawaan.', { label: 'Batalkan', run: () => apply(before) });
+}
+
+/** Pemilih ukuran huruf: A− / A+ dan garis bertitik di tiap ukuran genap (ukuran ganjil tetap bisa dipilih). */
+function sizePicker(update) {
+  const n = SIZE_MAX - SIZE_MIN;
+  const range = el('input', { type: 'range', class: 'size-range', min: SIZE_MIN, max: SIZE_MAX, step: 1, 'aria-label': 'Ukuran huruf' });
+  const ticks = el('div', { class: 'size-ticks', 'aria-hidden': 'true' });
+  const dots = [];
+  for (let v = SIZE_MIN; v <= SIZE_MAX; v += 2) {
+    const left = `${((v - SIZE_MIN) / n) * 100}%`;
+    const dot = el('i');
+    const lab = el('b', null, String(v));
+    dot.style.left = lab.style.left = left;
+    ticks.append(dot, lab);
+    dots.push([v, dot, lab]);
+  }
+  const minus = el('button', { type: 'button', class: 'size-btn', 'aria-label': 'Perkecil huruf' }, 'A', el('sup', null, '−'));
+  const plus = el('button', { type: 'button', class: 'size-btn', 'aria-label': 'Perbesar huruf' }, 'A', el('sup', null, '+'));
+  const head = el('div', { class: 'section-label' });
+  const show = () => {
+    const cur = settings.size;
+    range.value = cur;
+    range.style.setProperty('--p', `${((cur - SIZE_MIN) / n) * 100}%`);
+    for (const [v, dot, lab] of dots) {
+      dot.className = v < cur ? 'on' : '';
+      dot.style.visibility = v === cur ? 'hidden' : '';
+      lab.className = v === cur ? 'on' : '';
+    }
+    minus.disabled = cur <= SIZE_MIN;
+    plus.disabled = cur >= SIZE_MAX;
+    range.setAttribute('aria-valuetext', `${cur}px`);
+    head.textContent = `Ukuran huruf · ${cur}px`;
+  };
+  const set = (v) => {
+    update({ size: Math.min(SIZE_MAX, Math.max(SIZE_MIN, v)) });
+    show();
+  };
+  range.oninput = () => set(Number(range.value));
+  minus.onclick = () => set(settings.size - 1);
+  plus.onclick = () => set(settings.size + 1);
+  show();
+  return [head, el('div', { class: 'size-pick' }, minus, el('div', { class: 'size-track' }, range, ticks), plus)];
 }
 
 /** Slider peredup. Browser tidak boleh mengubah kecerahan layar asli, jadi ini lapisan gelap di atas halaman. */
