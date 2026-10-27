@@ -66,11 +66,13 @@ function explain(status, body) {
   return `GitHub menjawab ${status}. ${body.slice(0, 160)}`;
 }
 
+// Tanpa `repo`, path dihitung dari akar API (mis. '/user').
 function client({ repo, token }) {
+  const base = repo ? `${API}/repos/${repo}` : API;
   async function req(method, path, body, raw = false) {
     let res;
     try {
-      res = await fetch(`${API}/repos/${repo}${path}`, {
+      res = await fetch(`${base}${path}`, {
         method,
         cache: 'no-store',
         headers: {
@@ -114,6 +116,39 @@ export async function checkRepo(cfg) {
     );
   }
   return info;
+}
+
+export const DEFAULT_REPO_NAME = 'baca-novel-data';
+
+/**
+ * Menerima "nama-repo", "pemilik/nama-repo", atau URL GitHub, lalu mengembalikan "pemilik/nama-repo" yang
+ * benar-benar bisa diakses token. Kalau bagian pemilik salah (mis. diisi nama perangkat), dicoba ulang
+ * dengan akun pemilik token.
+ */
+export async function resolveRepo(input, token) {
+  const raw = input.trim() || DEFAULT_REPO_NAME;
+  const full = parseRepo(raw);
+  const name = full ? full.split('/')[1] : /^[\w.-]+$/.test(raw) ? raw : null;
+  if (!name) throw new SyncError('Nama repo tidak valid. Cukup tulis nama repo-nya, misalnya baca-novel-data.', 0);
+
+  const login = (await client({ token }).req('GET', '/user')).login;
+  const candidates = [...new Set([full, `${login}/${name}`].filter(Boolean))];
+  let notFound = null;
+  for (const repo of candidates) {
+    try {
+      await checkRepo({ repo, token });
+      return repo;
+    } catch (e) {
+      if (e.status !== 404) throw e;
+      notFound = e;
+    }
+  }
+  throw new SyncError(
+    `Repo "${login}/${name}" tidak ditemukan, atau token belum diberi akses ke repo itu. ` +
+      `Periksa nama repo-nya (akun kamu: ${login}), lalu pastikan saat membuat token kamu memilih ` +
+      `"Only select repositories" → ${name}, dan izin "Contents: Read and write".`,
+    notFound.status,
+  );
 }
 
 /**
