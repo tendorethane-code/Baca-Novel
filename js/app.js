@@ -1650,9 +1650,8 @@ async function showReader(id, wantNum) {
     );
   rebuildBar();
 
-  const chSelect = el('select', { 'aria-label': 'Pilih chapter', onchange: () => go(Number(chSelect.value)) });
-  const fillChSelect = () =>
-    chSelect.replaceChildren(...novel.toc.map((t, i) => el('option', { value: i }, chapterLabel(t.num, t.title))));
+  // Nama chapter membuka daftar isi (daftar pilihan bawaan HP terlalu besar & tidak bisa diatur tampilannya).
+  const chBtn = el('button', { type: 'button', 'aria-label': 'Pilih chapter dari daftar isi', onclick: closing(() => openToc()) });
   const progressText = el('span', { class: 'rp-pct' });
   const progressFill = el('i');
   const typeSlot = el('div', { class: 'rp-type' });
@@ -1665,7 +1664,7 @@ async function showReader(id, wantNum) {
       el('div', { class: 'rp-novel' }, novel.title),
       progressText,
       iconBtn('close', 'Tutup menu', () => showPanel(false)),
-      el('div', { class: 'rp-ch' }, chSelect),
+      el('div', { class: 'rp-ch' }, chBtn),
       el('div', { class: 'rp-progress' }, progressFill),
     ),
     btnRow,
@@ -1674,8 +1673,8 @@ async function showReader(id, wantNum) {
   const backdrop = el('div', { class: 'rp-backdrop', onclick: () => showPanel(false) });
 
   function refreshHead() {
-    fillChSelect(); // daftar isi bisa berubah (edit, hapus, sinkron)
-    chSelect.value = String(idx);
+    const t = novel.toc[idx];
+    chBtn.textContent = chapterLabel(t.num, t.title);
     prevBtn.disabled = idx === 0;
     nextBtn.disabled = idx === novel.toc.length - 1;
     const max = document.documentElement.scrollHeight - innerHeight;
@@ -1842,17 +1841,16 @@ async function showReader(id, wantNum) {
 
   // Bar pindah chapter di awal dan akhir chapter: ‹ [pilih chapter] ›
   function jumpBar() {
-    const sel = el(
-      'select',
-      { 'aria-label': 'Pilih chapter', onchange: () => go(Number(sel.value)) },
-      novel.toc.map((t, i) => el('option', { value: i }, chapterLabel(t.num, t.title))),
-    );
-    sel.value = String(idx);
+    const t = novel.toc[idx];
     return el(
       'nav',
       { class: 'ch-jump' },
       el('button', { type: 'button', class: 'ch-step', 'aria-label': 'Chapter sebelumnya', disabled: idx === 0, onclick: () => go(idx - 1) }, icon('back')),
-      el('div', { class: 'ch-pick' }, sel),
+      el(
+        'div',
+        { class: 'ch-pick' },
+        el('button', { type: 'button', 'aria-label': 'Pilih chapter dari daftar isi', onclick: () => openToc() }, chapterLabel(t.num, t.title)),
+      ),
       el(
         'button',
         { type: 'button', class: 'ch-step', 'aria-label': 'Chapter berikutnya', disabled: idx === novel.toc.length - 1, onclick: () => go(idx + 1) },
