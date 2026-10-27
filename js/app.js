@@ -1,9 +1,10 @@
 import * as db from './db.js';
-import { buildImport, decodeText, naturalCompare, baseName, chapterLabel } from './parse.js';
+import { buildImport, decodeText, naturalCompare, baseName, chapterLabel, splitLines } from './parse.js';
 import { readZip, writeZip } from './zip.js';
 import { buildEpub } from './epub.js';
+import * as sync from './sync.js';
 
-const APP_VERSION = '1.0.0';
+const APP_VERSION = '1.1.0';
 const app = document.getElementById('app');
 history.scrollRestoration = 'manual';
 
@@ -31,6 +32,8 @@ const ICONS = {
   more: 'M5 12h.01M12 12h.01M19 12h.01',
   close: 'M6 6l12 12M18 6L6 18',
   chevron: 'M9 6l6 6-6 6',
+  lock: 'M6 11h12v9H6zM8.5 11V8a3.5 3.5 0 0 1 7 0v3',
+  sync: 'M20 11a8 8 0 0 0-14.3-4.9L4 8M4 4v4h4M4 13a8 8 0 0 0 14.3 4.9L20 16M20 20v-4h-4',
 };
 function icon(name) {
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -137,7 +140,7 @@ function dialog({ title, body, actions = [], className = '', onOpen }) {
         'div',
         { class: 'dlg-head' },
         el('h2', null, title),
-        iconBtn('close', 'Tutup', () => d.close()),
+        iconBtn('close', 'Tutup', () => requestClose()),
       ),
       el('div', { class: 'dlg-body' }, body),
     );
@@ -151,9 +154,13 @@ function dialog({ title, body, actions = [], className = '', onOpen }) {
       if (e.target === d) {
         const r = d.getBoundingClientRect();
         const inside = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
-        if (!inside) d.close();
+        if (!inside) requestClose();
       }
     });
+    // Tombol X & klik di luar memicu event `cancel` seperti tombol Esc, jadi pemilik dialog bisa menahannya.
+    function requestClose() {
+      if (d.dispatchEvent(new Event('cancel', { cancelable: true }))) d.close();
+    }
     document.body.append(d);
     d.showModal();
     onOpen?.(d);
@@ -241,6 +248,8 @@ const DEFAULTS = {
   lh: 1.7,
   width: 680,
   justify: false,
+  paraSpace: 0.9,
+  changeLock: false,
   theme: matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light',
   recapCount: 3,
   recapOpen: true,
@@ -267,6 +276,7 @@ function applySettings() {
   r.style.setProperty('--read-lh', settings.lh);
   r.style.setProperty('--read-width', `${settings.width}px`);
   r.style.setProperty('--read-align', settings.justify ? 'justify' : 'left');
+  r.style.setProperty('--read-para', `${settings.paraSpace}em`);
   document.querySelector('meta[name="theme-color"]').content = THEMES[settings.theme].color;
 }
 applySettings();
@@ -323,11 +333,27 @@ function openSettings() {
       label,
     );
 
+  const lockBox = el('input', { type: 'checkbox', checked: settings.changeLock });
+  lockBox.onchange = async () => {
+    if (!lockBox.checked) {
+      lockBox.checked = true;
+      const ok = await confirmDialog(
+        'Buka kunci perubahan?',
+        'Edit chapter, hapus, ganti judul, dan impor yang menimpa chapter akan bisa dipakai lagi.',
+        'Buka kunci',
+      );
+      if (!ok) return;
+      lockBox.checked = false;
+    }
+    update({ changeLock: lockBox.checked });
+    onLockChange();
+  };
+
   const storageInfo = el('p', { class: 'small muted' });
   showStorageInfo(storageInfo);
 
   dialog({
-    title: 'Tampilan',
+    title: 'Pengaturan',
     className: 'sheet',
     body: [
       el('div', { class: 'section-label' }, 'Tema'),
@@ -337,11 +363,19 @@ function openSettings() {
       el('div', { class: 'section-label' }, 'Teks'),
       slider('Ukuran huruf', 'size', 13, 34, 1, (v) => `${v}px`),
       slider('Jarak baris', 'lh', 1.2, 2.4, 0.05, (v) => v.toFixed(2)),
+      slider('Jarak antarparagraf', 'paraSpace', 0, 2.5, 0.1, (v) => `${v.toFixed(1)} baris`),
       slider('Lebar teks', 'width', 360, 1200, 20, (v) => `${v}px`),
       check('Rata kiri-kanan', 'justify'),
       el('div', { class: 'section-label' }, 'Pengingat chapter sebelumnya'),
       slider('Jumlah paragraf terakhir yang ditampilkan (0 = mati)', 'recapCount', 0, 15, 1, (v) => String(v)),
       check('Tampilkan terbuka', 'recapOpen'),
+      el('div', { class: 'section-label' }, 'Kunci perubahan'),
+      el('label', { class: 'check' }, lockBox, 'Kunci perubahan (mode baca-saja)'),
+      el(
+        'p',
+        { class: 'small muted' },
+        'Saat terkunci: edit chapter, hapus, ganti judul, dan impor yang menimpa chapter tidak bisa dipakai. Impor chapter baru dan sinkron tetap jalan.',
+      ),
       storageInfo,
     ],
   });
@@ -395,8 +429,14 @@ async function showLibrary() {
   const bar = el(
     'header',
     { class: 'bar' },
-    el('h1', null, 'Baca Novel'),
-    iconBtn('type', 'Tampilan', openSettings),
+    el(
+      'h1',
+      null,
+      'Baca Novel',
+      settings.changeLock ? el('span', { class: 'lock-badge', title: 'Perubahan dikunci' }, icon('lock')) : null,
+    ),
+    syncButton(),
+    iconBtn('type', 'Pengaturan', openSettings),
     el('button', { type: 'button', class: 'btn primary', onclick: () => openImport() }, icon('plus'), 'Impor'),
   );
 
@@ -417,12 +457,16 @@ async function showLibrary() {
           '.',
         ),
         el('p', null, el('button', { type: 'button', class: 'btn primary', onclick: () => openImport() }, 'Impor novel')),
-        el('p', { class: 'small' }, 'Semua data tersimpan di browser perangkat ini saja, tidak dikirim ke mana pun.'),
+        el(
+          'p',
+          { class: 'small' },
+          'Data tersimpan di browser perangkat ini. Agar sama di HP, iPad, dan laptop, nyalakan sinkronisasi (ikon panah melingkar di atas).',
+        ),
       );
 
   const foot = el('p', { class: 'foot' });
   showStorageInfo(foot);
-  setView([bar, el('main', { class: 'page library' }, body, foot)]);
+  setView([bar, el('main', { class: 'page library' }, body, syncLine(), foot)]);
 }
 
 function novelCard(n) {
@@ -453,13 +497,15 @@ function novelCard(n) {
 
 function novelMenu(n) {
   const has = n.toc.length > 0;
+  const locked = settings.changeLock;
   const act = (label, fn, opts = {}) =>
     el(
       'button',
       {
         type: 'button',
         class: `btn${opts.danger ? ' danger' : ''}`,
-        disabled: opts.disabled,
+        disabled: opts.disabled || (opts.change && locked),
+        title: opts.change && locked ? 'Perubahan sedang dikunci' : null,
         onclick: () => {
           d.close();
           fn();
@@ -474,14 +520,19 @@ function novelMenu(n) {
     act('Impor / tambah chapter', () => openImport(n.id)),
     act('Compile ke EPUB', () => openEpub(n), { disabled: !has }),
     act('Ekspor sebagai .zip (txt)', () => exportTxt(n), { disabled: !has }),
-    act('Ganti judul', async () => {
-      const t = await promptDialog('Ganti judul', 'Judul novel', n.title);
-      if (t) {
-        await db.updateNovel(n.id, { title: t });
-        route();
-      }
-    }),
-    act('Hapus rentang chapter', () => openDeleteRange(n), { disabled: !has, danger: true }),
+    act(
+      'Ganti judul',
+      async () => {
+        const t = await promptDialog('Ganti judul', 'Judul novel', n.title);
+        if (t && t !== n.title) {
+          await db.updateMeta(n.id, { title: t });
+          changed();
+          route();
+        }
+      },
+      { change: true },
+    ),
+    act('Hapus rentang chapter', () => openDeleteRange(n), { disabled: !has, danger: true, change: true }),
     act(
       'Hapus novel',
       async () => {
@@ -495,11 +546,13 @@ function novelMenu(n) {
         ) {
           await db.deleteNovel(n.id);
           toast('Novel dihapus.');
+          changed();
           route();
         }
       },
-      { danger: true },
+      { danger: true, change: true },
     ),
+    locked ? el('p', { class: 'small muted' }, 'Perubahan sedang dikunci. Buka kunci di Pengaturan.') : null,
   );
   dialog({ title: n.title, body, onOpen: (x) => (d = x) });
 }
@@ -584,7 +637,12 @@ async function openEpub(n) {
             toast('Tidak ada chapter di rentang itu.');
             return false;
           }
-          await db.updateNovel(n.id, { author: authorIn.value.trim(), lang: langIn.value.trim() || 'id' });
+          const author = authorIn.value.trim();
+          const lang = langIn.value.trim() || 'id';
+          if (author !== (n.author || '') || lang !== (n.lang || 'id')) {
+            await db.updateMeta(n.id, { author, lang });
+            changed();
+          }
         },
       },
     ],
@@ -633,6 +691,7 @@ async function openDeleteRange(n) {
     return;
   await db.deleteChapters(n.id, r.from, r.to);
   toast(`${fmtNum(r.count)} chapter dihapus.`);
+  changed();
   route();
 }
 
@@ -915,6 +974,7 @@ async function openPreview({ res, novelId, title }) {
   if (replaced) parts.push(`${fmtNum(replaced)} diganti`);
   if (skipped) parts.push(`${fmtNum(skipped)} dilewati`);
   toast(`Tersimpan: ${parts.join(', ')}.`, { label: 'Baca', run: () => (location.hash = `#/read/${encodeURIComponent(target.id)}`) });
+  changed();
   route();
 }
 
@@ -924,7 +984,7 @@ async function askConflicts(conflicts, existing) {
   const rows = conflicts.map((c) => {
     const old = existing.get(c.num);
     const name = `conf-${c.i}`;
-    const replace = el('input', { type: 'radio', name, value: 'replace' });
+    const replace = el('input', { type: 'radio', name, value: 'replace', disabled: settings.changeLock });
     const skip = el('input', { type: 'radio', name, value: 'skip', checked: true });
     radios.push({ num: c.num, replace, skip });
     return el(
@@ -951,10 +1011,17 @@ async function askConflicts(conflicts, existing) {
         null,
         'Nomor chapter berikut sudah ada di novel ini. Pilih untuk masing-masing: ganti dengan versi baru, atau lewati (biarkan yang lama).',
       ),
+      settings.changeLock
+        ? el(
+            'p',
+            { class: 'warnings' },
+            'Perubahan sedang dikunci, jadi chapter yang sudah ada hanya bisa dilewati. Buka kunci di Pengaturan untuk mengganti.',
+          )
+        : null,
       el(
         'div',
         { class: 'conf-tools' },
-        el('button', { type: 'button', class: 'btn', onclick: () => all('replace') }, 'Ganti semua'),
+        el('button', { type: 'button', class: 'btn', disabled: settings.changeLock, onclick: () => all('replace') }, 'Ganti semua'),
         el('button', { type: 'button', class: 'btn', onclick: () => all('skip') }, 'Lewati semua'),
       ),
       rows,
@@ -976,6 +1043,42 @@ function requestPersist() {
 }
 
 // ---------- Pembaca ----------
+
+/** Tombol yang baru bekerja setelah ditahan `ms` milidetik (untuk mode kunci sentuhan). */
+function holdButton(label, ms, onDone, cls = '') {
+  const b = el(
+    'button',
+    { type: 'button', class: `hold ${cls}`, 'aria-label': label },
+    el('span', { class: 'fill' }),
+    el('span', null, label),
+  );
+  let timer = 0;
+  const stop = () => {
+    clearTimeout(timer);
+    b.classList.remove('holding');
+  };
+  b.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    b.style.setProperty('--hold-ms', `${ms}ms`);
+    b.classList.add('holding');
+    timer = setTimeout(() => {
+      stop();
+      onDone();
+    }, ms);
+  });
+  for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) b.addEventListener(ev, stop);
+  b.addEventListener('contextmenu', (e) => e.preventDefault());
+  // Keyboard: tekan Enter/Spasi dua kali cepat juga bisa, supaya tetap dapat diakses tanpa layar sentuh.
+  let lastKey = 0;
+  b.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    e.preventDefault();
+    const now = Date.now();
+    if (now - lastKey < 600) onDone();
+    lastKey = now;
+  });
+  return b;
+}
 
 async function showReader(id, wantNum) {
   const novel = await db.getNovel(id);
@@ -1007,22 +1110,40 @@ async function showReader(id, wantNum) {
     { class: 'bar' },
     iconBtn('back', 'Kembali ke perpustakaan', () => (location.hash = '#/')),
     titleBtn,
+    iconBtn('lock', 'Kunci sentuhan', () => setTouchLock(true)),
     iconBtn('toc', 'Daftar isi', () => openToc()),
-    iconBtn('type', 'Tampilan', openSettings),
+    iconBtn('type', 'Pengaturan', openSettings),
+    iconBtn('more', 'Menu lainnya', () => openMore()),
   );
   const main = el('main', { class: 'page reader' });
+  const unlock = holdButton('Tahan untuk membuka kunci', 900, () => setTouchLock(false), 'unlock');
+  const lockLayer = el('div', { class: 'lock-layer' }, unlock);
   let article = null;
   let recapSlot = null;
+  let navSlot = null;
   let current = null; // { entry, chapter }
   let token = 0;
 
-  setView([bar, main], () => {
+  setView([bar, main, lockLayer], () => {
     saveNow();
+    setTouchLock(false);
     window.removeEventListener('scroll', onScroll);
     document.removeEventListener('keydown', onKey);
     document.removeEventListener('visibilitychange', onVis);
     window.removeEventListener('pagehide', saveNow);
+    scheduleSync(1500);
   });
+
+  // ----- Kunci sentuhan: sembunyikan kontrol, abaikan tap, hanya bisa scroll -----
+  let touchLocked = false;
+  function setTouchLock(on) {
+    touchLocked = on;
+    document.documentElement.classList.toggle('touch-locked', on);
+    if (on) {
+      bar.classList.add('hide');
+      toast('Layar terkunci. Hanya bisa scroll. Tahan tombol gembok untuk membuka.');
+    } else bar.classList.remove('hide');
+  }
 
   // Posisi = indeks paragraf pertama yang terlihat di bawah bar (lebih tahan perubahan ukuran huruf daripada scrollY).
   const topOffset = () => bar.offsetHeight + 4;
@@ -1055,6 +1176,8 @@ async function showReader(id, wantNum) {
     if (!current) return;
     const lr = { num: current.entry.num, para: anchor(), at: Date.now() };
     const key = `${lr.num}:${lr.para}`;
+    // Hanya simpan bila posisinya benar-benar berubah. Kalau tidak, membuka novel saja sudah
+    // memperbarui waktu posisi dan bisa menimpa posisi yang lebih jauh dari perangkat lain.
     if (key === lastSaved) return;
     lastSaved = key;
     novel.lastRead = lr;
@@ -1068,19 +1191,25 @@ async function showReader(id, wantNum) {
   let lastY = window.scrollY;
   function onScroll() {
     const y = window.scrollY;
-    if (y > lastY + 8 && y > 120) bar.classList.add('hide');
-    else if (y < lastY - 8 || y < 60) bar.classList.remove('hide');
+    if (!touchLocked) {
+      if (y > lastY + 8 && y > 120) bar.classList.add('hide');
+      else if (y < lastY - 8 || y < 60) bar.classList.remove('hide');
+    }
     lastY = y;
     scheduleSave();
   }
   function onKey(e) {
+    if (touchLocked) return;
     if (document.querySelector('dialog[open]') || /INPUT|TEXTAREA|SELECT/.test(e.target.tagName) || e.metaKey || e.ctrlKey || e.altKey)
       return;
     if (e.key === 'ArrowLeft') go(idx - 1);
     else if (e.key === 'ArrowRight') go(idx + 1);
   }
   function onVis() {
-    if (document.visibilityState === 'hidden') saveNow();
+    if (document.visibilityState === 'hidden') {
+      saveNow();
+      runSync({ quiet: true });
+    }
   }
   window.addEventListener('scroll', onScroll, { passive: true });
   document.addEventListener('keydown', onKey);
@@ -1113,6 +1242,23 @@ async function showReader(id, wantNum) {
     recapSlot.replaceChildren(...(r ? [r] : []));
   }
 
+  function buildNav() {
+    const prevE = novel.toc[idx - 1];
+    const nextE = novel.toc[idx + 1];
+    return [
+      el(
+        'nav',
+        { class: 'ch-nav' },
+        el('button', { type: 'button', class: 'btn', disabled: !prevE, onclick: () => go(idx - 1) }, '‹ Sebelumnya'),
+        el('button', { type: 'button', class: 'btn', onclick: () => openToc() }, 'Daftar isi'),
+        el('button', { type: 'button', class: 'btn primary', disabled: !nextE, onclick: () => go(idx + 1) }, 'Berikutnya ›'),
+      ),
+      // Saat kunci sentuhan aktif, tombol di atas disembunyikan; pindah chapter harus ditahan.
+      nextE ? holdButton(`Tahan untuk lanjut ke Chapter ${nextE.num}`, 700, () => go(idx + 1), 'locked-next') : null,
+      nextE ? null : el('p', { class: 'ch-end' }, 'Ini chapter terakhir yang tersimpan.'),
+    ].filter(Boolean);
+  }
+
   async function render(startPara) {
     const my = ++token;
     const entry = novel.toc[idx];
@@ -1121,8 +1267,6 @@ async function showReader(id, wantNum) {
     if (my !== token) return;
     current = { entry, chapter };
 
-    const prevE = novel.toc[idx - 1];
-    const nextE = novel.toc[idx + 1];
     titleBtn.replaceChildren(
       el('span', null, chapterLabel(entry.num, entry.title)),
       el('small', null, `${novel.title} · ${idx + 1}/${novel.toc.length}`),
@@ -1135,6 +1279,7 @@ async function showReader(id, wantNum) {
       null,
       (chapter?.paragraphs || []).map((p) => el('p', null, p)),
     );
+    navSlot = el('div', null, buildNav());
     main.replaceChildren(
       ...[
         recapSlot,
@@ -1143,21 +1288,16 @@ async function showReader(id, wantNum) {
           : el('h1', { class: 'ch-title' }, `Chapter ${entry.num}`),
         article,
         chapter?.paragraphs.length ? null : el('p', { class: 'muted' }, '(Chapter ini kosong.)'),
-        el(
-          'nav',
-          { class: 'ch-nav' },
-          el('button', { type: 'button', class: 'btn', disabled: !prevE, onclick: () => go(idx - 1) }, '‹ Sebelumnya'),
-          el('button', { type: 'button', class: 'btn', onclick: () => openToc() }, 'Daftar isi'),
-          el('button', { type: 'button', class: 'btn primary', disabled: !nextE, onclick: () => go(idx + 1) }, 'Berikutnya ›'),
-        ),
-        nextE ? null : el('p', { class: 'ch-end' }, 'Ini chapter terakhir yang tersimpan.'),
+        navSlot,
       ].filter(Boolean),
     );
     history.replaceState(null, '', `#/read/${encodeURIComponent(novel.id)}/${entry.num}`);
-    bar.classList.remove('hide');
+    if (!touchLocked) bar.classList.remove('hide');
     restore(startPara);
     lastY = window.scrollY;
-    lastSaved = '';
+    // Posisi awal = posisi tersimpan? Jangan dianggap perubahan.
+    const lr = novel.lastRead;
+    lastSaved = lr && lr.num === entry.num ? `${lr.num}:${lr.para}` : '';
     saveNow();
   }
 
@@ -1206,37 +1346,384 @@ async function showReader(id, wantNum) {
     });
   }
 
-  readerHooks = { anchor: () => anchor(), restore, refreshRecap };
+  // Menu "lainnya". Edit sengaja ditaruh di sini (bukan di bar) dan dipisah dari tombol biasa,
+  // supaya tidak terpencet tanpa sengaja.
+  function openMore() {
+    let d;
+    const locked = settings.changeLock;
+    dialog({
+      title: chapterLabel(current.entry.num, current.entry.title),
+      body: el(
+        'div',
+        { class: 'menu-list' },
+        el(
+          'button',
+          {
+            type: 'button',
+            class: 'btn',
+            onclick: () => {
+              d.close();
+              setTouchLock(true);
+            },
+          },
+          icon('lock'),
+          'Kunci sentuhan (hanya scroll)',
+        ),
+        el('div', { class: 'section-label danger-zone' }, 'Ubah isi'),
+        el(
+          'button',
+          {
+            type: 'button',
+            class: 'btn danger',
+            disabled: locked,
+            onclick: () => {
+              d.close();
+              openEditor();
+            },
+          },
+          'Edit teks chapter ini…',
+        ),
+        locked ? el('p', { class: 'small muted' }, 'Perubahan sedang dikunci. Buka kunci di Pengaturan untuk mengedit.') : null,
+      ),
+      onOpen: (x) => (d = x),
+    });
+  }
+
+  async function openEditor() {
+    if (settings.changeLock) return toast('Perubahan sedang dikunci.');
+    const entry = current.entry;
+    const chapter = (await db.getChapter(novel.id, entry.num)) || { title: entry.title, paragraphs: [] };
+    const original = chapter.paragraphs.join('\n\n');
+    const titleIn = el('input', { type: 'text', value: chapter.title || '', placeholder: '(tanpa judul)' });
+    const area = el('textarea', { class: 'editor', spellcheck: 'false', value: original });
+    const info = el('p', { class: 'small muted' });
+    const count = () =>
+      (info.textContent = `${fmtNum(splitLines(area.value).length)} paragraf · tiap baris yang tidak kosong = satu paragraf`);
+    area.oninput = count;
+    count();
+    const dirty = () => area.value !== original || titleIn.value.trim() !== (chapter.title || '');
+    const startPara = anchor();
+
+    const v = await dialog({
+      title: `Edit Chapter ${entry.num}`,
+      className: 'editor-dlg',
+      body: [el('label', { class: 'field' }, el('span', null, 'Judul chapter'), titleIn), area, info],
+      actions: [
+        {
+          label: 'Batal',
+          value: null,
+          run: async () =>
+            !dirty() || (await confirmDialog('Buang perubahan?', 'Perubahan yang belum disimpan akan hilang.', 'Buang', true)),
+        },
+        { label: 'Simpan', value: 'save', primary: true },
+      ],
+      onOpen: (d) => {
+        // Mulai di sekitar paragraf yang sedang dibaca.
+        const offset = chapter.paragraphs.slice(0, startPara).reduce((s, p) => s + p.length + 2, 0);
+        area.setSelectionRange(offset, offset);
+        area.scrollTop = (offset / Math.max(1, area.value.length)) * area.scrollHeight - 40;
+        // Tutup lewat Esc / klik di luar juga minta konfirmasi bila ada perubahan.
+        d.addEventListener('cancel', async (e) => {
+          if (!dirty()) return;
+          e.preventDefault();
+          if (await confirmDialog('Buang perubahan?', 'Perubahan yang belum disimpan akan hilang.', 'Buang', true)) d.close();
+        });
+      },
+    });
+    if (v !== 'save' || !dirty()) return;
+    const paragraphs = splitLines(area.value);
+    await db.saveChapters(novel.id, [{ num: entry.num, title: titleIn.value.trim(), paragraphs }]);
+    Object.assign(novel, await db.getNovel(novel.id));
+    toast('Chapter disimpan.');
+    changed();
+    await render(Math.min(startPara, Math.max(0, paragraphs.length - 1)));
+  }
+
+  // Dipanggil setelah sinkron membawa data baru dari perangkat lain.
+  async function onSynced() {
+    const fresh = await db.getNovel(novel.id);
+    if (!fresh || !current) return;
+    const mine = novel.lastRead;
+    Object.assign(novel, { title: fresh.title, toc: fresh.toc });
+    const at = novel.toc.findIndex((t) => t.num === current.entry.num);
+    if (at >= 0) idx = at;
+    navSlot?.replaceChildren(...buildNav());
+    const lr = fresh.lastRead;
+    if (lr && (!mine || lr.at > mine.at) && (lr.num !== current.entry.num || Math.abs(lr.para - anchor()) > 2)) {
+      novel.lastRead = lr;
+      toast(`Perangkat lain terakhir membaca Chapter ${lr.num}.`, {
+        label: 'Lompat',
+        run: () => {
+          const i = novel.toc.findIndex((t) => t.num === lr.num);
+          if (i < 0) return;
+          idx = i;
+          render(lr.para);
+        },
+      });
+    }
+  }
+
+  readerHooks = { anchor: () => anchor(), restore, refreshRecap, onSynced };
   await render(para);
 }
+
+function onLockChange() {
+  // Perbarui tampilan perpustakaan supaya tanda gembok & menu ikut berubah.
+  if (!readerHooks) route();
+}
+
+// ---------- Sinkronisasi ----------
+
+const syncState = { running: null, again: false, last: null, error: null, timer: 0 };
+const SYNC_LAST_KEY = 'baca-novel:sync-last';
+try {
+  syncState.last = Number(localStorage.getItem(SYNC_LAST_KEY)) || null;
+} catch {}
+
+const fmtTime = (t) => new Date(t).toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+
+function syncButton() {
+  const cfg = sync.loadConfig();
+  const b = iconBtn('sync', 'Sinkronisasi', openSync);
+  b.classList.add('sync-btn');
+  if (!cfg) b.classList.add('off');
+  if (syncState.running) b.classList.add('spin');
+  if (syncState.error) b.classList.add('err');
+  return b;
+}
+
+function syncLine() {
+  const cfg = sync.loadConfig();
+  if (!cfg) return null;
+  const text = syncState.running
+    ? 'Menyinkronkan…'
+    : syncState.error
+      ? `Sinkron gagal: ${syncState.error}`
+      : syncState.last
+        ? `Sinkron terakhir ${fmtTime(syncState.last)}`
+        : 'Belum pernah sinkron';
+  return el('p', { class: `sync-line${syncState.error ? ' err' : ''}` }, text);
+}
+
+function refreshSyncUi() {
+  document.querySelectorAll('.sync-btn').forEach((b) => b.replaceWith(syncButton()));
+  const line = document.querySelector('.sync-line');
+  const next = syncLine();
+  if (line && next) line.replaceWith(next);
+}
+
+/** Dipanggil setiap ada perubahan data lokal. */
+function changed() {
+  scheduleSync(3000);
+}
+
+function scheduleSync(delay) {
+  if (!sync.loadConfig()?.auto) return;
+  clearTimeout(syncState.timer);
+  syncState.timer = setTimeout(() => runSync({ quiet: true }), delay);
+}
+
+async function runSync({ quiet = false } = {}) {
+  const cfg = sync.loadConfig();
+  if (!cfg) return;
+  if (syncState.running) {
+    syncState.again = true;
+    return syncState.running;
+  }
+  if (!navigator.onLine) {
+    if (!quiet) toast('Sedang offline. Sinkron akan dicoba lagi saat online.');
+    return;
+  }
+  syncState.running = (async () => {
+    refreshSyncUi();
+    try {
+      const r = await sync.syncNow(cfg);
+      syncState.error = null;
+      syncState.last = Date.now();
+      try {
+        localStorage.setItem(SYNC_LAST_KEY, String(syncState.last));
+      } catch {}
+      const changedLocally = r.down || r.newNovels || r.removed;
+      if (changedLocally) {
+        const parts = [];
+        if (r.newNovels) parts.push(`${fmtNum(r.newNovels)} novel baru`);
+        if (r.down) parts.push(`${fmtNum(r.down)} chapter diperbarui`);
+        if (r.removed) parts.push(`${fmtNum(r.removed)} novel dihapus`);
+        toast(`Sinkron: ${parts.join(', ')}.`);
+      } else if (!quiet) toast(r.committed ? 'Sinkron selesai, perubahan terkirim.' : 'Sinkron selesai, semua sudah sama.');
+      if (readerHooks?.onSynced) await readerHooks.onSynced();
+      else if (!document.querySelector('dialog[open]') && !location.hash.startsWith('#/read')) await showLibrary();
+      return r;
+    } catch (e) {
+      console.error(e);
+      syncState.error = e.message || String(e);
+      if (!quiet || e.status === 401) toast(`Sinkron gagal: ${syncState.error}`);
+    } finally {
+      syncState.running = null;
+      refreshSyncUi();
+      if (syncState.again) {
+        syncState.again = false;
+        scheduleSync(500);
+      }
+    }
+  })();
+  return syncState.running;
+}
+
+function openSync() {
+  const cfg = sync.loadConfig();
+  if (!cfg) return openSyncSetup();
+  const auto = el('input', { type: 'checkbox', checked: cfg.auto !== false });
+  auto.onchange = () => sync.saveConfig({ ...cfg, auto: auto.checked });
+  const status = el(
+    'p',
+    { class: syncState.error ? 'error' : 'small muted' },
+    syncState.error
+      ? `Terakhir gagal: ${syncState.error}`
+      : syncState.last
+        ? `Sinkron terakhir: ${fmtTime(syncState.last)}`
+        : 'Belum pernah sinkron.',
+  );
+  dialog({
+    title: 'Sinkronisasi',
+    body: [
+      el('p', null, 'Terhubung ke repo privat ', el('b', null, cfg.repo), '.'),
+      status,
+      el('label', { class: 'check' }, auto, 'Sinkron otomatis (saat aplikasi dibuka, setelah ada perubahan, dan saat ditinggalkan)'),
+      el(
+        'p',
+        { class: 'small muted' },
+        'Yang disinkron: novel, chapter, hasil edit, hapusan, dan posisi baca. Pengaturan tampilan & kunci tidak ikut, supaya tiap perangkat bisa beda.',
+      ),
+    ],
+    actions: [
+      {
+        label: 'Putuskan',
+        danger: true,
+        run: async () => {
+          const ok = await confirmDialog(
+            'Putuskan sinkron di perangkat ini?',
+            'Token dihapus dari perangkat ini. Novel di perangkat ini dan di repo tetap ada.',
+            'Putuskan',
+            true,
+          );
+          if (!ok) return false;
+          sync.clearConfig();
+          syncState.error = null;
+          route();
+        },
+      },
+      { spacer: true },
+      { label: 'Tutup', value: null },
+      { label: 'Sinkron sekarang', primary: true, run: () => void runSync() },
+    ],
+  });
+}
+
+function openSyncSetup() {
+  const repoIn = el('input', { type: 'text', placeholder: 'namaanda/baca-novel-data', autocapitalize: 'off', autocomplete: 'off' });
+  const tokenIn = el('input', { type: 'password', placeholder: 'github_pat_…', autocomplete: 'off' });
+  const err = el('p', { class: 'error hidden' });
+  const link = (href, text) => el('a', { href, target: '_blank', rel: 'noopener' }, text);
+  dialog({
+    title: 'Nyalakan sinkronisasi',
+    className: 'wide',
+    body: [
+      el(
+        'p',
+        null,
+        'Novel dan posisi baca disimpan di repo GitHub ',
+        el('b', null, 'privat'),
+        ' milik Anda sendiri, jadi bisa dipakai bersama di HP, iPad, dan laptop. Persiapan cukup sekali:',
+      ),
+      el(
+        'ol',
+        { class: 'steps' },
+        el(
+          'li',
+          null,
+          link('https://github.com/new', 'Buat repo baru'),
+          ', misalnya ',
+          el('code', null, 'baca-novel-data'),
+          '. Pilih ',
+          el('b', null, 'Private'),
+          '. Repo ini khusus data, terpisah dari repo kode aplikasi.',
+        ),
+        el(
+          'li',
+          null,
+          link('https://github.com/settings/personal-access-tokens/new', 'Buat token (fine-grained)'),
+          ': beri nama bebas, pilih masa berlaku, lalu di ',
+          el('i', null, 'Repository access'),
+          ' pilih ',
+          el('b', null, 'Only select repositories'),
+          ' → repo data tadi. Di ',
+          el('i', null, 'Permissions → Repository permissions'),
+          ' ubah ',
+          el('b', null, 'Contents'),
+          ' menjadi ',
+          el('b', null, 'Read and write'),
+          '. Klik ',
+          el('i', null, 'Generate token'),
+          ' lalu salin.',
+        ),
+        el('li', null, 'Isi kolom di bawah, lalu ulangi langkah ini (pakai token yang sama) di perangkat lain.'),
+      ),
+      el(
+        'div',
+        { class: 'row-2' },
+        el('label', { class: 'field' }, el('span', null, 'Repo data (pemilik/nama)'), repoIn),
+        el('label', { class: 'field' }, el('span', null, 'Token'), tokenIn),
+      ),
+      err,
+      el(
+        'p',
+        { class: 'small muted' },
+        'Token disimpan di browser perangkat ini dan hanya dikirim ke GitHub. Karena tokennya cuma bisa mengakses repo data itu, kalau bocor pun repo lain aman. ',
+        'Impor novel di satu perangkat saja lalu biarkan sinkron membawanya ke perangkat lain; kalau novel yang sama diimpor terpisah di dua perangkat, hasilnya jadi dua novel.',
+      ),
+    ],
+    actions: [
+      { label: 'Batal', value: null },
+      {
+        label: 'Hubungkan',
+        primary: true,
+        run: async () => {
+          const show = (m) => {
+            err.textContent = m;
+            err.classList.toggle('hidden', !m);
+            return false;
+          };
+          const repo = sync.parseRepo(repoIn.value);
+          const token = tokenIn.value.trim();
+          if (!repo) return show('Isi repo dengan format pemilik/nama, misalnya budi/baca-novel-data.');
+          if (!token) return show('Token masih kosong.');
+          try {
+            await busy('Memeriksa repo…', () => sync.checkRepo({ repo, token }));
+          } catch (e) {
+            return show(e.message);
+          }
+          sync.saveConfig({ repo, token, auto: true });
+          syncState.error = null;
+          route();
+          runSync();
+        },
+      },
+    ],
+    onOpen: () => repoIn.focus(),
+  });
+}
+
+window.addEventListener('online', () => runSync({ quiet: true }));
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') runSync({ quiet: true });
+});
 
 // ---------- Service worker ----------
 
 if ('serviceWorker' in navigator) {
-  const hadController = !!navigator.serviceWorker.controller;
-  navigator.serviceWorker
-    .register('sw.js')
-    .then((reg) => {
-      const offer = (w) =>
-        toast('Versi baru tersedia.', {
-          label: 'Muat ulang',
-          run: () => w.postMessage('skipWaiting'),
-        });
-      if (reg.waiting && navigator.serviceWorker.controller) offer(reg.waiting);
-      reg.addEventListener('updatefound', () => {
-        const w = reg.installing;
-        w?.addEventListener('statechange', () => {
-          if (w.state === 'installed' && navigator.serviceWorker.controller) offer(w);
-        });
-      });
-    })
-    .catch((e) => console.warn('SW gagal didaftarkan', e));
-  let reloaded = false;
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (reloaded || !hadController) return;
-    reloaded = true;
-    location.reload();
-  });
+  navigator.serviceWorker.register('sw.js').catch((e) => console.warn('SW gagal didaftarkan', e));
 }
 
 route();
+runSync({ quiet: true });
