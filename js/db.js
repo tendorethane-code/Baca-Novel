@@ -5,6 +5,7 @@
 //           bookmarks: { id: {num, para, note, text, at} }, bdel: { id: waktu hapus }, status: { v: 'reading'|'later'|'done', at }
 // chapters: { novelId, num, title, paragraphs: string[], u }   key: [novelId, num]
 // meta:     { key: 'deletedNovels', value: { novelId: waktu } }
+// covers:   { novelId, data: 'data:image/jpeg;base64,…', u }   (novel.cover = { u } atau { u, del: true })
 
 import { mergeNovel, maxMerge } from './merge.js';
 
@@ -14,7 +15,7 @@ let dbp;
 function open() {
   if (!dbp) {
     dbp = new Promise((resolve, reject) => {
-      const req = indexedDB.open(DB_NAME, 2);
+      const req = indexedDB.open(DB_NAME, 3);
       req.onupgradeneeded = (e) => {
         const db = req.result;
         if (e.oldVersion < 1) {
@@ -22,6 +23,7 @@ function open() {
           db.createObjectStore('chapters', { keyPath: ['novelId', 'num'] });
         }
         if (e.oldVersion < 2) db.createObjectStore('meta', { keyPath: 'key' });
+        if (e.oldVersion < 3) db.createObjectStore('covers', { keyPath: 'novelId' });
       };
       req.onsuccess = () => {
         const db = req.result;
@@ -159,14 +161,45 @@ export async function searchChapters(novelId, query, { from = -Infinity, to = In
 
 export async function deleteNovel(id) {
   const db = await open();
-  const tx = db.transaction(['novels', 'chapters', 'meta'], 'readwrite');
+  const tx = db.transaction(['novels', 'chapters', 'meta', 'covers'], 'readwrite');
   tx.objectStore('chapters').delete(range(id));
+  tx.objectStore('covers').delete(id);
   tx.objectStore('novels').delete(id);
   const meta = tx.objectStore('meta');
   meta.get('deletedNovels').onsuccess = (e) => {
     const value = e.target.result?.value || {};
     value[id] = stamp();
     meta.put({ key: 'deletedNovels', value });
+  };
+  await done(tx);
+}
+
+// ---------- Sampul ----------
+export async function getCover(novelId) {
+  const db = await open();
+  return (await result(db.transaction('covers').objectStore('covers').get(novelId)))?.data || null;
+}
+
+/** Semua sampul: Map<novelId, data URL>. */
+export async function getCovers() {
+  const db = await open();
+  const all = await result(db.transaction('covers').objectStore('covers').getAll());
+  return new Map(all.map((c) => [c.novelId, c.data]));
+}
+
+/** Pasang (data URL) atau hapus (null) sampul; novel.cover mencatat waktunya untuk sinkron. */
+export async function setCover(novelId, data) {
+  const db = await open();
+  const tx = db.transaction(['novels', 'covers'], 'readwrite');
+  const novels = tx.objectStore('novels');
+  const u = stamp();
+  novels.get(novelId).onsuccess = (e) => {
+    const novel = e.target.result;
+    if (!novel) return tx.abort();
+    novel.cover = data ? { u } : { u, del: true };
+    novels.put(novel);
+    if (data) tx.objectStore('covers').put({ novelId, data, u });
+    else tx.objectStore('covers').delete(novelId);
   };
   await done(tx);
 }
@@ -242,20 +275,26 @@ export async function exportState() {
 /**
  * Menerapkan hasil sinkron. Di dalam transaksi data lokal dibaca ulang dan digabung sekali lagi,
  * jadi perubahan yang terjadi selama sinkron berjalan (mis. posisi baca) tidak hilang.
- * plan: { novels: [{ novel, puts: [chapter] }], removeIds: [id], deletedNovels }
+ * plan: { novels: [{ novel, puts: [chapter] }], removeIds: [id], deletedNovels, covers: [{ novelId, data|null, u }] }
  */
 export async function applySync(plan) {
   const db = await open();
-  const tx = db.transaction(['novels', 'chapters', 'meta'], 'readwrite');
+  const tx = db.transaction(['novels', 'chapters', 'meta', 'covers'], 'readwrite');
   const novels = tx.objectStore('novels');
   const chapters = tx.objectStore('chapters');
   const meta = tx.objectStore('meta');
+  const covers = tx.objectStore('covers');
+  for (const c of plan.covers || []) {
+    if (c.data) covers.put(c);
+    else covers.delete(c.novelId);
+  }
 
   meta.get('deletedNovels').onsuccess = (e) => {
     meta.put({ key: 'deletedNovels', value: maxMerge(e.target.result?.value, plan.deletedNovels) });
   };
   for (const id of plan.removeIds) {
     chapters.delete(range(id));
+    covers.delete(id);
     novels.delete(id);
   }
   for (const { novel: incoming, puts } of plan.novels) {

@@ -28,6 +28,8 @@ hr.sep { border: 0; border-top: 1px solid currentColor; opacity: 0.35; margin: 1
 .tl-note { margin-top: 1.2em; padding: 0.6em 0.9em; border-left: 3px solid currentColor; font-size: 0.92em; }
 .tl-note .tl-head { font-weight: bold; font-size: 0.85em; letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 0.5em; }
 .tl-note p:last-child { margin-bottom: 0; }
+.cover-page { text-align: center; margin: 0; padding: 0; }
+.cover-page img { max-width: 100%; max-height: 100%; }
 `;
 
 /** Isi chapter: baris pemisah jadi <hr>, TL note ("TL note Chapter N" sampai akhir) dibungkus kotak catatan. */
@@ -57,10 +59,10 @@ ${body}
 `;
 
 /**
- * opts: { title, author, lang, chapters: [{ num, title, paragraphs }] }
+ * opts: { title, author, lang, description, cover: data URL JPEG/PNG (opsional), chapters: [{ num, title, paragraphs }] }
  * Mengembalikan Uint8Array berisi file .epub.
  */
-export async function buildEpub({ title, author = '', lang = 'id', chapters }) {
+export async function buildEpub({ title, author = '', lang = 'id', description = '', cover = null, chapters }) {
   const id = `urn:uuid:${uuid()}`;
   const modified = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
   const L = xmlEscape(lang || 'id');
@@ -125,6 +127,23 @@ ${navPoints}
 `,
   });
 
+  // Sampul: gambar + halaman sampul di awal; ditandai cover-image (EPUB 3) dan meta cover (EPUB 2).
+  let coverItems = '';
+  let coverSpine = '';
+  let coverMeta = '';
+  const cm = cover && /^data:(image\/(?:jpeg|png));base64,(.+)$/.exec(cover);
+  if (cm) {
+    const ext = cm[1] === 'image/png' ? 'png' : 'jpg';
+    out.push({ name: `OEBPS/cover.${ext}`, data: Uint8Array.from(atob(cm[2]), (c) => c.charCodeAt(0)), store: true });
+    out.push({
+      name: 'OEBPS/cover.xhtml',
+      data: page(L, title, `<div class="cover-page"><img src="cover.${ext}" alt="${xmlEscape(title)}"/></div>`),
+    });
+    coverItems = `<item id="cover-image" href="cover.${ext}" media-type="${cm[1]}" properties="cover-image"/>\n<item id="cover" href="cover.xhtml" media-type="application/xhtml+xml"/>\n`;
+    coverSpine = '<itemref idref="cover"/>\n';
+    coverMeta = '<meta name="cover" content="cover-image"/>\n';
+  }
+
   const manifest = files.map((f, i) => `<item id="c${i + 1}" href="${f.file}" media-type="application/xhtml+xml"/>`).join('\n');
   const spine = files.map((f, i) => `<itemref idref="c${i + 1}"/>`).join('\n');
   out.push({
@@ -137,16 +156,16 @@ ${navPoints}
 ${author ? `<dc:creator>${xmlEscape(author)}</dc:creator>` : ''}
 <dc:language>${L}</dc:language>
 <meta property="dcterms:modified">${modified}</meta>
-</metadata>
+${description ? `<dc:description>${xmlEscape(description)}</dc:description>\n` : ''}${coverMeta}</metadata>
 <manifest>
 <item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>
 <item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>
 <item id="css" href="style.css" media-type="text/css"/>
 <item id="title" href="title.xhtml" media-type="application/xhtml+xml"/>
-${manifest}
+${coverItems}${manifest}
 </manifest>
 <spine toc="ncx">
-<itemref idref="title"/>
+${coverSpine}<itemref idref="title"/>
 ${spine}
 </spine>
 </package>

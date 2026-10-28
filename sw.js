@@ -17,6 +17,7 @@ const FILES = [
   'js/sync.js',
   'js/zip.js',
   'js/epub.js',
+  'js/epubin.js',
   'fonts/noto-serif-latin.woff2',
   'fonts/source-serif-4-latin.woff2',
   'fonts/roboto-latin.woff2',

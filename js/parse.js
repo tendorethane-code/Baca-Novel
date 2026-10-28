@@ -185,7 +185,8 @@ export function buildImport(sources) {
 
   for (const src of sources) {
     const label = src.name || 'Teks tempelan';
-    const { chapters, preamble } = splitChapters(src.text);
+    // Sumber yang sudah terpotong per chapter (mis. EPUB) dipakai apa adanya.
+    const { chapters, preamble } = src.chapters ? { chapters: src.chapters, preamble: [] } : splitChapters(src.text);
     if (chapters.length) {
       for (const c of chapters) items.push({ ...c, source: src.name });
       if (preamble.length) {

@@ -167,6 +167,8 @@ export async function syncNow(cfg) {
   }
 }
 
+const coverPath = (id) => `covers/${id}.json`;
+
 async function syncOnce(cfg) {
   const gh = client(cfg);
   const info = await checkRepo(cfg);
@@ -194,7 +196,7 @@ async function syncOnce(cfg) {
   const deletedNovels = maxMerge(local.deletedNovels, remote.deletedNovels);
   const out = { format: FORMAT, novels: {}, deletedNovels };
   const uploads = new Map(); // path -> isi baru, atau null = hapus file
-  const plan = { novels: [], removeIds: [], deletedNovels };
+  const plan = { novels: [], removeIds: [], deletedNovels, covers: [] };
   const stats = { down: 0, up: 0, newNovels: 0, removed: 0, committed: false };
 
   for (const id of new Set([...localById.keys(), ...Object.keys(remote.novels)])) {
@@ -208,7 +210,7 @@ async function syncOnce(cfg) {
         plan.removeIds.push(id);
         stats.removed++;
       }
-      for (const p of files.keys()) if (p.startsWith(`novels/${id}/`)) uploads.set(p, null);
+      for (const p of files.keys()) if (p.startsWith(`novels/${id}/`) || p === coverPath(id)) uploads.set(p, null);
       continue;
     }
     if (!L) stats.newNovels++;
@@ -251,6 +253,25 @@ async function syncOnce(cfg) {
       }
       if (content.length) uploads.set(path, JSON.stringify({ chapters: content }));
       else if (files.has(path)) uploads.set(path, null);
+    }
+
+    // Sampul: file terpisah covers/<id>.json = { u, data }. Sisi dengan cover.u lebih baru menang.
+    const lc = L?.cover;
+    const rc = R?.cover;
+    const cpath = coverPath(id);
+    if (rc && (!lc || rc.u > lc.u)) {
+      if (rc.del) plan.covers.push({ novelId: id, data: null, u: rc.u });
+      else if (files.has(cpath)) {
+        const c = JSON.parse(await gh.blob(files.get(cpath)));
+        if (c.u === rc.u) plan.covers.push({ novelId: id, data: c.data, u: c.u });
+      }
+    } else if (lc && (!rc || lc.u > rc.u)) {
+      if (lc.del) {
+        if (files.has(cpath)) uploads.set(cpath, null);
+      } else {
+        const data = await db.getCover(id);
+        if (data) uploads.set(cpath, JSON.stringify({ u: lc.u, data }));
+      }
     }
 
     plan.novels.push({ novel, puts });
