@@ -3086,8 +3086,8 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').catch((e) => console.warn('SW gagal didaftarkan', e));
 }
 
-// Layar pembuka (index.html): tampil minimal ±1 detik sejak halaman dibuka, lalu memudar setelah tampilan pertama siap.
-const SPLASH_MS = 1100;
+// Layar pembuka (index.html): tampil minimal 2 detik sejak halaman dibuka, lalu memudar setelah tampilan pertama siap.
+const SPLASH_MS = 2000;
 route().finally(() => {
   const sp = document.getElementById('splash');
   if (!sp) return;
