@@ -2,7 +2,7 @@
 // Data uji di sini sintetis; jangan menaruh teks novel asli di repo.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseHeading, splitChapters, buildImport, decodeText, numberFromName, missingNumbers, formatTlNote, headingBefore, isTlHead, isSeparator, autoTlNote } from '../js/parse.js';
+import { parseHeading, splitChapters, buildImport, decodeText, numberFromName, missingNumbers, formatTlNote, headingBefore, isTlHead, isSeparator, autoTlNote, tidyParagraphs } from '../js/parse.js';
 import { readZip, writeZip, crc32 } from '../js/zip.js';
 import { buildEpub } from '../js/epub.js';
 
@@ -109,7 +109,8 @@ test('TL note: format lama dirapikan jadi "TL note Chapter N"', () => {
   assert.equal(f('Jalan raja (王道) dan jalan tiran.'), 'TL note Chapter 207\nJalan raja (王道) dan jalan tiran.');
   assert.equal(f('Tlah lama'), 'TL note Chapter 207\nTlah lama');
   // Pemisah di depan dipertahankan; pemisah antarparagraf editor.
-  assert.equal(f('—-\nTL: isi'), '—-\nTL note Chapter 207\nisi');
+  assert.equal(f('—-\nTL: isi'), '---\nTL note Chapter 207\nisi');
+  assert.equal(f('___\n***\nTL: isi'), '---\nTL note Chapter 207\nisi');
   assert.equal(formatTlNote('TL: a\nb', 5, '\n\n'), 'TL note Chapter 5\n\na\n\nb');
   assert.equal(formatTlNote('', null), 'TL note Chapter ?');
 });
@@ -129,12 +130,18 @@ test('TL note: deteksi judul, pemisah, dan nomor chapter terdekat', () => {
 
 test('TL note otomatis: hanya di akhir chapter dan dengan judul khas', () => {
   const story = ['a', 'b', 'c', 'd'];
-  assert.deepEqual(autoTlNote([...story, '—-', 'TL: isi'], 9), [...story, '—-', 'TL note Chapter 9', 'isi']);
-  assert.deepEqual(autoTlNote([...story, 'T/N', 'x', 'y'], 9), [...story, 'TL note Chapter 9', 'x', 'y']);
-  assert.deepEqual(autoTlNote([...story, 'Catatan penerjemah: isi'], 3), [...story, 'TL note Chapter 3', 'isi']);
+  assert.deepEqual(autoTlNote([...story, '—-', 'TL: isi'], 9), [...story, '---', 'TL note Chapter 9', 'isi']);
+  assert.deepEqual(autoTlNote([...story, 'T/N', 'x', 'y'], 9), [...story, '---', 'TL note Chapter 9', 'x', 'y']);
+  assert.deepEqual(autoTlNote([...story, 'Catatan penerjemah: isi'], 3), [...story, '---', 'TL note Chapter 3', 'isi']);
+  // Pemisah lama / ganda dibakukan jadi satu "---"; judul baku tanpa pemisah diberi pemisah.
+  assert.deepEqual(autoTlNote([...story, '___', 'TL note Chapter 9', 'isi'], 9), [...story, '---', 'TL note Chapter 9', 'isi']);
+  assert.deepEqual(autoTlNote([...story, '***', '---', 'TL note Chapter 9', 'isi'], 9), [...story, '---', 'TL note Chapter 9', 'isi']);
+  assert.deepEqual(autoTlNote([...story, 'TL note Chapter 9', 'isi'], 9), [...story, '---', 'TL note Chapter 9', 'isi']);
   // Nomor salah (salin dari chapter lain) dibetulkan; yang sudah benar tidak diubah.
-  assert.deepEqual(autoTlNote([...story, 'TL note Chapter 8', 'isi'], 9), [...story, 'TL note Chapter 9', 'isi']);
-  assert.equal(autoTlNote([...story, 'TL note Chapter 9', 'isi'], 9), null);
+  assert.deepEqual(autoTlNote([...story, '---', 'TL note Chapter 8', 'isi'], 9), [...story, '---', 'TL note Chapter 9', 'isi']);
+  assert.equal(autoTlNote([...story, '---', 'TL note Chapter 9', 'isi'], 9), null);
+  // Pemisah adegan di tengah cerita tidak disentuh.
+  assert.equal(autoTlNote(['a', '***', 'b', 'c', '---', 'TL note Chapter 9', 'isi'], 9), null);
   // Di awal chapter tanpa pemisah, atau judul umum ("Note:"), tidak disentuh.
   assert.equal(autoTlNote(['TL: bukan catatan', ...story], 9), null);
   assert.equal(autoTlNote([...story, 'Note: kalimat cerita'], 9), null);
@@ -142,7 +149,21 @@ test('TL note otomatis: hanya di akhir chapter dan dengan judul khas', () => {
 });
 
 test('buildImport merapikan TL note otomatis', () => {
-  const r = buildImport([{ text: 'Chapter 4: A\nsatu\ndua\n---\nTL: catatan' }]);
+  const r = buildImport([{ text: 'Chapter 4: A\nsatu\ndua\n___\nTL: catatan\nChapter 5: B\nx\ny\n---\nTL note Chapter 5\nz\nChapter 6: C\nw' }]);
   assert.deepEqual(r.items[0].paragraphs, ['satu', 'dua', '---', 'TL note Chapter 4', 'catatan']);
-  assert.ok(r.warnings.some((w) => w.includes('TL note')));
+  assert.deepEqual(
+    r.items.map((i) => i.tl),
+    ['fixed', 'ok', undefined],
+  );
+  assert.ok(r.warnings.some((w) => w.includes('TL note ada di 2 chapter (4, 5)') && w.includes('dirapikan otomatis: 4.')));
+});
+
+test('ekspor: TL note dibakukan di .txt dan jadi kotak + <hr> di EPUB', async () => {
+  const old = ['a', 'b', 'c', '___', 'T/N: Yan Song nama tempat.'];
+  assert.deepEqual(tidyParagraphs(old, 12), ['a', 'b', 'c', '---', 'TL note Chapter 12', 'Yan Song nama tempat.']);
+  const plain = ['a', '* * *', 'b'];
+  assert.equal(tidyParagraphs(plain, 1), plain);
+  const data = await buildEpub({ title: 'T', chapters: [{ num: 12, title: 'X', paragraphs: old }] });
+  const ch = new TextDecoder().decode(await readZip(data).find((e) => e.name === 'OEBPS/ch0001.xhtml').read());
+  assert.ok(ch.includes('<p>c</p>\n<hr class="sep"/>\n<div class="tl-note">\n<p class="tl-head">TL note Chapter 12</p>\n<p>Yan Song nama tempat.</p>\n</div>'));
 });

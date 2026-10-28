@@ -565,8 +565,9 @@ dialog.drawer {
 }
 .phead {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: 4px 10px;
   padding: 8px 10px;
 }
 .phead input {
@@ -582,7 +583,7 @@ dialog.drawer {
   font-size: 0.9rem;
 }
 .phead .ttl {
-  flex: 1;
+  flex: 1 1 7em;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -609,6 +610,25 @@ dialog.drawer {
 .badge.dup,
 .badge.auto {
   color: var(--danger);
+}
+.badge.tl-ok {
+  color: var(--muted);
+}
+.badge.tl-fixed {
+  color: #b26a00;
+}
+:root[data-dark] .badge.tl-fixed {
+  color: #e8b25a;
+}
+.pbody p.ptl {
+  border-left: 3px solid var(--accent);
+  padding-left: 10px;
+  margin-left: 0;
+  color: var(--fg);
+}
+.preview-tools .btn[aria-pressed='true'] {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 :root[data-dark] .badge.exists {
   color: #e8b25a;

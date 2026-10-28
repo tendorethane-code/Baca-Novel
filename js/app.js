@@ -11,6 +11,7 @@ import {
   isTlHead,
   isSeparator,
   autoTlNote,
+  tidyParagraphs,
 } from './parse.js';
 import { readZip, writeZip } from './zip.js';
 import { buildEpub } from './epub.js';
@@ -1345,7 +1346,7 @@ async function exportTxt(n) {
       const [i, f] = String(c.num).split('.');
       return {
         name: `${i.padStart(Math.max(4, width), '0')}${f ? '.' + f : ''}.txt`,
-        data: [chapterLabel(c.num, c.title), ...c.paragraphs].join('\n\n') + '\n',
+        data: [chapterLabel(c.num, c.title), ...tidyParagraphs(c.paragraphs, c.num)].join('\n\n') + '\n',
       };
     });
     return writeZip(files);
@@ -1550,6 +1551,8 @@ async function openPreview({ res, novelId, title }) {
       el('span', { class: 'ttl' }, it.title || el('i', { class: 'muted' }, '(tanpa judul)')),
       it.autoNum ? el('span', { class: 'badge auto' }, 'nomor otomatis') : null,
       it.dup ? el('span', { class: 'badge dup' }, 'nomor kembar') : null,
+      it.tl === 'fixed' ? el('span', { class: 'badge tl-fixed', title: 'Format TL note dirapikan otomatis' }, 'TL note dirapikan') : null,
+      it.tl === 'ok' ? el('span', { class: 'badge tl-ok' }, 'TL note') : null,
       existing.has(it.num) ? el('span', { class: 'badge exists' }, 'sudah ada') : el('span', { class: 'badge new' }, 'baru'),
       el('span', { class: 'cnt' }, `${fmtNum(it.paragraphs.length)} par.`),
     );
@@ -1557,12 +1560,15 @@ async function openPreview({ res, novelId, title }) {
     exp.onclick = () => {
       const show = body.classList.contains('hidden');
       if (show && !body.childElementCount) {
-        const ps = it.paragraphs;
+        // Chapter ber-TL note: tampilkan akhir cerita, pemisah, dan seluruh TL note supaya bisa dicek.
+        const tl = it.tl ? it.paragraphs.findIndex(isTlHead) : -1;
+        const ps = tl > 0 ? it.paragraphs.slice(0, tl - 1) : it.paragraphs;
         body.append(
           ...[
             ...ps.slice(0, 3).map((p) => el('p', null, p)),
             ps.length > 4 ? el('p', null, `… (${fmtNum(ps.length - 4)} paragraf lagi) …`) : null,
             ps.length > 3 ? el('p', null, ps[ps.length - 1]) : null,
+            ...(tl >= 0 ? it.paragraphs.slice(Math.max(0, tl - 1)).map((p) => el('p', { class: 'ptl' }, p)) : []),
             !ps.length ? el('p', null, '(kosong)') : null,
             it.source ? el('p', { class: 'src' }, `Sumber: ${it.source}`) : null,
           ].filter(Boolean),
@@ -1586,7 +1592,7 @@ async function openPreview({ res, novelId, title }) {
       refreshSummary();
     };
     head.querySelector('.ttl').onclick = () => exp.click();
-    rows.push({ it, setOn });
+    rows.push({ it, setOn, row });
     list.append(row);
   }
 
@@ -1600,6 +1606,18 @@ async function openPreview({ res, novelId, title }) {
     refreshSummary();
   };
   refreshSummary();
+
+  // Saring daftar: hanya chapter yang punya TL note (yang dirapikan otomatis ditampilkan lebih dulu di pesan atas).
+  const tlCount = items.filter((x) => x.tl).length;
+  const tlFilter = tlCount
+    ? el('button', { type: 'button', class: 'btn', 'aria-pressed': 'false' }, `Hanya ber-TL note (${fmtNum(tlCount)})`)
+    : null;
+  if (tlFilter)
+    tlFilter.onclick = () => {
+      const on = tlFilter.getAttribute('aria-pressed') !== 'true';
+      tlFilter.setAttribute('aria-pressed', String(on));
+      for (const r of rows) r.row.classList.toggle('hidden', on && !r.it.tl);
+    };
 
   let toSave = null;
   const v = await dialog({
@@ -1619,6 +1637,7 @@ async function openPreview({ res, novelId, title }) {
         { class: 'preview-tools' },
         el('button', { type: 'button', class: 'btn', onclick: () => setAll(true) }, 'Pilih semua'),
         el('button', { type: 'button', class: 'btn', onclick: () => setAll(false) }, 'Kosongkan'),
+        tlFilter,
       ),
       list,
     ],

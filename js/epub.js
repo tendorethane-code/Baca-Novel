@@ -1,6 +1,6 @@
 // Menyusun EPUB 3 (dengan toc.ncx untuk pembaca EPUB 2) dari daftar chapter.
 import { writeZip } from './zip.js';
-import { chapterLabel } from './parse.js';
+import { chapterLabel, tidyParagraphs, findTlNote, isSeparator } from './parse.js';
 
 const xmlEscape = (s) =>
   String(s)
@@ -24,7 +24,23 @@ p { margin: 0 0 0.8em; text-indent: 0; }
 .title-page { text-align: center; margin-top: 30%; }
 .title-page .author { margin-top: 1em; font-style: italic; }
 .title-page .range { margin-top: 2em; font-size: 0.9em; }
+hr.sep { border: 0; border-top: 1px solid currentColor; opacity: 0.35; margin: 1.6em 20%; }
+.tl-note { margin-top: 1.2em; padding: 0.6em 0.9em; border-left: 3px solid currentColor; font-size: 0.92em; }
+.tl-note .tl-head { font-weight: bold; font-size: 0.85em; letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 0.5em; }
+.tl-note p:last-child { margin-bottom: 0; }
 `;
+
+/** Isi chapter: baris pemisah jadi <hr>, TL note ("TL note Chapter N" sampai akhir) dibungkus kotak catatan. */
+function chapterBody(paragraphs) {
+  const at = findTlNote(paragraphs);
+  const para = (p) => (isSeparator(p) ? '<hr class="sep"/>' : `<p>${xmlEscape(p)}</p>`);
+  if (at < 0) return paragraphs.map(para).join('\n');
+  const [head, ...rest] = paragraphs.slice(at);
+  return [
+    ...paragraphs.slice(0, at).map(para),
+    `<div class="tl-note">\n<p class="tl-head">${xmlEscape(head)}</p>\n${rest.map((p) => `<p>${xmlEscape(p)}</p>`).join('\n')}\n</div>`,
+  ].join('\n');
+}
 
 const page = (lang, title, body) => `<?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE html>
@@ -80,7 +96,7 @@ ${author ? `<p class="author">${xmlEscape(author)}</p>` : ''}
     const head = f.title
       ? `<h1>Chapter ${xmlEscape(f.num)}<span class="sub">${xmlEscape(f.title)}</span></h1>`
       : `<h1>Chapter ${xmlEscape(f.num)}</h1>`;
-    const body = f.paragraphs.map((p) => `<p>${xmlEscape(p)}</p>`).join('\n');
+    const body = chapterBody(tidyParagraphs(f.paragraphs, f.num));
     out.push({ name: `OEBPS/${f.file}`, data: page(L, f.label, `<section epub:type="chapter">\n${head}\n${body}\n</section>`) });
   }
 
