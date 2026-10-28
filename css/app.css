@@ -1117,3 +1117,8 @@ textarea.plain { font-family: var(--ui-font); font-size: 1rem; line-height: 1.5;
   background: linear-gradient(90deg, #2be3ff, #a45cff 55%, #ff3d9a); -webkit-background-clip: text; background-clip: text; color: transparent;
 }
 :root[data-glow] .credit b { filter: drop-shadow(0 0 6px rgba(164, 92, 255, 0.5)); }
+/* Layar lebar (tablet, laptop): sampul di rak lebih besar. */
+@media (min-width: 700px) {
+  .shelf { grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 24px 18px; }
+  .book-title { font-size: 0.92rem; }
+}
