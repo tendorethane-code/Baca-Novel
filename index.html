@@ -24,6 +24,11 @@
         document.documentElement.style.background = bg;
         document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
       } catch (e) {}
+      // Layar pembuka hanya sekali per sesi: tab yang dimuat ulang (mis. ditidurkan "Hemat Memori" browser) tidak menunggu lagi.
+      try {
+        if (sessionStorage.getItem('lumenread:splash')) document.documentElement.classList.add('no-splash');
+        else sessionStorage.setItem('lumenread:splash', '1');
+      } catch (e) {}
     </script>
     <style>
       /* Layar pembuka: menyambung dari layar pembuka Android (latar & logo sama), lalu memudar.
@@ -35,6 +40,7 @@
         transition: opacity 0.45s ease; animation: splash-auto 0.45s ease 5s forwards;
       }
       #splash.out { opacity: 0; pointer-events: none; }
+      .no-splash #splash { display: none; }
       #splash .s-name { font-size: 38px; font-weight: 800; letter-spacing: 0.01em; }
       #splash .s-name span { color: #2be3ff; text-shadow: 0 0 16px rgba(43, 227, 255, 0.6); }
       #splash img { width: 220px; height: 220px; margin: -24px 0; }
