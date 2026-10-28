@@ -46,6 +46,17 @@ test('posisi baca & metadata: yang terbaru menang', () => {
   assert.deepEqual(m.lastRead, { num: 3, para: 1, at: 100 });
 });
 
+test('info novel ikut metadata terbaru; tidak hilang oleh versi aplikasi lama', () => {
+  const L = novel({ mu: 5, info: { translator: 'Lama' } });
+  const R = novel({ mu: 9, info: { translator: 'Baru', genres: ['Xianxia'] } });
+  assert.deepEqual(mergeNovel(L, R).novel.info, { translator: 'Baru', genres: ['Xianxia'] });
+  // Sisi dengan metadata lebih baru tapi tanpa `info` (aplikasi lama) tidak menghapus info.
+  assert.deepEqual(mergeNovel(novel({ mu: 5, info: { translator: 'X' } }), novel({ mu: 9, title: 'B' })).novel.info, { translator: 'X' });
+  // Info yang sengaja dikosongkan ({}) tetap menang.
+  assert.deepEqual(mergeNovel(novel({ mu: 5, info: { translator: 'X' } }), novel({ mu: 9, info: {} })).novel.info, {});
+  assert.equal('info' in mergeNovel(novel({}), novel({})).novel, false);
+});
+
 test('novel hanya ada di satu sisi', () => {
   const { novel: m, chapters } = mergeNovel(undefined, novel({ toc: [ch(1, 3)] }));
   assert.equal(m.id, 'n1');

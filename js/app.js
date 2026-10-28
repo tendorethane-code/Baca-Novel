@@ -33,6 +33,7 @@ const ICONS = {
   close: 'M6 6l12 12M18 6L6 18',
   chevron: 'M9 6l6 6-6 6',
   home: 'M3 11l9-7 9 7M5 10v10h5v-6h4v6h5V10',
+  info: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 16.5v-5M12 8h.01',
   sort: 'M7 4v16M3.5 16.5L7 20l3.5-3.5M13 6h8M13 11h6M13 16h4',
   pin: 'M12 21s-6.5-5.7-6.5-11a6.5 6.5 0 0 1 13 0c0 5.3-6.5 11-6.5 11zM12 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z',
   lock: 'M6 11h12v9H6zM8.5 11V8a3.5 3.5 0 0 1 7 0v3',
@@ -184,19 +185,6 @@ const confirmDialog = (title, message, label = 'Ya', danger = false) =>
       { label, value: true, primary: true, danger },
     ],
   }).then((v) => v === true);
-
-function promptDialog(title, label, initial = '') {
-  const input = el('input', { type: 'text', value: initial });
-  return dialog({
-    title,
-    body: el('label', { class: 'field' }, el('span', null, label), input),
-    actions: [
-      { label: 'Batal', value: null },
-      { label: 'Simpan', primary: true, run: () => !!input.value.trim() || false },
-    ],
-    onOpen: () => input.select(),
-  }).then((v) => (v === 'Simpan' ? input.value.trim() : null));
-}
 
 function downloadOrShare(data, filename, mime) {
   const blob = new Blob([data], { type: mime });
@@ -927,7 +915,10 @@ function libraryList(novels) {
     const q = fold(libQuery.trim());
     const shown = novels
       .filter((n) => settings.libFilter === 'all' || statusOf(n) === settings.libFilter)
-      .filter((n) => !q || fold(`${n.title} ${n.author || ''}`).includes(q))
+      .filter((n) => {
+        const i = n.info || {};
+        return !q || fold([n.title, n.author, i.origTitle, i.translator, ...(i.genres || [])].join(' ')).includes(q);
+      })
       .sort(SORTS[settings.libSort]?.fn || SORTS.recent.fn);
     cards.replaceChildren(...(shown.length ? shown.map(novelCard) : [el('p', { class: 'empty small' }, 'Tidak ada novel yang cocok.')]));
   };
@@ -958,7 +949,7 @@ function novelCard(n) {
   return el(
     'section',
     { class: 'card' },
-    el('h2', { onclick: total ? read : null }, n.title, n.author ? el('small', { class: 'author' }, n.author) : null),
+    el('h2', { onclick: total ? read : null }, n.title, byline(n) ? el('small', { class: 'author' }, byline(n)) : null),
     iconBtn('more', 'Menu novel', () => novelMenu(n)),
     el(
       'div',
@@ -996,6 +987,119 @@ function novelCard(n) {
       el('button', { type: 'button', class: 'btn add', 'aria-label': 'Tambah chapter', title: 'Tambah chapter', onclick: () => openImport(n.id) }, icon('plus')),
     ),
   );
+}
+
+// ---------- Info novel ----------
+// Disimpan di novel.info (ikut sinkron): { origTitle, translator, status, genres: [], source, synopsis }.
+const STORY_STATUS = {
+  '': { label: '—' },
+  ongoing: { label: 'Bersambung' },
+  completed: { label: 'Tamat' },
+  hiatus: { label: 'Hiatus' },
+};
+
+/** "Penulis · Terj. Penerjemah" untuk kartu novel. */
+function byline(n) {
+  const t = n.info?.translator;
+  return [n.author, t && `Terj. ${t}`].filter(Boolean).join(' · ');
+}
+
+function openNovelInfo(n) {
+  const i = n.info || {};
+  const total = n.toc.length;
+  const row = (label, value) => (value ? el('div', { class: 'info-row' }, el('dt', null, label), el('dd', null, value)) : null);
+  let source = i.source;
+  if (source && /^https?:\/\//i.test(source)) {
+    let host = source;
+    try {
+      host = new URL(source).hostname.replace(/^www\./, '');
+    } catch {}
+    source = el('a', { href: i.source, target: '_blank', rel: 'noopener noreferrer' }, host);
+  }
+  const has = n.author || Object.values(i).some((v) => (Array.isArray(v) ? v.length : v));
+  const locked = settings.changeLock;
+  dialog({
+    title: n.title,
+    body: el(
+      'div',
+      { class: 'novel-info' },
+      i.origTitle ? el('p', { class: 'info-orig' }, i.origTitle) : null,
+      el(
+        'dl',
+        null,
+        row('Penulis', n.author),
+        row('Penerjemah', i.translator),
+        row('Status cerita', i.status && STORY_STATUS[i.status]?.label),
+        row('Genre', i.genres?.length ? el('span', { class: 'chips' }, i.genres.map((g) => el('span', { class: 'chip' }, g))) : null),
+        row('Chapter', total ? `${fmtNum(total)} chapter · ${n.toc[0].num}–${n.toc[total - 1].num}` : 'Belum ada'),
+        row('Sumber', source),
+        row('Ditambahkan', new Date(n.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })),
+      ),
+      i.synopsis ? [el('div', { class: 'section-label' }, 'Sinopsis'), el('p', { class: 'info-syn' }, i.synopsis)] : null,
+      has ? null : el('p', { class: 'muted small' }, 'Belum ada info. Ketuk Edit untuk menambahkan penulis, penerjemah, genre, sinopsis, dan lainnya.'),
+      locked ? el('p', { class: 'muted small' }, 'Kunci perubahan aktif, jadi info tidak bisa diedit.') : null,
+    ),
+    actions: [{ label: 'Tutup', value: null }, ...(locked ? [] : [{ label: 'Edit', primary: true, value: 'edit' }])],
+  }).then((v) => v === 'edit' && editNovelInfo(n));
+}
+
+async function editNovelInfo(n) {
+  const i = n.info || {};
+  const field = (label, input) => el('label', { class: 'field' }, el('span', null, label), input);
+  const text = (value, placeholder = 'Opsional') => el('input', { type: 'text', value: value || '', placeholder });
+  const titleIn = text(n.title, 'Wajib');
+  const origIn = text(i.origTitle, 'mis. 魔帝大管家');
+  const authorIn = text(n.author);
+  const transIn = text(i.translator);
+  const statusIn = el(
+    'select',
+    null,
+    Object.entries(STORY_STATUS).map(([k, v]) => el('option', { value: k, selected: (i.status || '') === k }, v.label)),
+  );
+  const genreIn = text((i.genres || []).join(', '), 'mis. Xianxia, Aksi, Komedi');
+  const sourceIn = el('input', { type: 'url', value: i.source || '', placeholder: 'https://…' });
+  const synIn = el('textarea', { class: 'plain', rows: 6, value: i.synopsis || '', placeholder: 'Opsional' });
+  const v = await dialog({
+    title: 'Edit info novel',
+    body: [
+      field('Judul', titleIn),
+      field('Judul asli', origIn),
+      el('div', { class: 'row-2' }, field('Penulis', authorIn), field('Penerjemah', transIn)),
+      el('div', { class: 'row-2' }, field('Status cerita', statusIn), field('Genre (pisahkan dengan koma)', genreIn)),
+      field('Sumber / tautan', sourceIn),
+      field('Sinopsis', synIn),
+    ],
+    actions: [
+      { label: 'Batal', value: null },
+      {
+        label: 'Simpan',
+        primary: true,
+        value: 'save',
+        run: () => {
+          if (titleIn.value.trim()) return true;
+          toast('Judul tidak boleh kosong.');
+          return false;
+        },
+      },
+    ],
+  });
+  if (v !== 'save') return;
+  const info = {
+    origTitle: origIn.value.trim(),
+    translator: transIn.value.trim(),
+    status: statusIn.value,
+    genres: [...new Set(genreIn.value.split(',').map((g) => g.trim()).filter(Boolean))],
+    source: sourceIn.value.trim(),
+    synopsis: synIn.value.trim(),
+  };
+  for (const k of Object.keys(info)) if (!info[k] || (Array.isArray(info[k]) && !info[k].length)) delete info[k];
+  const patch = { title: titleIn.value.trim(), author: authorIn.value.trim(), info };
+  const same = patch.title === n.title && patch.author === (n.author || '') && JSON.stringify(info) === JSON.stringify(n.info || {});
+  if (same) return;
+  await db.updateMeta(n.id, patch);
+  changed();
+  toast('Info novel disimpan.');
+  route();
 }
 
 function novelMenu(n) {
@@ -1043,21 +1147,11 @@ function novelMenu(n) {
     el('div', { class: 'section-label' }, 'Status baca'),
     statusSeg,
     el('div', { class: 'section-label' }, 'Aksi'),
+    act('Info novel', () => openNovelInfo(n)),
     act('Impor / tambah chapter', () => openImport(n.id)),
     act('Compile ke EPUB', () => openEpub(n), { disabled: !has }),
     act('Ekspor sebagai .zip (txt)', () => exportTxt(n), { disabled: !has }),
-    act(
-      'Ganti judul',
-      async () => {
-        const t = await promptDialog('Ganti judul', 'Judul novel', n.title);
-        if (t && t !== n.title) {
-          await db.updateMeta(n.id, { title: t });
-          changed();
-          route();
-        }
-      },
-      { change: true },
-    ),
+    act('Edit judul & info novel', () => editNovelInfo(n), { change: true }),
     act('Hapus rentang chapter', () => openDeleteRange(n), { disabled: !has, danger: true, change: true }),
     act(
       'Hapus novel',
@@ -2322,6 +2416,19 @@ async function showReader(id, wantNum, wantPara = 0) {
             icon(BAR_ITEMS[k].icon),
             k === 'lock' ? 'Kunci sentuhan (hanya scroll)' : BAR_ITEMS[k].label,
           ),
+        ),
+        el(
+          'button',
+          {
+            type: 'button',
+            class: 'btn',
+            onclick: () => {
+              d.close();
+              openNovelInfo(novel);
+            },
+          },
+          icon('info'),
+          'Info novel',
         ),
         el('div', { class: 'section-label danger-zone' }, 'Ubah isi'),
         el(
