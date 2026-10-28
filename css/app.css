@@ -1110,3 +1110,7 @@ textarea.plain { font-family: var(--ui-font); font-size: 1rem; line-height: 1.5;
 :root[data-glow] .empty-logo { box-shadow: 0 0 28px color-mix(in srgb, var(--accent) 35%, transparent); }
 .bar h1.brand { letter-spacing: 0.01em; }
 .bar h1.brand .brand-accent { color: var(--accent); }
+.credit { text-align: center; font-size: 0.8rem; color: var(--muted); margin: 6px 0 0; letter-spacing: 0.02em; }
+.credit span { color: var(--accent); font-weight: 600; }
+.credit b { color: var(--fg); font-weight: 600; }
+:root[data-glow] .credit b { color: #ff3d9a; }

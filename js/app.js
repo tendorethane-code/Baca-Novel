@@ -916,6 +916,7 @@ async function showLibrary() {
 
   const foot = el('p', { class: 'foot' });
   showStorageInfo(foot);
+  const credit = el('p', { class: 'credit' }, 'Lumen', el('span', null, 'Read'), ' · developed by ', el('b', null, 'Exalted LinTendo'));
   // Tombol bulat kanan bawah: lanjut ke novel yang terakhir dibaca.
   const last = novels.filter((n) => n.lastRead && n.toc.length).sort((a, b) => b.lastRead.at - a.lastRead.at)[0];
   const fab = last
@@ -931,7 +932,7 @@ async function showLibrary() {
         icon('book'),
       )
     : null;
-  setView([bar, el('main', { class: 'page library' }, body, syncLine(), foot), fab].filter(Boolean));
+  setView([bar, el('main', { class: 'page library' }, body, syncLine(), foot, credit), fab].filter(Boolean));
 }
 
 const STATUSES = { reading: 'Sedang dibaca', later: 'Nanti', done: 'Selesai' };
@@ -3082,5 +3083,14 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').catch((e) => console.warn('SW gagal didaftarkan', e));
 }
 
-route();
+// Layar pembuka (index.html): tampil minimal ±1 detik sejak halaman dibuka, lalu memudar setelah tampilan pertama siap.
+const SPLASH_MS = 1100;
+route().finally(() => {
+  const sp = document.getElementById('splash');
+  if (!sp) return;
+  setTimeout(() => {
+    sp.classList.add('out');
+    setTimeout(() => sp.remove(), 500);
+  }, Math.max(0, SPLASH_MS - performance.now()));
+});
 runSync({ quiet: true });
