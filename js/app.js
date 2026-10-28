@@ -1456,6 +1456,20 @@ async function openExport(n) {
     info.textContent = `${fmtNum(r.count)} chapter akan dimasukkan.`;
   });
   info.textContent = `${fmtNum(r.count)} chapter akan dimasukkan.`;
+  // "Semua chapter" (bawaan): rentang disembunyikan dan diset dari chapter pertama sampai terakhir.
+  const [fromSel, toSel] = r.node.querySelectorAll('select');
+  const allBox = el('input', { type: 'checkbox', checked: true });
+  const applyAll = () => {
+    if (allBox.checked) {
+      fromSel.selectedIndex = 0;
+      toSel.selectedIndex = n.toc.length - 1;
+      toSel.onchange();
+    }
+    r.node.classList.toggle('hidden', allBox.checked);
+  };
+  allBox.onchange = applyAll;
+  applyAll();
+  const allLabel = el('label', { class: 'check' }, allBox, `Semua chapter (${fmtNum(n.toc.length)})`);
   const titleLabel = el('span');
   const epubFields = el(
     'div',
@@ -1493,6 +1507,7 @@ async function openExport(n) {
       seg,
       hint,
       el('div', { class: 'section-label' }, 'Rentang chapter'),
+      allLabel,
       r.node,
       info,
       el('label', { class: 'field' }, titleLabel, titleIn),

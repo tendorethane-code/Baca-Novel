@@ -50,6 +50,7 @@ Repo ini hanya berisi kode. Jangan commit teks novel; `.gitignore` sudah menolak
 - **Daftar isi**: tab *Chapter* dan *Bookmark*. Cari nomor/judul, balik urutan, tombol 📍 ke chapter yang sedang dibaca, 100 chapter per halaman dengan pilihan rentang (« ‹ 201–300 › »). Judul seperti `Water and Fire (Air dan Api)` tampil dua baris: bagian dalam kurung di baris kedua yang lebih kecil.
 - **Bar pindah chapter** di awal dan akhir tiap chapter (ikut tergulir bersama teks): ‹ sebelumnya, daftar pilihan semua chapter, berikutnya ›.
 - **Ekspor & compile** (menu ⋯ kartu novel): pilih format lalu rentang chapter.
+  - Rentang: centang *Semua chapter* (bawaan), atau lepas centangnya untuk memilih dari–sampai chapter.
   - **EPUB** (EPUB 3 + `toc.ncx` untuk pembaca lama), dengan sampul & sinopsis.
   - **.zip (txt)**: satu file .txt per chapter, untuk arsip / cadangan / pindah perangkat. Hasilnya bisa diimpor ulang apa adanya.
 
