@@ -1178,3 +1178,35 @@ textarea.plain { font-family: var(--ui-font); font-size: 1rem; line-height: 1.5;
 .nv-toc .toc-tools { padding: 12px 0; }
 .nv-toc .toc-list { overflow: visible; padding: 10px 0 0; }
 .nv-toc .toc-pager { padding: 12px 0 0; }
+
+/* ---------- Popup info novel ---------- */
+dialog.nv-pop { width: min(560px, 100vw); max-height: 88dvh; margin: auto auto 0; border-radius: 18px 18px 0 0; overflow: hidden; }
+dialog.nv-pop .dlg-head { position: absolute; top: 0; right: 0; z-index: 3; border: 0; padding: 8px; }
+dialog.nv-pop .dlg-head h2 { display: none; }
+dialog.nv-pop .dlg-head .icon-btn { background: rgba(0, 0, 0, 0.45); color: #fff; border-radius: 50%; }
+dialog.nv-pop .dlg-body { padding: 0 16px calc(16px + env(safe-area-inset-bottom)); }
+dialog.nv-pop .nv-hero { margin: 0 -16px; min-height: 200px; }
+dialog.nv-pop .nv-hero-in { padding: 44px 16px 12px; }
+dialog.nv-pop .nv-cover { width: 92px; }
+dialog.nv-pop .nv-head h2 { font-size: 1.18rem; }
+dialog.nv-pop .nv-actions { margin: 12px 0 10px; }
+dialog.nv-pop .nv-tiles { grid-template-columns: repeat(4, 1fr); gap: 8px; }
+dialog.nv-pop .nv-tile { padding: 10px 4px; }
+dialog.nv-pop .nv-tile b { font-size: 1.05rem; }
+dialog.nv-pop .nv-tile span { font-size: 0.7rem; }
+dialog.nv-pop .nv-syn.clamp { -webkit-line-clamp: 4; }
+dialog.nv-pop .nv-box { margin-bottom: 0; }
+.nv-pop-links { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+.nv-pop-links .btn { min-height: 44px; min-width: 0; padding: 0 8px; font-size: 0.92rem; }
+/* Tablet & laptop: popup di tengah layar */
+@media (min-width: 700px) {
+  dialog.nv-pop { margin: auto; border-radius: 18px; max-height: min(88dvh, 860px); }
+}
+
+/* ---------- Halaman novel di layar lebar: info kiri, daftar chapter kanan ---------- */
+@media (min-width: 980px) {
+  .novel-page { max-width: 1180px; display: grid; grid-template-columns: 400px minmax(0, 1fr); gap: 0 24px; align-items: start; }
+  .nv-side .nv-hero { margin: -16px 0 0; border-radius: 0 0 16px 16px; }
+  .nv-main .nv-toc { margin-top: 0; }
+}
+.pick-row.one { grid-template-columns: 1fr; }
