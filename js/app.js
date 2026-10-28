@@ -875,15 +875,16 @@ window.addEventListener('hashchange', route);
 // ---------- Perpustakaan ----------
 
 async function showLibrary() {
-  document.title = 'Baca Novel';
+  document.title = 'LumenRead';
   const [novels, covers] = await Promise.all([db.listNovels(), db.getCovers()]);
   const bar = el(
     'header',
     { class: 'bar' },
     el(
       'h1',
-      null,
-      'Baca Novel',
+      { class: 'brand', 'aria-label': 'LumenRead' },
+      'Lumen',
+      el('span', { class: 'brand-accent' }, 'Read'),
       settings.changeLock ? el('span', { class: 'lock-badge', title: 'Perubahan dikunci' }, icon('lock')) : null,
     ),
     syncButton(),
@@ -3003,10 +3004,10 @@ function openSyncSetup() {
           'li',
           null,
           link(
-            `https://github.com/settings/personal-access-tokens/new?name=${encodeURIComponent(`Baca Novel ${sync.deviceName()}`)}&description=${encodeURIComponent('Sinkron aplikasi Baca Novel')}&contents=write`,
+            `https://github.com/settings/personal-access-tokens/new?name=${encodeURIComponent(`LumenRead ${sync.deviceName()}`)}&description=${encodeURIComponent('Sinkron aplikasi LumenRead')}&contents=write`,
             'Buat token (fine-grained)',
           ),
-          ': beri nama bebas (misalnya "Baca Novel iPad"), pilih masa berlaku, lalu di ',
+          ': beri nama bebas (misalnya "LumenRead iPad"), pilih masa berlaku, lalu di ',
           el('i', null, 'Repository access'),
           ' pilih ',
           el('b', null, 'Only select repositories'),

@@ -1,4 +1,6 @@
-# Baca Novel
+# LumenRead
+
+_(sebelumnya: Baca Novel)_
 
 Aplikasi web (PWA) untuk membaca novel dari file teks. Jalan offline, tanpa server, tanpa akun.
 Semua novel disimpan di **IndexedDB browser perangkat itu sendiri** dan tidak dikirim ke mana pun.

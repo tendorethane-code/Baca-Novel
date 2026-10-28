@@ -1,6 +1,6 @@
 {
-  "name": "Baca Novel",
-  "short_name": "Baca Novel",
+  "name": "LumenRead",
+  "short_name": "LumenRead",
   "description": "Pembaca novel offline. Semua data disimpan di perangkat.",
   "lang": "id",
   "start_url": "./",

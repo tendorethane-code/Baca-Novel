@@ -1108,3 +1108,5 @@ textarea.plain { font-family: var(--ui-font); font-size: 1rem; line-height: 1.5;
 :root[data-glow] .card .progress > div { box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 50%, transparent); }
 .empty-logo { width: 96px; height: 96px; margin: 0 auto 8px; display: block; border-radius: 22px; }
 :root[data-glow] .empty-logo { box-shadow: 0 0 28px color-mix(in srgb, var(--accent) 35%, transparent); }
+.bar h1.brand { letter-spacing: 0.01em; }
+.bar h1.brand .brand-accent { color: var(--accent); }
