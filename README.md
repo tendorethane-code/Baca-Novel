@@ -16,7 +16,7 @@ Repo ini hanya berisi kode. Jangan commit teks novel; `.gitignore` sudah menolak
   - Kalau nomor chapter sudah ada di novel tujuan, aplikasi bertanya per chapter: **ganti** atau **lewati** (bawaan: lewati).
 - **Perpustakaan**: cari judul/pengarang, urutkan (terakhir dibaca / judul / baru ditambah), status baca (*Sedang dibaca*, *Nanti*, *Selesai*) dengan filter. Status diubah lewat menu ⋯ di kartu novel.
 - **Tampilan**: 11 tema latar (termasuk *Claude*: latar #151515, teks #f9f9f7) + tema kustom (pilih warna latar & teks, dengan peringatan kontras rendah).
-  - **Ukuran huruf** lewat tombol A−/A+ atau garis bertitik (14–34px), **jenis huruf** dan **kecerahan teks** (Terang/Sedang/Redup/Sangat redup) dari menu pilihan, jarak baris, jarak antarparagraf (px), lebar teks, rata kiri-kanan.
+  - **Ukuran huruf** lewat tombol A−/A+ atau garis bertitik (14–34px), **jenis huruf** dan **kecerahan teks** (Terang/Sedang/Redup/Sangat redup) dari menu pilihan, jarak baris, jarak antarparagraf (px), lebar teks (hanya tampil di layar lebar ≥ 480px; di HP teks sudah selebar layar), rata kiri-kanan.
   - Huruf *Noto Serif*, *Source Serif*, dan *Roboto* disertakan di aplikasi (`fonts/`), jadi tampil sama di semua perangkat dan tetap ada saat offline. Pilihan lain bergantung pada huruf perangkat.
   - **Bawaan meniru tampilan baca aplikasi Claude** (diukur dari tangkapan layar Android): Noto Serif 17px tebal 450, jarak baris 1,5, jarak paragraf 16px, tepi 20px, rata kiri; di mode gelap memakai tema Claude. Setelan tipografi lama otomatis pindah ke bawaan ini sekali saat pembaruan.
 - **Kembalikan ke bawaan** (tombol di bawah Pengaturan): mengembalikan semua setelan tampilan; bisa dibatalkan lewat notifikasi. Novel, bookmark, posisi, kunci, dan sinkron tidak tersentuh.
@@ -27,10 +27,10 @@ Repo ini hanya berisi kode. Jangan commit teks novel; `.gitignore` sudah menolak
   - Isi panel: judul novel, pilihan chapter (daftar semua chapter), posisi chapter & persen terbaca, baris tombol (‹ chapter sebelumnya, perpustakaan, tombol pilihan, ⋯, chapter berikutnya ›), lalu ukuran huruf, jenis huruf, kecerahan teks, jarak baris, dan jarak antarparagraf.
 - **Tombol panel bisa diatur** (Pengaturan → *Tombol di panel layar baca*): pilih tombol yang tampil dan urutannya. Semua aksi tetap ada di menu ⋯.
 - **Edit teks chapter**: lewat menu ⋯ di layar baca → *Edit teks chapter ini…* (sengaja dipisah dari tombol biasa). Tiap baris tidak kosong = satu paragraf. Menutup editor dengan perubahan yang belum disimpan selalu minta konfirmasi.
-- **Kunci sentuhan**: ikon gembok di layar baca. Kontrol disembunyikan dan tap diabaikan, hanya bisa scroll. Pindah chapter dan membuka kunci harus dengan *menahan* tombol.
+- **Kunci sentuhan**: ikon gembok di layar baca. Kontrol disembunyikan dan tap diabaikan, hanya bisa scroll (kotak pengingat chapter sebelumnya tetap bisa dibuka/dilipat). Pindah chapter dan membuka kunci harus dengan *menahan* tombol.
 - **Kunci perubahan** (Pengaturan): mode baca-saja. Edit, hapus, ganti judul, dan impor yang menimpa chapter dimatikan sampai kunci dibuka.
 - **Sinkronisasi** antarperangkat lewat repo GitHub **privat** milik sendiri (lihat di bawah).
-- **Pengingat chapter sebelumnya**: di awal chapter tampil N paragraf terakhir chapter sebelumnya, bisa dilipat (jumlah diatur di menu Tampilan; 0 = mati).
+- **Pengingat chapter sebelumnya**: di awal chapter tampil N paragraf terakhir chapter sebelumnya, bisa dilipat (jumlah diatur di Pengaturan; 0 = mati). Pilihan *Langsung terbuka* hanya tampil kalau pengingat menyala.
 - **Posisi baca** disimpan otomatis (chapter + paragraf), tombol/panah ←/→ untuk pindah chapter.
 - **Daftar isi**: tab *Chapter* dan *Bookmark*. Cari nomor/judul, balik urutan, tombol 📍 ke chapter yang sedang dibaca, 100 chapter per halaman dengan pilihan rentang (« ‹ 201–300 › »). Judul seperti `Water and Fire (Air dan Api)` tampil dua baris: bagian dalam kurung di baris kedua yang lebih kecil.
 - **Bar pindah chapter** di awal dan akhir tiap chapter (ikut tergulir bersama teks): ‹ sebelumnya, daftar pilihan semua chapter, berikutnya ›.
