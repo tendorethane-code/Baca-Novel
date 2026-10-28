@@ -37,7 +37,7 @@
   --warn-bg: #fff4d6;
   --warn-fg: #6b4e00;
   --read-font: 'Noto Serif', Georgia, serif;
-  --read-size: 17px;
+  --read-size: 18px;
   --read-lh: 1.5;
   --read-width: 680px;
   --read-align: left;
@@ -1110,3 +1110,15 @@ textarea.plain { font-family: var(--ui-font); font-size: 1rem; line-height: 1.5;
 :root[data-glow] .empty-logo { box-shadow: 0 0 28px color-mix(in srgb, var(--accent) 35%, transparent); }
 .bar h1.brand { letter-spacing: 0.01em; }
 .bar h1.brand .brand-accent { color: var(--accent); }
+.credit { text-align: center; font-size: 0.8rem; color: var(--muted); margin: 6px 0 0; letter-spacing: 0.02em; }
+.credit span { color: var(--accent); font-weight: 600; }
+.credit b {
+  font-weight: 800; letter-spacing: 0.02em;
+  background: linear-gradient(90deg, #2be3ff, #a45cff 55%, #ff3d9a); -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+:root[data-glow] .credit b { filter: drop-shadow(0 0 6px rgba(164, 92, 255, 0.5)); }
+/* Layar lebar (tablet, laptop): sampul di rak lebih besar. */
+@media (min-width: 700px) {
+  .shelf { grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 24px 18px; }
+  .book-title { font-size: 0.92rem; }
+}

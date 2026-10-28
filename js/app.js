@@ -339,17 +339,18 @@ function themeColors() {
 const SETTINGS_KEY = 'baca-novel:settings';
 // Bawaan tipografi meniru tampilan baca di aplikasi Claude (diukur dari tangkapan layar Android):
 // tinggi huruf kecil ±9,5px, jarak antarbaris ±25,7px, tepi kiri-kanan ±20px, teks rata kiri.
-const SETTINGS_VERSION = 3;
+const SETTINGS_VERSION = 4;
 const DEFAULTS = {
   font: 'noto',
-  size: 17,
+  size: 18,
   lh: 1.5,
   width: 680,
   justify: false,
   paraGap: 16,
   textLevel: 100,
   changeLock: false,
-  theme: matchMedia('(prefers-color-scheme: dark)').matches ? 'neon' : 'light',
+  // Neon (senada ikon) jadi bawaan di semua perangkat, tidak mengikuti mode terang/gelap sistem.
+  theme: 'neon',
   customBg: '#e9e4f0',
   customFg: '',
   recapCount: 3,
@@ -383,6 +384,8 @@ try {
   }
   // Versi 2 → 3: tema gelap bawaan (Claude) jadi Neon, senada dengan ikon baru.
   if (Object.keys(stored).length && !(stored.v >= 3) && settings.theme === 'claude') settings.theme = 'neon';
+  // Versi 3 → 4: ukuran huruf bawaan 17 → 18 (yang masih memakai bawaan lama ikut naik).
+  if (Object.keys(stored).length && !(stored.v >= 4) && settings.size === 17) settings.size = 18;
 } catch {}
 const migrated = settings.v !== SETTINGS_VERSION;
 settings.v = SETTINGS_VERSION;
@@ -916,6 +919,7 @@ async function showLibrary() {
 
   const foot = el('p', { class: 'foot' });
   showStorageInfo(foot);
+  const credit = el('p', { class: 'credit' }, 'Lumen', el('span', null, 'Read'), ' · by ', el('b', null, 'LinTendo'));
   // Tombol bulat kanan bawah: lanjut ke novel yang terakhir dibaca.
   const last = novels.filter((n) => n.lastRead && n.toc.length).sort((a, b) => b.lastRead.at - a.lastRead.at)[0];
   const fab = last
@@ -931,7 +935,7 @@ async function showLibrary() {
         icon('book'),
       )
     : null;
-  setView([bar, el('main', { class: 'page library' }, body, syncLine(), foot), fab].filter(Boolean));
+  setView([bar, el('main', { class: 'page library' }, body, syncLine(), foot, credit), fab].filter(Boolean));
 }
 
 const STATUSES = { reading: 'Sedang dibaca', later: 'Nanti', done: 'Selesai' };
@@ -3082,5 +3086,14 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').catch((e) => console.warn('SW gagal didaftarkan', e));
 }
 
-route();
+// Layar pembuka (index.html): tampil minimal ±1 detik sejak halaman dibuka, lalu memudar setelah tampilan pertama siap.
+const SPLASH_MS = 1100;
+route().finally(() => {
+  const sp = document.getElementById('splash');
+  if (!sp) return;
+  setTimeout(() => {
+    sp.classList.add('out');
+    setTimeout(() => sp.remove(), 500);
+  }, Math.max(0, SPLASH_MS - performance.now()));
+});
 runSync({ quiet: true });
