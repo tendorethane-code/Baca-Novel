@@ -469,6 +469,13 @@ function openSettings() {
       label,
     );
 
+  // Pilihan terbuka/terlipat hanya berlaku kalau pengingat menyala.
+  const recapCountSlider = slider('Jumlah paragraf terakhir yang ditampilkan (0 = mati)', 'recapCount', 0, 15, 1, (v) => String(v));
+  const recapOpenBox = check('Langsung terbuka (tidak dilipat)', 'recapOpen');
+  const syncRecapOpen = () => recapOpenBox.classList.toggle('hidden', settings.recapCount <= 0);
+  recapCountSlider.querySelector('input').addEventListener('input', syncRecapOpen);
+  syncRecapOpen();
+
   const lockBox = el('input', { type: 'checkbox', checked: settings.changeLock });
   lockBox.onchange = async () => {
     if (!lockBox.checked) {
@@ -562,11 +569,12 @@ function openSettings() {
       el('div', { class: 'section-label' }, 'Kecerahan'),
       dimSlider(update),
       typeControls(),
-      slider('Lebar teks', 'width', 360, 1200, 20, (v) => `${v}px`),
+      // Di layar sempit (HP) teks sudah selebar layar, jadi lebar teks tidak berpengaruh dan disembunyikan.
+      el('div', { class: 'wide-only' }, slider('Lebar teks', 'width', 360, 1200, 20, (v) => `${v}px`)),
       check('Rata kiri-kanan', 'justify'),
       el('div', { class: 'section-label' }, 'Pengingat chapter sebelumnya'),
-      slider('Jumlah paragraf terakhir yang ditampilkan (0 = mati)', 'recapCount', 0, 15, 1, (v) => String(v)),
-      check('Tampilkan terbuka', 'recapOpen'),
+      recapCountSlider,
+      recapOpenBox,
       el('div', { class: 'section-label' }, 'Tombol di panel layar baca'),
       barEditor(),
       el('div', { class: 'section-label' }, 'Kunci perubahan'),

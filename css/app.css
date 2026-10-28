@@ -761,6 +761,8 @@ dialog.drawer {
 html.touch-locked { touch-action: pan-y; }
 html.touch-locked .reader { pointer-events: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 html.touch-locked .reader .locked-next { display: block; pointer-events: auto; }
+/* Kotak pengingat chapter sebelumnya tetap bisa dibuka/dilipat saat terkunci. */
+html.touch-locked .reader .recap summary { pointer-events: auto; }
 html.touch-locked .reader .ch-jump { display: none; }
 html.touch-locked .bar { pointer-events: none; }
 html.touch-locked .lock-layer {
@@ -990,4 +992,9 @@ dialog.toc-dlg .dlg-body { display: flex; flex-direction: column; overflow: hidd
 .ch-pick::after {
   content: ''; position: absolute; right: 15px; top: 50%; width: 8px; height: 8px; margin-top: -6px;
   border: solid var(--accent-fg); border-width: 0 2px 2px 0; transform: rotate(45deg); pointer-events: none; opacity: 0.85;
+}
+
+/* Pengaturan yang hanya berguna di layar lebar (tablet, laptop, HP dimiringkan). */
+@media (max-width: 479px) {
+  .wide-only { display: none; }
 }
