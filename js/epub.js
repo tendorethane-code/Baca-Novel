@@ -32,14 +32,19 @@ hr.sep { border: 0; border-top: 1px solid currentColor; opacity: 0.35; margin: 1
 .cover-page img { max-width: 100%; max-height: 100%; }
 `;
 
-/** Isi chapter: baris pemisah jadi <hr>, TL note ("TL note Chapter N" sampai akhir) dibungkus kotak catatan. */
+/**
+ * Isi chapter: baris pemisah adegan jadi <hr>, TL note ("TL note Chapter N" sampai akhir) dibungkus kotak catatan.
+ * Pemisah "---" tepat sebelum TL note hanya untuk teks mentah; di EPUB kotak catatannya sudah jadi pemisah.
+ */
 function chapterBody(paragraphs) {
   const at = findTlNote(paragraphs);
   const para = (p) => (isSeparator(p) ? '<hr class="sep"/>' : `<p>${xmlEscape(p)}</p>`);
   if (at < 0) return paragraphs.map(para).join('\n');
+  const story = paragraphs.slice(0, at);
+  while (story.length && isSeparator(story[story.length - 1])) story.pop();
   const [head, ...rest] = paragraphs.slice(at);
   return [
-    ...paragraphs.slice(0, at).map(para),
+    ...story.map(para),
     `<div class="tl-note">\n<p class="tl-head">${xmlEscape(head)}</p>\n${rest.map((p) => `<p>${xmlEscape(p)}</p>`).join('\n')}\n</div>`,
   ].join('\n');
 }

@@ -158,12 +158,16 @@ test('buildImport merapikan TL note otomatis', () => {
   assert.ok(r.warnings.some((w) => w.includes('TL note ada di 2 chapter (4, 5)') && w.includes('dirapikan otomatis: 4.')));
 });
 
-test('ekspor: TL note dibakukan di .txt dan jadi kotak + <hr> di EPUB', async () => {
+test('ekspor: TL note dibakukan di .txt (dengan ---) dan jadi kotak di EPUB (tanpa ---)', async () => {
   const old = ['a', 'b', 'c', '___', 'T/N: Yan Song nama tempat.'];
   assert.deepEqual(tidyParagraphs(old, 12), ['a', 'b', 'c', '---', 'TL note Chapter 12', 'Yan Song nama tempat.']);
   const plain = ['a', '* * *', 'b'];
   assert.equal(tidyParagraphs(plain, 1), plain);
   const data = await buildEpub({ title: 'T', chapters: [{ num: 12, title: 'X', paragraphs: old }] });
   const ch = new TextDecoder().decode(await readZip(data).find((e) => e.name === 'OEBPS/ch0001.xhtml').read());
-  assert.ok(ch.includes('<p>c</p>\n<hr class="sep"/>\n<div class="tl-note">\n<p class="tl-head">TL note Chapter 12</p>\n<p>Yan Song nama tempat.</p>\n</div>'));
+  assert.ok(ch.includes('<p>c</p>\n<div class="tl-note">\n<p class="tl-head">TL note Chapter 12</p>\n<p>Yan Song nama tempat.</p>\n</div>'));
+  // Pemisah adegan di tengah cerita tetap jadi garis.
+  const d2 = await buildEpub({ title: 'T', chapters: [{ num: 1, title: '', paragraphs: plain }] });
+  const ch2 = new TextDecoder().decode(await readZip(d2).find((e) => e.name === 'OEBPS/ch0001.xhtml').read());
+  assert.ok(ch2.includes('<p>a</p>\n<hr class="sep"/>\n<p>b</p>'));
 });
