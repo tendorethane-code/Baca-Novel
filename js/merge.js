@@ -1,7 +1,9 @@
 // Aturan menggabungkan data novel dari dua perangkat (lokal = L, repo = R).
 // - Tiap chapter punya stempel waktu `u`; versi yang lebih baru menang.
 // - Chapter yang dihapus dicatat di `del[num] = waktu hapus`; hapusan menang bila lebih baru dari versi mana pun.
-// - Judul/pengarang/bahasa: yang `mu` (waktu ubah metadata) lebih baru menang.
+// - Judul/pengarang/bahasa/info novel: yang `mu` (waktu ubah metadata) lebih baru menang.
+//   `info` dari sisi yang kalah dipakai hanya bila sisi pemenang belum punya `info` sama sekali
+//   (mis. ditulis aplikasi versi lama yang belum mengenalnya).
 // - Posisi baca dan status baca: yang `at` lebih baru menang.
 // - Bookmark: per id, versi `at` lebih baru menang; bookmark yang dihapus dicatat di `bdel[id]`.
 // Modul murni supaya bisa diuji dengan `node --test`.
@@ -46,6 +48,7 @@ export function mergeNovel(L, R) {
   const delSorted = Object.fromEntries(Object.entries(del).sort((a, b) => a[0] - b[0]));
 
   const meta = metaU(L) >= metaU(R) ? L : R;
+  const info = meta.info ?? (meta === L ? R : L)?.info;
   const reads = [L?.lastRead, R?.lastRead].filter(Boolean).sort((a, b) => b.at - a.at);
   const statuses = [L?.status, R?.status].filter(Boolean).sort((a, b) => b.at - a.at);
   const { bookmarks, bdel } = mergeBookmarks(L, R);
@@ -64,6 +67,7 @@ export function mergeNovel(L, R) {
     bdel,
   };
   if (statuses[0]) novel.status = statuses[0];
+  if (info) novel.info = info;
   if (novel.lang === undefined) delete novel.lang;
   return { novel, chapters };
 }

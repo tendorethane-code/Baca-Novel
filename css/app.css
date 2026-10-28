@@ -136,6 +136,7 @@ a {
 }
 input[type='text'],
 input[type='search'],
+input[type='url'],
 select,
 textarea {
   width: 100%;
@@ -263,6 +264,8 @@ label.field > span {
   gap: 8px;
   margin-top: 4px;
 }
+.card .actions .btn { flex: 1; min-width: 0; }
+.card .actions .btn.add { flex: none; width: 44px; padding: 0; }
 .empty {
   text-align: center;
   padding: 48px 12px;
@@ -998,3 +1001,14 @@ dialog.toc-dlg .dlg-body { display: flex; flex-direction: column; overflow: hidd
 @media (max-width: 479px) {
   .wide-only { display: none; }
 }
+
+/* ---------- Info novel ---------- */
+.novel-info .info-orig { margin: -4px 0 12px; color: var(--muted); }
+.novel-info dl { margin: 0; display: grid; gap: 10px; }
+.info-row { display: grid; grid-template-columns: 7.5em minmax(0, 1fr); gap: 10px; align-items: baseline; }
+.info-row dt { color: var(--muted); font-size: 0.88rem; }
+.info-row dd { margin: 0; overflow-wrap: anywhere; }
+.chips { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+.chip { padding: 2px 10px; border-radius: 999px; border: 1px solid var(--line); font-size: 0.85rem; }
+.info-syn { margin: 0; white-space: pre-line; font-family: var(--read-font); line-height: 1.6; }
+textarea.plain { font-family: var(--ui-font); font-size: 1rem; line-height: 1.5; }
