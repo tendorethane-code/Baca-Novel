@@ -2,7 +2,7 @@
 // Data uji di sini sintetis; jangan menaruh teks novel asli di repo.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseHeading, splitChapters, buildImport, decodeText, numberFromName, missingNumbers } from '../js/parse.js';
+import { parseHeading, splitChapters, buildImport, decodeText, numberFromName, missingNumbers, formatTlNote, headingBefore, isTlHead, isSeparator } from '../js/parse.js';
 import { readZip, writeZip, crc32 } from '../js/zip.js';
 import { buildEpub } from '../js/epub.js';
 
@@ -95,4 +95,34 @@ test('epub: struktur dasar dan escape XML', async () => {
   assert.ok(files['OEBPS/ch0001.xhtml'].includes('<p>kontrolhilang</p>'));
   assert.ok(files['OEBPS/nav.xhtml'].includes('Chapter 1: Satu &amp; Dua'));
   assert.ok(files['OEBPS/nav.xhtml'].includes('>Chapter 2<'));
+});
+
+test('TL note: format lama dirapikan jadi "TL note Chapter N"', () => {
+  const f = (t, n = 207) => formatTlNote(t, n);
+  assert.equal(f('TL: Jalan raja (王道) dan jalan tiran.'), 'TL note Chapter 207\nJalan raja (王道) dan jalan tiran.');
+  assert.equal(f('T/N\nJalan raja.\nJalan tiran.'), 'TL note Chapter 207\nJalan raja.\nJalan tiran.');
+  assert.equal(f("Translator's Note (Ch 207): isi"), 'TL note Chapter 207\nisi');
+  assert.equal(f('Catatan penerjemah Bab 207:\n\nisi'), 'TL note Chapter 207\nisi');
+  assert.equal(f('> TL note Chapter 206\n> isi'), 'TL note Chapter 207\nisi');
+  assert.equal(f('TL Note - Chapter 207'), 'TL note Chapter 207');
+  // Tanpa judul lama: judul ditambahkan di depan, isi tidak dibuang.
+  assert.equal(f('Jalan raja (王道) dan jalan tiran.'), 'TL note Chapter 207\nJalan raja (王道) dan jalan tiran.');
+  assert.equal(f('Tlah lama'), 'TL note Chapter 207\nTlah lama');
+  // Pemisah di depan dipertahankan; pemisah antarparagraf editor.
+  assert.equal(f('—-\nTL: isi'), '—-\nTL note Chapter 207\nisi');
+  assert.equal(formatTlNote('TL: a\nb', 5, '\n\n'), 'TL note Chapter 5\n\na\n\nb');
+  assert.equal(formatTlNote('', null), 'TL note Chapter ?');
+});
+
+test('TL note: deteksi judul, pemisah, dan nomor chapter terdekat', () => {
+  assert.equal(isTlHead('TL note Chapter 207'), true);
+  assert.equal(isTlHead('tl note chapter 10.5:'), true);
+  assert.equal(isTlHead('TL note Chapter 207 berisi'), false);
+  assert.equal(isSeparator('—-'), true);
+  assert.equal(isSeparator('* * *'), true);
+  assert.equal(isSeparator('-'), false);
+  const t = 'Chapter 5: A\nisi\nChapter 6: B\nisi\nTL: x';
+  assert.equal(headingBefore(t, t.length), 6);
+  assert.equal(headingBefore(t, 12), 5);
+  assert.equal(headingBefore('tanpa judul', 5), null);
 });

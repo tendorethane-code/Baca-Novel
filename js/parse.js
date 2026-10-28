@@ -12,6 +12,61 @@ export function parseHeading(line) {
   return { num: Number(m[1]), title: (m[2] || '').trim() };
 }
 
+// ---------- TL note ----------
+// Format baku: baris "TL note Chapter N", lalu isi catatan di baris-baris berikutnya (biasanya di akhir chapter).
+const TL_HEAD_RE = /^tl note chapter\s+\d+(?:\.\d+)?\s*:?$/i;
+export const isTlHead = (line) => TL_HEAD_RE.test(line.trim());
+
+// Baris pemisah seperti "---", "—-", "***".
+export const isSeparator = (line) => /^(?:[-—–_*=~•·]\s*){2,}$/.test(line.trim());
+
+// Awal catatan format lama: "TL:", "T/N", "TN -", "TL Note (Ch 207):", "Translator's note", "Catatan penerjemah Bab 5:", "Note:".
+// Mengembalikan sisa baris (isi catatan, bisa kosong), atau null bila baris itu bukan awal catatan.
+function stripOldTlHead(line) {
+  const m = /^(?:tl|t\/n|tn|translator'?s?|catatan|note|n\.?b\.?)(?=$|[\s:：\-–—.(\[])/i.exec(line);
+  if (!m) return null;
+  return line
+    .slice(m[0].length)
+    .replace(/^\s*(?:notes?|penerjemah|tl)\b/i, '')
+    .replace(/^\s*[:：\-–—.]+/, '')
+    .replace(/^\s*[(\[]?\s*(?:chapter|ch\.?|bab)\s*\d+(?:\.\d+)?\s*[)\]]?/i, '')
+    .replace(/^\s*[:：\-–—.]+/, '')
+    .trim();
+}
+
+/**
+ * Rapikan TL note yang diblok: baris judul lama (bila ada) diganti "TL note Chapter N", isi catatan tetap.
+ * Tanda kutip ">" di awal baris dan baris kosong dibuang; baris pemisah di depan dipertahankan.
+ * `joiner`: pemisah antarbaris hasil ("\n", atau "\n\n" di editor chapter).
+ */
+export function formatTlNote(text, num, joiner = '\n') {
+  const lines = text
+    .replace(/\r\n?/g, '\n')
+    .split('\n')
+    .map((l) => l.replace(/^\s*>\s?/, '').trim())
+    .filter(Boolean);
+  const lead = [];
+  while (lines.length && isSeparator(lines[0])) lead.push(lines.shift());
+  if (lines.length) {
+    const rest = stripOldTlHead(lines[0]);
+    if (rest !== null) {
+      lines.shift();
+      if (rest) lines.unshift(rest);
+    }
+  }
+  return [...lead, `TL note Chapter ${num ?? '?'}`, ...lines].join(joiner);
+}
+
+/** Nomor dari judul chapter terdekat sebelum posisi `pos` (untuk teks tempel berisi banyak chapter). */
+export function headingBefore(text, pos) {
+  const lines = text.slice(0, pos).split(/\r?\n/);
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const h = parseHeading(lines[i].trim());
+    if (h) return h.num;
+  }
+  return null;
+}
+
 // Tiap baris tidak kosong = satu paragraf; baris kosong (atau spasi saja) diabaikan.
 export function splitLines(text) {
   return text
