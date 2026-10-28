@@ -916,7 +916,7 @@ async function showLibrary() {
 
   const foot = el('p', { class: 'foot' });
   showStorageInfo(foot);
-  const credit = el('p', { class: 'credit' }, 'Lumen', el('span', null, 'Read'), ' · developed by ', el('b', null, 'Exalted LinTendo'));
+  const credit = el('p', { class: 'credit' }, 'Lumen', el('span', null, 'Read'), ' · by ', el('b', null, 'LinTendo'));
   // Tombol bulat kanan bawah: lanjut ke novel yang terakhir dibaca.
   const last = novels.filter((n) => n.lastRead && n.toc.length).sort((a, b) => b.lastRead.at - a.lastRead.at)[0];
   const fab = last

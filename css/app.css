@@ -1112,5 +1112,8 @@ textarea.plain { font-family: var(--ui-font); font-size: 1rem; line-height: 1.5;
 .bar h1.brand .brand-accent { color: var(--accent); }
 .credit { text-align: center; font-size: 0.8rem; color: var(--muted); margin: 6px 0 0; letter-spacing: 0.02em; }
 .credit span { color: var(--accent); font-weight: 600; }
-.credit b { color: var(--fg); font-weight: 600; }
-:root[data-glow] .credit b { color: #ff3d9a; }
+.credit b {
+  font-weight: 800; letter-spacing: 0.02em;
+  background: linear-gradient(90deg, #2be3ff, #a45cff 55%, #ff3d9a); -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+:root[data-glow] .credit b { filter: drop-shadow(0 0 6px rgba(164, 92, 255, 0.5)); }

@@ -37,9 +37,13 @@
       #splash .s-name { font-size: 38px; font-weight: 800; letter-spacing: 0.01em; }
       #splash .s-name span { color: #2be3ff; text-shadow: 0 0 16px rgba(43, 227, 255, 0.6); }
       #splash img { width: 220px; height: 220px; margin: -24px 0; }
-      #splash .s-dev { display: grid; gap: 6px; }
-      #splash .s-dev small { font-size: 11px; letter-spacing: 0.28em; color: #8a90a0; }
-      #splash .s-dev b { font-size: 19px; font-weight: 600; color: #ff3d9a; text-shadow: 0 0 14px rgba(255, 61, 154, 0.45); }
+      #splash .s-dev { font-size: 15px; color: #8a90a0; letter-spacing: 0.04em; }
+      /* Nama developer: gradasi neon cyan → ungu → merah muda (warna logo) dengan cahaya. */
+      #splash .s-dev b {
+        font-size: 21px; font-weight: 800; letter-spacing: 0.03em;
+        background: linear-gradient(90deg, #2be3ff, #a45cff 55%, #ff3d9a); -webkit-background-clip: text; background-clip: text;
+        color: transparent; filter: drop-shadow(0 0 10px rgba(164, 92, 255, 0.55));
+      }
       @keyframes splash-auto { to { opacity: 0; visibility: hidden; } }
     </style>
     <script type="module" src="js/app.js"></script>
@@ -48,7 +52,7 @@
     <div id="splash" aria-hidden="true">
       <div class="s-name">Lumen<span>Read</span></div>
       <img src="icons/icon.svg" alt="" />
-      <div class="s-dev"><small>DEVELOPED BY</small><b>Exalted LinTendo</b></div>
+      <div class="s-dev">by <b>LinTendo</b></div>
     </div>
     <div id="app"></div>
     <div id="toasts" aria-live="polite"></div>
