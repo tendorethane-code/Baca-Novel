@@ -361,6 +361,7 @@ const DEFAULTS = {
   libSort: 'recent',
   libFilter: 'all',
   libView: 'shelf',
+  coverTap: 'popup',
 };
 
 // Tombol yang bisa dipasang di bar layar baca. Semuanya juga selalu ada di menu ⋯.
@@ -618,6 +619,12 @@ function openSettings() {
       el('div', { class: 'section-label' }, 'Pengingat chapter sebelumnya'),
       recapCountSlider,
       recapOpenBox,
+      el('div', { class: 'section-label' }, 'Perpustakaan'),
+      el(
+        'div',
+        { class: 'pick-row one' },
+        settingPicker('Saat sampul diketuk', Object.entries({ popup: { label: 'Popup info' }, page: { label: 'Halaman lengkap' } }), 'coverTap'),
+      ),
       el('div', { class: 'section-label' }, 'Tombol di panel layar baca'),
       barEditor(),
       el('div', { class: 'section-label' }, 'Kunci perubahan'),
@@ -666,6 +673,7 @@ const RESETTABLE = [
   'dim',
   'barOrder',
   'barHidden',
+  'coverTap',
 ];
 
 function resetSettings() {
@@ -867,6 +875,7 @@ async function route() {
   try {
     if (view === 'read' && id)
       await showReader(decodeURIComponent(id), num != null && num !== '' ? Number(num) : null, Number(para) || 0);
+    else if (view === 'novel' && id) await showNovel(decodeURIComponent(id));
     else await showLibrary();
   } catch (e) {
     console.error(e);
@@ -1029,13 +1038,13 @@ function readPct(n) {
 /** Tampilan rak: sampul + persen, judul di bawah; ⋯ membuka menu novel. */
 function shelfItem(n, cover) {
   const pct = readPct(n);
-  const read = () => (n.toc.length ? (location.hash = `#/read/${encodeURIComponent(n.id)}`) : openImport(n.id));
+  const open = () => openNovelInfo(n);
   return el(
     'div',
     { class: 'book' },
     el(
       'button',
-      { type: 'button', class: 'book-cover', 'aria-label': `Baca ${n.title}`, onclick: read },
+      { type: 'button', class: 'book-cover', 'aria-label': `Buka ${n.title}`, onclick: open },
       coverEl(n, cover),
       el('span', { class: 'pct' }, `${Math.round(pct)}%`),
     ),
@@ -1061,8 +1070,8 @@ function novelCard(n, cover) {
   return el(
     'section',
     { class: 'card' },
-    el('button', { type: 'button', class: 'card-cover', 'aria-label': `Baca ${n.title}`, onclick: total ? read : () => openImport(n.id) }, coverEl(n, cover)),
-    el('h2', { onclick: total ? read : null }, n.title, byline(n) ? el('small', { class: 'author' }, byline(n)) : null),
+    el('button', { type: 'button', class: 'card-cover', 'aria-label': `Buka ${n.title}`, onclick: () => openNovelInfo(n) }, coverEl(n, cover)),
+    el('h2', { onclick: () => openNovelInfo(n) }, n.title, byline(n) ? el('small', { class: 'author' }, byline(n)) : null),
     iconBtn('more', 'Menu novel', () => novelMenu(n)),
     el(
       'div',
@@ -1150,45 +1159,213 @@ function byline(n) {
   return [n.author, t && `Terj. ${t}`].filter(Boolean).join(' · ');
 }
 
+const novelHash = (id) => `#/novel/${encodeURIComponent(id)}`;
+const readHash = (id, num, para) =>
+  `#/read/${encodeURIComponent(id)}${num != null ? `/${num}${para ? `/${para}` : ''}` : ''}`;
+
+/** Buka info novel sesuai pilihan di Pengaturan: popup (bawaan) atau halaman lengkap. */
 async function openNovelInfo(n) {
+  if (settings.coverTap === 'page') location.hash = novelHash(n.id);
+  else await openNovelPopup(n);
+}
+
+/** Bagian info novel yang dipakai popup dan halaman lengkap. */
+function novelParts(n, cover, { onBeforeNav = () => {} } = {}) {
   const i = n.info || {};
-  const cover = await db.getCover(n.id);
   const total = n.toc.length;
-  const row = (label, value) => (value ? el('div', { class: 'info-row' }, el('dt', null, label), el('dd', null, value)) : null);
-  let source = i.source;
-  if (source && /^https?:\/\//i.test(source)) {
-    let host = source;
-    try {
-      host = new URL(source).hostname.replace(/^www\./, '');
-    } catch {}
-    source = el('a', { href: i.source, target: '_blank', rel: 'noopener noreferrer' }, host);
-  }
-  const has = n.author || Object.values(i).some((v) => (Array.isArray(v) ? v.length : v));
+  const idx = n.lastRead ? n.toc.findIndex((t) => t.num === n.lastRead.num) : -1;
   const locked = settings.changeLock;
+  const go = (hash) => {
+    onBeforeNav();
+    location.hash = hash;
+  };
+
+  // Atas: latar sampul diburamkan, sampul, judul, judul asli, penulis & penerjemah, status baca.
+  const heroBg = el('div', { class: 'nv-hero-bg' });
+  if (cover) heroBg.style.backgroundImage = `url("${cover}")`;
+  else heroBg.append(coverEl(n, null));
+  const hero = el(
+    'section',
+    { class: 'nv-hero' },
+    heroBg,
+    el(
+      'div',
+      { class: 'nv-hero-in' },
+      el('div', { class: 'nv-cover' }, coverEl(n, cover)),
+      el(
+        'div',
+        { class: 'nv-head' },
+        el('h2', null, n.title),
+        i.origTitle ? el('p', { class: 'nv-orig' }, i.origTitle) : null,
+        n.author ? el('p', null, el('span', { class: 'muted' }, 'Penulis: '), n.author) : null,
+        i.translator ? el('p', null, el('span', { class: 'muted' }, 'Penerjemah: '), i.translator) : null,
+        el('span', { class: `badge st-${statusOf(n)}` }, STATUSES[statusOf(n)]),
+      ),
+    ),
+  );
+
+  const readBtn = total
+    ? el(
+        'button',
+        { type: 'button', class: 'btn primary nv-read', onclick: () => go(readHash(n.id)) },
+        el('b', null, idx >= 0 ? 'Lanjut baca' : 'Mulai baca'),
+        el('small', null, idx >= 0 ? chapterLabel(n.toc[idx].num, n.toc[idx].title) : chapterLabel(n.toc[0].num, n.toc[0].title)),
+      )
+    : el(
+        'button',
+        {
+          type: 'button',
+          class: 'btn primary nv-read',
+          onclick: () => {
+            onBeforeNav();
+            openImport(n.id);
+          },
+        },
+        el('b', null, 'Impor chapter'),
+      );
+  const editBtn = el(
+    'button',
+    {
+      type: 'button',
+      class: 'btn nv-edit',
+      disabled: locked,
+      title: locked ? 'Perubahan sedang dikunci' : null,
+      onclick: () => {
+        onBeforeNav();
+        editNovelInfo(n);
+      },
+    },
+    icon('type'),
+    'Edit info',
+  );
+
+  const tile = (value, label, cls = '') => el('div', { class: `nv-tile ${cls}` }, el('b', null, value), el('span', null, label));
+  const tiles = el(
+    'div',
+    { class: 'nv-tiles' },
+    tile(fmtNum(total), total ? `Chapter · ${n.toc[0].num}–${n.toc[total - 1].num}` : 'Chapter'),
+    tile(i.status ? STORY_STATUS[i.status].label : '—', 'Status cerita', i.status ? `story-${i.status}` : ''),
+    tile(fmtNum(Object.keys(n.bookmarks || {}).length), 'Bookmark'),
+    tile(`${Math.round(readPct(n))}%`, idx >= 0 ? `Terbaca · Ch ${n.lastRead.num}` : 'Terbaca'),
+  );
+
+  let source = null;
+  if (i.source) {
+    let host = i.source;
+    try {
+      host = new URL(i.source).hostname.replace(/^www\./, '');
+    } catch {}
+    source = /^https?:\/\//i.test(i.source) ? el('a', { href: i.source, target: '_blank', rel: 'noopener noreferrer' }, host) : i.source;
+  }
+  const syn = i.synopsis ? el('p', { class: 'nv-syn clamp' }, i.synopsis) : null;
+  const more = syn
+    ? el('button', { type: 'button', class: 'link-btn', onclick: () => (more.textContent = syn.classList.toggle('clamp') ? 'Selengkapnya' : 'Ringkas') }, 'Selengkapnya')
+    : null;
+  const empty = !n.author && !Object.values(i).some((v) => (Array.isArray(v) ? v.length : v));
+  const infoBox = el(
+    'section',
+    { class: 'nv-box nv-info' },
+    i.genres?.length ? [el('div', { class: 'nv-label' }, 'Genre'), el('div', { class: 'genre-chips nv-genres' }, i.genres.map((g) => el('span', { class: 'chip' }, g)))] : null,
+    syn ? [el('div', { class: 'nv-label' }, 'Sinopsis'), syn, more] : null,
+    source ? el('p', { class: 'nv-src' }, el('span', { class: 'muted' }, 'Sumber: '), source) : null,
+    el('p', { class: 'nv-src muted' }, `Ditambahkan ${new Date(n.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`),
+    empty && !locked ? el('p', { class: 'muted small' }, 'Belum ada info. Ketuk Edit info untuk menambahkan penulis, penerjemah, genre, sinopsis, dan sampul.') : null,
+  );
+  return { hero, readBtn, editBtn, tiles, infoBox, idx, total };
+}
+
+/** Popup info novel: dari bawah di HP, di tengah layar di tablet/laptop. */
+async function openNovelPopup(n) {
+  const cover = await db.getCover(n.id);
+  let d;
+  const close = () => d?.close();
+  const parts = novelParts(n, cover, { onBeforeNav: close });
+  const listBtn = el(
+    'button',
+    {
+      type: 'button',
+      class: 'btn',
+      disabled: !parts.total,
+      onclick: () =>
+        openTocDialog(
+          n,
+          parts.idx,
+          (k) => {
+            close();
+            location.hash = readHash(n.id, n.toc[k].num);
+          },
+          (num, para) => {
+            close();
+            location.hash = readHash(n.id, num, para);
+          },
+        ),
+    },
+    icon('toc'),
+    'Daftar chapter',
+  );
+  const pageBtn = el(
+    'button',
+    {
+      type: 'button',
+      class: 'btn',
+      onclick: () => {
+        close();
+        location.hash = novelHash(n.id);
+      },
+    },
+    icon('info'),
+    'Detail lengkap',
+  );
   dialog({
     title: n.title,
-    body: el(
-      'div',
-      { class: 'novel-info' },
-      el('div', { class: 'info-cover' }, coverEl(n, cover)),
-      i.origTitle ? el('p', { class: 'info-orig' }, i.origTitle) : null,
-      el(
-        'dl',
-        null,
-        row('Penulis', n.author),
-        row('Penerjemah', i.translator),
-        row('Status cerita', i.status && STORY_STATUS[i.status]?.label),
-        row('Genre', i.genres?.length ? el('span', { class: 'genre-chips' }, i.genres.map((g) => el('span', { class: 'chip' }, g))) : null),
-        row('Chapter', total ? `${fmtNum(total)} chapter · ${n.toc[0].num}–${n.toc[total - 1].num}` : 'Belum ada'),
-        row('Sumber', source),
-        row('Ditambahkan', new Date(n.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })),
-      ),
-      i.synopsis ? [el('div', { class: 'section-label' }, 'Sinopsis'), el('p', { class: 'info-syn' }, i.synopsis)] : null,
-      has ? null : el('p', { class: 'muted small' }, 'Belum ada info. Ketuk Edit untuk menambahkan penulis, penerjemah, genre, sinopsis, dan lainnya.'),
-      locked ? el('p', { class: 'muted small' }, 'Kunci perubahan aktif, jadi info tidak bisa diedit.') : null,
+    className: 'nv-pop',
+    body: [
+      parts.hero,
+      el('div', { class: 'nv-actions' }, parts.readBtn, parts.editBtn),
+      el('div', { class: 'nv-pop-links' }, listBtn, pageBtn),
+      parts.tiles,
+      parts.infoBox,
+    ],
+    onOpen: (x) => (d = x),
+  });
+}
+
+/** Halaman novel lengkap: info di atas (di layar lebar: kolom kiri), daftar chapter di bawah (kolom kanan). */
+async function showNovel(id) {
+  const [n, cover] = await Promise.all([db.getNovel(id), db.getCover(id)]);
+  if (!n) {
+    location.hash = '#/';
+    return;
+  }
+  document.title = `${n.title} · LumenRead`;
+  const parts = novelParts(n, cover);
+  const bar = el(
+    'header',
+    { class: 'bar' },
+    iconBtn('back', 'Kembali ke perpustakaan', () => (location.hash = '#/')),
+    el('h1', { class: 'bar-novel' }, n.title),
+    iconBtn('more', 'Menu novel', () => novelMenu(n)),
+  );
+  // Daftar chapter langsung di halaman (sama dengan daftar isi: cari, urutan, 📍, bookmark, per halaman).
+  const toc = parts.total
+    ? tocBody(
+        n,
+        parts.idx,
+        (k) => (location.hash = readHash(n.id, n.toc[k].num)),
+        (num, para) => (location.hash = readHash(n.id, num, para)),
+      )
+    : null;
+  const tocBox = toc ? el('section', { class: 'nv-box nv-toc' }, el('div', { class: 'nv-label' }, 'Daftar chapter'), toc.nodes) : null;
+  setView([
+    bar,
+    el(
+      'main',
+      { class: 'page novel-page' },
+      el('div', { class: 'nv-side' }, parts.hero, el('div', { class: 'nv-actions' }, parts.readBtn, parts.editBtn), parts.tiles, parts.infoBox),
+      el('div', { class: 'nv-main' }, tocBox),
     ),
-    actions: [{ label: 'Tutup', value: null }, ...(locked ? [] : [{ label: 'Edit', primary: true, value: 'edit' }])],
-  }).then((v) => v === 'edit' && editNovelInfo(n));
+  ]);
+  toc?.locate(false);
 }
 
 async function editNovelInfo(n) {
@@ -1644,6 +1821,21 @@ async function readSources(files) {
   return sources;
 }
 
+const DRAFT_KEY = 'baca-novel:import-draft';
+function loadImportDraft() {
+  try {
+    return sessionStorage.getItem(DRAFT_KEY) || '';
+  } catch {
+    return '';
+  }
+}
+function saveImportDraft(v) {
+  try {
+    if (v) sessionStorage.setItem(DRAFT_KEY, v);
+    else sessionStorage.removeItem(DRAFT_KEY);
+  } catch {} // teks terlalu besar untuk penyimpanan sementara: lewati saja
+}
+
 async function openImport(presetNovelId) {
   const novels = await db.listNovels();
   let mode = 'paste';
@@ -1669,6 +1861,13 @@ async function openImport(presetNovelId) {
     rows: 12,
     placeholder: 'Chapter 1: Awal Mula\nParagraf pertama…\nParagraf kedua…\n\nChapter 2: Judul Berikutnya\n…',
     spellcheck: 'false',
+  });
+  // Draf: teks tempelan disimpan sementara, supaya tidak hilang bila Android menutup aplikasi saat pindah ke Notes.
+  text.value = loadImportDraft();
+  let draftTimer = 0;
+  text.addEventListener('input', () => {
+    clearTimeout(draftTimer);
+    draftTimer = setTimeout(() => saveImportDraft(text.value), 600);
   });
   const fileIn = el('input', {
     type: 'file',
@@ -1943,6 +2142,7 @@ async function openPreview({ res, novelId, title, epub }) {
   const parts = [`${fmtNum(save.length - replaced)} chapter baru`];
   if (replaced) parts.push(`${fmtNum(replaced)} diganti`);
   if (skipped) parts.push(`${fmtNum(skipped)} dilewati`);
+  saveImportDraft(''); // tersimpan: draf tempelan tidak diperlukan lagi
   toast(`Tersimpan: ${parts.join(', ')}.`, { label: 'Baca', run: () => (location.hash = `#/read/${encodeURIComponent(target.id)}`) });
   changed();
   route();
@@ -2082,16 +2282,36 @@ function tocTitle(title) {
  * opts.title: judul dialog (bawaan judul novel); opts.pickOnly: hanya tab chapter (untuk memilih rentang).
  */
 function openTocDialog(novel, idx, onChapter, onBookmark, opts = {}) {
-  const PAGE = 100;
   let d;
+  const body = tocBody(novel, idx, onChapter, onBookmark, {
+    ...opts,
+    wrap: (fn) => () => {
+      d.close();
+      fn();
+    },
+  });
+  dialog({
+    title: opts.title || novel.title,
+    className: 'toc-dlg',
+    body: body.nodes,
+    onOpen: (x) => {
+      d = x;
+      body.locate();
+    },
+  });
+}
+
+/**
+ * Isi daftar isi (tab Chapter & Bookmark, cari, urutan, 📍, per halaman 100); dipakai di dialog dan halaman novel.
+ * opts.wrap(fn): membungkus aksi pilih (mis. menutup dialog dulu). Mengembalikan { nodes, locate(scroll) }.
+ */
+function tocBody(novel, idx, onChapter, onBookmark, opts = {}) {
+  const PAGE = 100;
   let desc = false;
   let page = 0;
   let rows = []; // [indeks toc] yang lolos pencarian, sesuai urutan
   const marked = new Set(Object.values(novel.bookmarks || {}).map((b) => b.num));
-  const pick = (fn) => () => {
-    d.close();
-    fn();
-  };
+  const pick = opts.wrap || ((fn) => fn);
 
   const filter = el('input', { type: 'search', placeholder: 'Cari chapter…', 'aria-label': 'Cari nomor atau judul chapter' });
   const sortBtn = iconBtn('sort', 'Balik urutan', () => {
@@ -2148,12 +2368,12 @@ function openTocDialog(novel, idx, onChapter, onBookmark, opts = {}) {
     );
     list.scrollTop = 0;
   }
-  // Ke halaman berisi chapter yang sedang dibaca, lalu gulir ke barisnya.
-  function locate() {
+  // Ke halaman berisi chapter yang sedang dibaca, lalu (bila scroll) gulir ke barisnya.
+  function locate(scroll = true) {
     compute();
     const at = rows.indexOf(idx);
     show(at < 0 ? 0 : Math.floor(at / PAGE));
-    list.querySelector('.current')?.scrollIntoView({ block: 'center' });
+    if (scroll) list.querySelector('.current')?.scrollIntoView({ block: 'center' });
   }
   filter.oninput = () => {
     compute();
@@ -2201,10 +2421,8 @@ function openTocDialog(novel, idx, onChapter, onBookmark, opts = {}) {
     };
     return b;
   };
-  dialog({
-    title: opts.title || novel.title,
-    className: 'toc-dlg',
-    body: [
+  return {
+    nodes: [
       opts.pickOnly
         ? null
         : el(
@@ -2215,12 +2433,9 @@ function openTocDialog(novel, idx, onChapter, onBookmark, opts = {}) {
           ),
       chPane,
       opts.pickOnly ? null : bmPane,
-    ],
-    onOpen: (x) => {
-      d = x;
-      locate();
-    },
-  });
+    ].filter(Boolean),
+    locate,
+  };
 }
 
 /**
@@ -2988,7 +3203,7 @@ async function runSync({ quiet = false } = {}) {
         toast(`Sinkron: ${parts.join(', ')}.`);
       } else if (!quiet) toast(r.committed ? 'Sinkron selesai, perubahan terkirim.' : 'Sinkron selesai, semua sudah sama.');
       if (readerHooks?.onSynced) await readerHooks.onSynced();
-      else if (!document.querySelector('dialog[open]') && !location.hash.startsWith('#/read')) await showLibrary();
+      else if (!document.querySelector('dialog[open]') && !location.hash.startsWith('#/read')) await route();
       return r;
     } catch (e) {
       console.error(e);
@@ -3164,8 +3379,19 @@ function openSyncSetup() {
 }
 
 window.addEventListener('online', () => runSync({ quiet: true }));
+// Saat kembali ke aplikasi: sinkron ditunda sebentar (supaya tidak bikin tersendat tepat saat mulai mengetik/menempel),
+// dilewati bila baru saja sinkron atau ada dialog terbuka (mis. sedang impor); nanti dicoba lagi saat kembali berikutnya.
+const RESUME_SYNC_DELAY = 4000;
+const RESUME_SYNC_MIN_GAP = 2 * 60 * 1000;
+let resumeTimer = 0;
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') runSync({ quiet: true });
+  clearTimeout(resumeTimer);
+  if (document.visibilityState !== 'visible') return;
+  resumeTimer = setTimeout(() => {
+    if (document.visibilityState !== 'visible' || document.querySelector('dialog[open]')) return;
+    if (syncState.last && Date.now() - syncState.last < RESUME_SYNC_MIN_GAP) return;
+    runSync({ quiet: true });
+  }, RESUME_SYNC_DELAY);
 });
 
 // ---------- Service worker ----------

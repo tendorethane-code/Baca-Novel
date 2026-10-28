@@ -1024,14 +1024,8 @@ dialog.toc-dlg .dlg-body { display: flex; flex-direction: column; overflow: hidd
 }
 
 /* ---------- Info novel ---------- */
-.novel-info .info-orig { margin: -4px 0 12px; color: var(--muted); }
-.novel-info dl { margin: 0; display: grid; gap: 10px; }
-.info-row { display: grid; grid-template-columns: 7.5em minmax(0, 1fr); gap: 10px; align-items: baseline; }
-.info-row dt { color: var(--muted); font-size: 0.88rem; }
-.info-row dd { margin: 0; overflow-wrap: anywhere; }
 .genre-chips { display: inline-flex; flex-wrap: wrap; gap: 6px; }
 .chip { padding: 2px 10px; border-radius: 999px; border: 1px solid var(--line); font-size: 0.85rem; }
-.info-syn { margin: 0; white-space: pre-line; font-family: var(--read-font); line-height: 1.6; }
 textarea.plain { font-family: var(--ui-font); font-size: 1rem; line-height: 1.5; }
 
 /* ---------- TL note & pemisah ---------- */
@@ -1083,7 +1077,6 @@ textarea.plain { font-family: var(--ui-font); font-size: 1rem; line-height: 1.5;
 }
 .fab svg { width: 28px; height: 28px; }
 .library { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
-.info-cover { width: 96px; margin: 0 0 12px; }
 
 /* ---------- Tema Neon: cahaya cyan pada tombol utama & elemen penting ---------- */
 :root[data-glow] {
@@ -1144,3 +1137,76 @@ textarea.plain { font-family: var(--ui-font); font-size: 1rem; line-height: 1.5;
   content: ''; position: absolute; right: 12px; top: 50%; width: 7px; height: 7px; margin-top: -6px;
   border: solid var(--muted); border-width: 0 2px 2px 0; transform: rotate(45deg);
 }
+
+/* ---------- Halaman novel ---------- */
+.novel-page { max-width: 760px; margin: 0 auto; }
+.bar .bar-novel { flex: 1; min-width: 0; margin: 0 4px; font-size: 1rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nv-hero { position: relative; overflow: hidden; margin: -16px -16px 0; min-height: 250px; display: flex; align-items: flex-end; }
+.nv-hero-bg { position: absolute; inset: -24px; background-size: cover; background-position: center; filter: blur(18px) brightness(0.5); transform: scale(1.08); }
+.nv-hero-bg .cover { width: 100%; height: 100%; aspect-ratio: auto; border-radius: 0; }
+.nv-hero-bg .cover span { display: none; }
+.nv-hero::after { content: ''; position: absolute; inset: 0; background: linear-gradient(to bottom, transparent 25%, var(--bg) 98%); }
+.nv-hero-in { position: relative; z-index: 1; display: flex; gap: 16px; align-items: flex-end; width: 100%; padding: 32px 16px 16px; }
+.nv-cover { flex: none; width: 112px; }
+.nv-cover .cover { box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55); }
+.nv-head { min-width: 0; display: grid; gap: 3px; justify-items: start; }
+.nv-head h2 { margin: 0; font-size: 1.32rem; line-height: 1.25; overflow-wrap: anywhere; }
+.nv-head p { margin: 0; font-size: 0.9rem; overflow-wrap: anywhere; }
+.nv-head .nv-orig { color: var(--muted); }
+.nv-head .badge { margin-top: 4px; }
+.nv-actions { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; margin: 14px 0; }
+.nv-read { min-height: 58px; flex-direction: column; gap: 0; padding: 4px 14px; }
+.nv-read b { font-size: 1.04rem; }
+.nv-read small { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.8rem; opacity: 0.85; }
+.nv-edit { min-height: 58px; }
+.nv-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+.nv-tile { display: grid; gap: 2px; padding: 12px 10px; text-align: center; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; }
+.nv-tile b { font-size: 1.35rem; font-variant-numeric: tabular-nums; }
+.nv-tile span { font-size: 0.8rem; color: var(--muted); }
+.nv-tile.story-completed b { color: #5fd38a; }
+.nv-tile.story-ongoing b { color: var(--accent); }
+.nv-tile.story-hiatus b { color: #e8b25a; }
+.nv-box { margin-bottom: 14px; padding: 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; }
+.nv-label { margin: 2px 0 10px; text-align: center; font-size: 0.78rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted); }
+.nv-genres { display: flex; justify-content: center; margin-bottom: 14px; }
+.nv-genres .chip { padding: 4px 12px; font-size: 0.8rem; letter-spacing: 0.06em; text-transform: uppercase; border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); }
+.nv-syn { margin: 0; font-family: var(--read-font); line-height: 1.6; white-space: pre-line; }
+.nv-syn.clamp { display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
+.link-btn { border: 0; background: none; padding: 6px 0 0; color: var(--accent); cursor: pointer; font-size: 0.9rem; }
+.nv-src { margin: 10px 0 0; font-size: 0.88rem; }
+.nv-toc .toc-tabs { padding: 0; }
+.nv-toc .toc-tools { padding: 12px 0; }
+.nv-toc .toc-list { overflow: visible; padding: 10px 0 0; }
+.nv-toc .toc-pager { padding: 12px 0 0; }
+
+/* ---------- Popup info novel ---------- */
+dialog.nv-pop { width: min(560px, 100vw); max-height: 88dvh; margin: auto auto 0; border-radius: 18px 18px 0 0; overflow: hidden; }
+dialog.nv-pop .dlg-head { position: absolute; top: 0; right: 0; z-index: 3; border: 0; padding: 8px; }
+dialog.nv-pop .dlg-head h2 { display: none; }
+dialog.nv-pop .dlg-head .icon-btn { background: rgba(0, 0, 0, 0.45); color: #fff; border-radius: 50%; }
+dialog.nv-pop .dlg-body { padding: 0 16px calc(16px + env(safe-area-inset-bottom)); }
+dialog.nv-pop .nv-hero { margin: 0 -16px; min-height: 200px; }
+dialog.nv-pop .nv-hero-in { padding: 44px 16px 12px; }
+dialog.nv-pop .nv-cover { width: 92px; }
+dialog.nv-pop .nv-head h2 { font-size: 1.18rem; }
+dialog.nv-pop .nv-actions { margin: 12px 0 10px; }
+dialog.nv-pop .nv-tiles { grid-template-columns: repeat(4, 1fr); gap: 8px; }
+dialog.nv-pop .nv-tile { padding: 10px 4px; }
+dialog.nv-pop .nv-tile b { font-size: 1.05rem; }
+dialog.nv-pop .nv-tile span { font-size: 0.7rem; }
+dialog.nv-pop .nv-syn.clamp { -webkit-line-clamp: 4; }
+dialog.nv-pop .nv-box { margin-bottom: 0; }
+.nv-pop-links { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+.nv-pop-links .btn { min-height: 44px; min-width: 0; padding: 0 8px; font-size: 0.92rem; }
+/* Tablet & laptop: popup di tengah layar */
+@media (min-width: 700px) {
+  dialog.nv-pop { margin: auto; border-radius: 18px; max-height: min(88dvh, 860px); }
+}
+
+/* ---------- Halaman novel di layar lebar: info kiri, daftar chapter kanan ---------- */
+@media (min-width: 980px) {
+  .novel-page { max-width: 1180px; display: grid; grid-template-columns: 400px minmax(0, 1fr); gap: 0 24px; align-items: start; }
+  .nv-side .nv-hero { margin: -16px 0 0; border-radius: 0 0 16px 16px; }
+  .nv-main .nv-toc { margin-top: 0; }
+}
+.pick-row.one { grid-template-columns: 1fr; }
