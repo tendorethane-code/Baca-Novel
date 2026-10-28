@@ -25,9 +25,13 @@ export const TL_SEP = '---';
 // Tanda daftar lama di awal catatan: "-", "–", "—", "•", "*", "·", "1.", "1)", "(1)".
 const BULLET_RE = /^(?:[-–—•*·]|\(?\d{1,3}[.)])\s+/;
 
-/** Catatan TL: satu → apa adanya tanpa tanda; lebih dari satu → masing-masing "- ". */
+/** Buang penanda miring/tebal Markdown yang mengapit teks: "*judul*", "**tebal**" → "judul", "tebal". */
+export const stripEmphasis = (s) =>
+  s.replace(/\*\*(?=\S)([^*\n]*?\S)\*\*/g, '$1').replace(/\*(?=[^\s*])(?:[^*\n]*?[^\s*])?\*/g, (m) => m.slice(1, -1));
+
+/** Catatan TL: satu → apa adanya tanpa tanda; lebih dari satu → masing-masing "- ". Penanda miring "*…*" dibuang. */
 export function formatTlItems(lines) {
-  const items = lines.map((l) => l.replace(BULLET_RE, '').trim()).filter(Boolean);
+  const items = lines.map((l) => stripEmphasis(l.replace(BULLET_RE, '').trim())).filter(Boolean);
   return items.length > 1 ? items.map((x) => `- ${x}`) : items;
 }
 const TL_HEAD_RE = /^tl note chapter\s+\d+(?:\.\d+)?\s*:?$/i;

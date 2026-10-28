@@ -2,7 +2,7 @@
 // Data uji di sini sintetis; jangan menaruh teks novel asli di repo.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseHeading, splitChapters, buildImport, decodeText, numberFromName, missingNumbers, formatTlNote, headingBefore, isTlHead, isSeparator, autoTlNote, tidyParagraphs } from '../js/parse.js';
+import { parseHeading, splitChapters, buildImport, decodeText, numberFromName, missingNumbers, formatTlNote, headingBefore, isTlHead, isSeparator, autoTlNote, tidyParagraphs, stripEmphasis } from '../js/parse.js';
 import { readZip, writeZip, crc32 } from '../js/zip.js';
 import { buildEpub } from '../js/epub.js';
 
@@ -192,4 +192,18 @@ test('EPUB: beberapa catatan TL jadi daftar berpoin', async () => {
   const data = await buildEpub({ title: 'T', chapters: [{ num: 3, title: '', paragraphs: ['a', 'b', 'c', '---', 'TL note Chapter 3', '- A & B', '- C'] }] });
   const ch = new TextDecoder().decode(await readZip(data).find((e) => e.name === 'OEBPS/ch0001.xhtml').read());
   assert.ok(ch.includes('<p class="tl-head">TL note Chapter 3</p>\n<ul>\n<li>A &amp; B</li>\n<li>C</li>\n</ul>'));
+});
+
+test('TL note: penanda miring/tebal Markdown dibuang', () => {
+  assert.equal(
+    stripEmphasis('*Satu liter air mata* (一公升眼泪): plesetan *1 Litre no Namida* (*1 Litre of Tears*, 2005).'),
+    'Satu liter air mata (一公升眼泪): plesetan 1 Litre no Namida (1 Litre of Tears, 2005).',
+  );
+  assert.equal(stripEmphasis('**Tebal** dan *a*'), 'Tebal dan a');
+  assert.equal(stripEmphasis('2 * 3 * 4'), '2 * 3 * 4');
+  assert.equal(stripEmphasis('bintang* sendiri'), 'bintang* sendiri');
+  const old = ['a', 'b', 'c', '---', 'TL note Chapter 112', '*Satu liter air mata*: drama.'];
+  assert.deepEqual(autoTlNote(old, 112), ['a', 'b', 'c', '---', 'TL note Chapter 112', 'Satu liter air mata: drama.']);
+  // Cerita di luar TL note tidak disentuh.
+  assert.equal(autoTlNote(['*miring* di cerita', 'b', 'c', '---', 'TL note Chapter 1', 'catatan'], 1), null);
 });
