@@ -1705,16 +1705,18 @@ async function openPreview({ res, novelId, title, epub }) {
     exp.onclick = () => {
       const show = body.classList.contains('hidden');
       if (show && !body.childElementCount) {
-        // Chapter ber-TL note: tampilkan akhir cerita dan seluruh TL note supaya bisa dicek. Pemisah "---" hanya ada
-        // di teks, jadi tidak ditampilkan (sama seperti di layar baca).
+        // Chapter ber-TL note: tampilkan akhir cerita, pemisah "---" (apa adanya, di luar kotak), dan seluruh TL note
+        // supaya formatnya bisa dicek.
         const tl = it.tl ? it.paragraphs.findIndex(isTlHead) : -1;
         const ps = tl >= 0 ? it.paragraphs.slice(0, tl) : it.paragraphs.slice();
-        if (tl >= 0) while (ps.length && isSeparator(ps[ps.length - 1])) ps.pop();
+        const seps = [];
+        if (tl >= 0) while (ps.length && isSeparator(ps[ps.length - 1])) seps.unshift(ps.pop());
         body.append(
           ...[
             ...ps.slice(0, 3).map((p) => el('p', null, p)),
             ps.length > 4 ? el('p', null, `… (${fmtNum(ps.length - 4)} paragraf lagi) …`) : null,
             ps.length > 3 ? el('p', null, ps[ps.length - 1]) : null,
+            ...seps.map((p) => el('p', null, p)),
             ...(tl >= 0 ? it.paragraphs.slice(tl).map((p) => el('p', { class: 'ptl' }, p)) : []),
             !ps.length ? el('p', null, '(kosong)') : null,
             it.source ? el('p', { class: 'src' }, `Sumber: ${it.source}`) : null,
