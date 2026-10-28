@@ -27,10 +27,19 @@ p { margin: 0 0 0.8em; text-indent: 0; }
 hr.sep { border: 0; border-top: 1px solid currentColor; opacity: 0.35; margin: 1.6em 20%; }
 .tl-note { margin-top: 1.2em; padding: 0.6em 0.9em; border-left: 3px solid currentColor; font-size: 0.92em; }
 .tl-note .tl-head { font-weight: bold; font-size: 0.85em; letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 0.5em; }
-.tl-note p:last-child { margin-bottom: 0; }
+.tl-note p:last-child, .tl-note ul:last-child { margin-bottom: 0; }
+.tl-note ul { margin: 0 0 0.6em; padding-left: 1.3em; }
+.tl-note li { margin-bottom: 0.4em; }
 .cover-page { text-align: center; margin: 0; padding: 0; }
 .cover-page img { max-width: 100%; max-height: 100%; }
 `;
+
+/** Isi TL note: beberapa catatan ("- …") jadi daftar berpoin, satu catatan tetap paragraf. */
+function noteBody(lines) {
+  if (lines.length > 1 && lines.every((l) => l.startsWith('- ')))
+    return `<ul>\n${lines.map((l) => `<li>${xmlEscape(l.slice(2))}</li>`).join('\n')}\n</ul>`;
+  return lines.map((p) => `<p>${xmlEscape(p)}</p>`).join('\n');
+}
 
 /**
  * Isi chapter: baris pemisah adegan jadi <hr>, TL note ("TL note Chapter N" sampai akhir) dibungkus kotak catatan.
@@ -45,7 +54,7 @@ function chapterBody(paragraphs) {
   const [head, ...rest] = paragraphs.slice(at);
   return [
     ...story.map(para),
-    `<div class="tl-note">\n<p class="tl-head">${xmlEscape(head)}</p>\n${rest.map((p) => `<p>${xmlEscape(p)}</p>`).join('\n')}\n</div>`,
+    `<div class="tl-note">\n<p class="tl-head">${xmlEscape(head)}</p>\n${noteBody(rest)}\n</div>`,
   ].join('\n');
 }
 

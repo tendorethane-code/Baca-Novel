@@ -100,7 +100,7 @@ test('epub: struktur dasar dan escape XML', async () => {
 test('TL note: format lama dirapikan jadi "TL note Chapter N"', () => {
   const f = (t, n = 207) => formatTlNote(t, n);
   assert.equal(f('TL: Jalan raja (王道) dan jalan tiran.'), 'TL note Chapter 207\nJalan raja (王道) dan jalan tiran.');
-  assert.equal(f('T/N\nJalan raja.\nJalan tiran.'), 'TL note Chapter 207\nJalan raja.\nJalan tiran.');
+  assert.equal(f('T/N\nJalan raja.\nJalan tiran.'), 'TL note Chapter 207\n- Jalan raja.\n- Jalan tiran.');
   assert.equal(f("Translator's Note (Ch 207): isi"), 'TL note Chapter 207\nisi');
   assert.equal(f('Catatan penerjemah Bab 207:\n\nisi'), 'TL note Chapter 207\nisi');
   assert.equal(f('> TL note Chapter 206\n> isi'), 'TL note Chapter 207\nisi');
@@ -111,7 +111,7 @@ test('TL note: format lama dirapikan jadi "TL note Chapter N"', () => {
   // Pemisah di depan dipertahankan; pemisah antarparagraf editor.
   assert.equal(f('—-\nTL: isi'), '---\nTL note Chapter 207\nisi');
   assert.equal(f('___\n***\nTL: isi'), '---\nTL note Chapter 207\nisi');
-  assert.equal(formatTlNote('TL: a\nb', 5, '\n\n'), 'TL note Chapter 5\n\na\n\nb');
+  assert.equal(formatTlNote('TL: a\nb', 5, '\n\n'), 'TL note Chapter 5\n\n- a\n\n- b');
   assert.equal(formatTlNote('', null), 'TL note Chapter ?');
 });
 
@@ -131,7 +131,7 @@ test('TL note: deteksi judul, pemisah, dan nomor chapter terdekat', () => {
 test('TL note otomatis: hanya di akhir chapter dan dengan judul khas', () => {
   const story = ['a', 'b', 'c', 'd'];
   assert.deepEqual(autoTlNote([...story, '—-', 'TL: isi'], 9), [...story, '---', 'TL note Chapter 9', 'isi']);
-  assert.deepEqual(autoTlNote([...story, 'T/N', 'x', 'y'], 9), [...story, '---', 'TL note Chapter 9', 'x', 'y']);
+  assert.deepEqual(autoTlNote([...story, 'T/N', 'x', 'y'], 9), [...story, '---', 'TL note Chapter 9', '- x', '- y']);
   assert.deepEqual(autoTlNote([...story, 'Catatan penerjemah: isi'], 3), [...story, '---', 'TL note Chapter 3', 'isi']);
   // Pemisah lama / ganda dibakukan jadi satu "---"; judul baku tanpa pemisah diberi pemisah.
   assert.deepEqual(autoTlNote([...story, '___', 'TL note Chapter 9', 'isi'], 9), [...story, '---', 'TL note Chapter 9', 'isi']);
@@ -170,4 +170,26 @@ test('ekspor: TL note dibakukan di .txt (dengan ---) dan jadi kotak di EPUB (tan
   const d2 = await buildEpub({ title: 'T', chapters: [{ num: 1, title: '', paragraphs: plain }] });
   const ch2 = new TextDecoder().decode(await readZip(d2).find((e) => e.name === 'OEBPS/ch0001.xhtml').read());
   assert.ok(ch2.includes('<p>a</p>\n<hr class="sep"/>\n<p>b</p>'));
+});
+
+test('TL note: satu catatan paragraf biasa, lebih dari satu diawali "- "', () => {
+  const f = (t) => formatTlNote(t, 7).split('\n').slice(1);
+  assert.deepEqual(f('TL note Chapter 7\nSatu catatan.'), ['Satu catatan.']);
+  assert.deepEqual(f('TL note Chapter 7\n- Satu catatan.'), ['Satu catatan.']);
+  assert.deepEqual(f('TL note Chapter 7\nA\nB'), ['- A', '- B']);
+  assert.deepEqual(f('TL note Chapter 7\n• A\n* B\n– C'), ['- A', '- B', '- C']);
+  assert.deepEqual(f('TL note Chapter 7\n1. A\n2) B\n(3) C'), ['- A', '- B', '- C']);
+  // Tanda tanpa spasi bukan tanda daftar ("-an", "2024.").
+  assert.deepEqual(f('TL note Chapter 7\n-an: akhiran'), ['-an: akhiran']);
+  // Sudah benar → tidak berubah; berlaku juga lewat perapian otomatis.
+  const ok = ['a', 'b', 'c', '---', 'TL note Chapter 7', '- A', '- B'];
+  assert.equal(autoTlNote(ok, 7), null);
+  assert.deepEqual(autoTlNote(['a', 'b', 'c', '---', 'TL note Chapter 7', '• A', '• B'], 7), ok);
+  assert.deepEqual(autoTlNote(['a', 'b', 'c', '---', 'TL note Chapter 7', '- Satu'], 7), ['a', 'b', 'c', '---', 'TL note Chapter 7', 'Satu']);
+});
+
+test('EPUB: beberapa catatan TL jadi daftar berpoin', async () => {
+  const data = await buildEpub({ title: 'T', chapters: [{ num: 3, title: '', paragraphs: ['a', 'b', 'c', '---', 'TL note Chapter 3', '- A & B', '- C'] }] });
+  const ch = new TextDecoder().decode(await readZip(data).find((e) => e.name === 'OEBPS/ch0001.xhtml').read());
+  assert.ok(ch.includes('<p class="tl-head">TL note Chapter 3</p>\n<ul>\n<li>A &amp; B</li>\n<li>C</li>\n</ul>'));
 });

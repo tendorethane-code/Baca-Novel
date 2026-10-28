@@ -1210,3 +1210,4 @@ dialog.nv-pop .nv-box { margin-bottom: 0; }
   .nv-main .nv-toc { margin-top: 0; }
 }
 .pick-row.one { grid-template-columns: 1fr; }
+.reader article p.tl-item { padding-left: 30px; text-indent: -14px; }

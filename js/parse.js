@@ -17,8 +17,19 @@ export function parseHeading(line) {
 //   …akhir cerita
 //   ---
 //   TL note Chapter N
-//   isi catatan…
+//   isi catatan…           ← satu catatan: paragraf biasa
+//   - catatan pertama      ← lebih dari satu: tiap catatan (= tiap paragraf) diawali "- "
+//   - catatan kedua
 export const TL_SEP = '---';
+
+// Tanda daftar lama di awal catatan: "-", "–", "—", "•", "*", "·", "1.", "1)", "(1)".
+const BULLET_RE = /^(?:[-–—•*·]|\(?\d{1,3}[.)])\s+/;
+
+/** Catatan TL: satu → apa adanya tanpa tanda; lebih dari satu → masing-masing "- ". */
+export function formatTlItems(lines) {
+  const items = lines.map((l) => l.replace(BULLET_RE, '').trim()).filter(Boolean);
+  return items.length > 1 ? items.map((x) => `- ${x}`) : items;
+}
 const TL_HEAD_RE = /^tl note chapter\s+\d+(?:\.\d+)?\s*:?$/i;
 export const isTlHead = (line) => TL_HEAD_RE.test(line.trim());
 
@@ -63,7 +74,7 @@ export function formatTlNote(text, num, joiner = '\n') {
       if (rest) lines.unshift(rest);
     }
   }
-  return [...lead, `TL note Chapter ${num ?? '?'}`, ...lines].join(joiner);
+  return [...lead, `TL note Chapter ${num ?? '?'}`, ...formatTlItems(lines)].join(joiner);
 }
 
 // Judul catatan yang cukup khas untuk dikenali otomatis tanpa diblok. "Note:" / "Catatan:" saja terlalu umum
