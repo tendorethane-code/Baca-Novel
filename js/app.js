@@ -300,6 +300,8 @@ const THEMES = {
   mint: { label: 'Hijau', bg: '#e2ede3', fg: '#1e3325' },
   sky: { label: 'Biru muda', bg: '#e4ecf4', fg: '#1d2b3a', accent: '#2f5f8a' },
   gray: { label: 'Abu', bg: '#d6d6d2', fg: '#22221f' },
+  // Senada dengan ikon aplikasi: hitam pekat, aksen cyan menyala (tombol utama diberi cahaya).
+  neon: { label: 'Neon', bg: '#07070d', fg: '#f4f6fa', accent: '#2be3ff', glow: true },
   claude: { label: 'Claude', bg: '#151515', fg: '#f9f9f7' },
   dusk: { label: 'Senja', bg: '#2b2530', fg: '#ddd4e1', accent: '#c9a6e0' },
   navy: { label: 'Biru malam', bg: '#141d2b', fg: '#cdd7e3', accent: '#8cb8e8' },
@@ -331,13 +333,13 @@ function themeColors() {
   const bg = settings.theme === 'custom' ? settings.customBg : t.bg;
   const fg = settings.theme === 'custom' ? settings.customFg || autoFg(bg) : t.fg;
   const dark = luminance(bg) < 0.25;
-  return { bg, fg, dark, accent: t.accent || (dark ? '#7fc4ae' : '#2f6f5e') };
+  return { bg, fg, dark, glow: !!t.glow, accent: t.accent || (dark ? '#7fc4ae' : '#2f6f5e') };
 }
 
 const SETTINGS_KEY = 'baca-novel:settings';
 // Bawaan tipografi meniru tampilan baca di aplikasi Claude (diukur dari tangkapan layar Android):
 // tinggi huruf kecil ±9,5px, jarak antarbaris ±25,7px, tepi kiri-kanan ±20px, teks rata kiri.
-const SETTINGS_VERSION = 2;
+const SETTINGS_VERSION = 3;
 const DEFAULTS = {
   font: 'noto',
   size: 17,
@@ -347,7 +349,7 @@ const DEFAULTS = {
   paraGap: 16,
   textLevel: 100,
   changeLock: false,
-  theme: matchMedia('(prefers-color-scheme: dark)').matches ? 'claude' : 'light',
+  theme: matchMedia('(prefers-color-scheme: dark)').matches ? 'neon' : 'light',
   customBg: '#e9e4f0',
   customFg: '',
   recapCount: 3,
@@ -379,6 +381,8 @@ try {
     for (const k of ['font', 'size', 'lh', 'paraGap', 'justify', 'textLevel']) settings[k] = DEFAULTS[k];
     if (settings.theme === 'dark') settings.theme = 'claude';
   }
+  // Versi 2 → 3: tema gelap bawaan (Claude) jadi Neon, senada dengan ikon baru.
+  if (Object.keys(stored).length && !(stored.v >= 3) && settings.theme === 'claude') settings.theme = 'neon';
 } catch {}
 const migrated = settings.v !== SETTINGS_VERSION;
 settings.v = SETTINGS_VERSION;
@@ -427,6 +431,7 @@ function applySettings() {
   r.style.background = c.bg;
   r.style.colorScheme = c.dark ? 'dark' : 'light';
   r.toggleAttribute('data-dark', c.dark);
+  r.toggleAttribute('data-glow', c.glow);
   document.querySelector('meta[name="theme-color"]').content = c.bg;
   dimLayer.style.opacity = settings.dim;
   // Disimpan untuk skrip kecil di index.html yang mewarnai latar sebelum aplikasi dimuat.
@@ -891,11 +896,12 @@ async function showLibrary() {
     : el(
         'div',
         { class: 'empty' },
+        el('img', { class: 'empty-logo', src: 'icons/icon.svg', alt: '' }),
         el('h2', null, 'Belum ada novel'),
         el(
           'p',
           null,
-          'Impor file .zip berisi .txt, file .txt, atau tempel teks. Tiap chapter diawali baris seperti ',
+          'Impor file .epub, .zip berisi .txt, file .txt, atau tempel teks. Untuk teks, tiap chapter diawali baris seperti ',
           el('code', null, 'Chapter 1: Judul'),
           '.',
         ),
@@ -1112,9 +1118,15 @@ function coverEl(n, data, cls = '') {
   if (data) return el('img', { class: `cover ${cls}`, src: data, alt: '', loading: 'lazy', decoding: 'async' });
   let h = 0;
   for (const ch of n.title) h = (h * 31 + ch.codePointAt(0)) >>> 0;
-  const hue = h % 360;
   const ph = el('div', { class: `cover ph ${cls}`, 'aria-hidden': 'true' }, el('span', null, n.title));
-  ph.style.background = `linear-gradient(150deg, hsl(${hue} 55% 46%), hsl(${(hue + 40) % 360} 60% 30%))`;
+  if (THEMES[settings.theme]?.glow) {
+    // Tema Neon: warna di rentang cyan → ungu → merah muda, gelap di bawah, supaya senada.
+    const hue = 185 + (h % 150);
+    ph.style.background = `linear-gradient(160deg, hsl(${hue} 85% 42%), hsl(${(hue + 30) % 360} 70% 14%) 75%)`;
+  } else {
+    const hue = h % 360;
+    ph.style.background = `linear-gradient(150deg, hsl(${hue} 55% 46%), hsl(${(hue + 40) % 360} 60% 30%))`;
+  }
   return ph;
 }
 

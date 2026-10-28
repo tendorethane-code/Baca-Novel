@@ -19,7 +19,7 @@
       try {
         var s = JSON.parse(localStorage.getItem('baca-novel:settings') || '{}');
         var dark = s.paint ? s.paint.dark : matchMedia('(prefers-color-scheme: dark)').matches;
-        var bg = s.paint ? s.paint.bg : dark ? '#141414' : '#fbfaf7';
+        var bg = s.paint ? s.paint.bg : dark ? '#07070d' : '#fbfaf7';
         document.documentElement.style.background = bg;
         document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
       } catch (e) {}
