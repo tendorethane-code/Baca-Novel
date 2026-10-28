@@ -1,4 +1,6 @@
-# Baca Novel
+# LumenRead
+
+_(sebelumnya: Baca Novel)_
 
 Aplikasi web (PWA) untuk membaca novel dari file teks. Jalan offline, tanpa server, tanpa akun.
 Semua novel disimpan di **IndexedDB browser perangkat itu sendiri** dan tidak dikirim ke mana pun.
@@ -19,7 +21,7 @@ Repo ini hanya berisi kode. Jangan commit teks novel; `.gitignore` sudah menolak
 - **Halaman depan**: tampilan **Rak** (sampul + persen baca) atau **Daftar** (kartu dengan sampul kecil), ditukar lewat tombol di samping urutan. Tombol bulat di kanan bawah langsung melanjutkan novel yang terakhir dibaca.
 - **Sampul**: otomatis dari EPUB, atau menu ⋯ kartu → *Ganti sampul…* (gambar dikecilkan jadi JPEG ±400×600, puluhan KB). Tanpa sampul, dibuat sampul berwarna berisi judul. Sampul ikut tersinkron dan ikut masuk saat compile EPUB (bersama sinopsis).
 - **Info novel** (menu ⋯ di kartu novel atau di layar baca): judul asli, penulis, penerjemah, status cerita (Bersambung/Tamat/Hiatus), genre, sumber/tautan, sinopsis, jumlah & rentang chapter, tanggal ditambahkan. Diubah lewat *Edit judul & info novel*; ikut tersinkron. Penulis & penerjemah tampil di kartu, dan pencarian perpustakaan juga mencari judul asli, penerjemah, dan genre.
-- **Tampilan**: 11 tema latar (termasuk *Claude*: latar #151515, teks #f9f9f7) + tema kustom (pilih warna latar & teks, dengan peringatan kontras rendah).
+- **Tampilan**: 12 tema latar (termasuk *Neon*: hitam #07070d dengan aksen cyan menyala senada ikon, bawaan mode gelap; dan *Claude*: latar #151515, teks #f9f9f7) + tema kustom (pilih warna latar & teks, dengan peringatan kontras rendah).
   - **Ukuran huruf** lewat tombol A−/A+ atau garis bertitik (14–34px), **jenis huruf** dan **kecerahan teks** (Terang/Sedang/Redup/Sangat redup) dari menu pilihan, jarak baris, jarak antarparagraf (px), lebar teks (hanya tampil di layar lebar ≥ 480px; di HP teks sudah selebar layar), rata kiri-kanan.
   - Huruf *Noto Serif*, *Source Serif*, dan *Roboto* disertakan di aplikasi (`fonts/`), jadi tampil sama di semua perangkat dan tetap ada saat offline. Pilihan lain bergantung pada huruf perangkat.
   - **Bawaan meniru tampilan baca aplikasi Claude** (diukur dari tangkapan layar Android): Noto Serif 17px tebal 450, jarak baris 1,5, jarak paragraf 16px, tepi 20px, rata kiri; di mode gelap memakai tema Claude. Setelan tipografi lama otomatis pindah ke bawaan ini sekali saat pembaruan.

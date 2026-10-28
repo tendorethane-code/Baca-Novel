@@ -1084,3 +1084,29 @@ textarea.plain { font-family: var(--ui-font); font-size: 1rem; line-height: 1.5;
 .fab svg { width: 28px; height: 28px; }
 .library { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
 .info-cover { width: 96px; margin: 0 0 12px; }
+
+/* ---------- Tema Neon: cahaya cyan pada tombol utama & elemen penting ---------- */
+:root[data-glow] {
+  --glow: 0 0 14px color-mix(in srgb, var(--accent) 55%, transparent), 0 0 2px color-mix(in srgb, var(--accent) 80%, transparent);
+}
+:root[data-glow] .btn.primary,
+:root[data-glow] .fab,
+:root[data-glow] .ch-step:not(:disabled),
+:root[data-glow] .ch-pick button,
+:root[data-glow] .chips button[aria-selected='true'],
+:root[data-glow] .tabs button[aria-selected='true'] {
+  box-shadow: var(--glow);
+}
+:root[data-glow] .fab { box-shadow: var(--glow), 0 6px 20px rgba(0, 0, 0, 0.5); }
+:root[data-glow] .bar h1 { text-shadow: 0 0 12px color-mix(in srgb, var(--accent) 45%, transparent); }
+:root[data-glow] .book-cover .cover,
+:root[data-glow] .card-cover .cover { box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6), 0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent); }
+:root[data-glow] .card,
+:root[data-glow] dialog { border-color: color-mix(in srgb, var(--accent) 16%, var(--line)); }
+:root[data-glow] .toc-row.current,
+:root[data-glow] .rp-progress i,
+:root[data-glow] .card .progress > div { box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 50%, transparent); }
+.empty-logo { width: 96px; height: 96px; margin: 0 auto 8px; display: block; border-radius: 22px; }
+:root[data-glow] .empty-logo { box-shadow: 0 0 28px color-mix(in srgb, var(--accent) 35%, transparent); }
+.bar h1.brand { letter-spacing: 0.01em; }
+.bar h1.brand .brand-accent { color: var(--accent); }

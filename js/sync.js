@@ -178,8 +178,8 @@ async function syncOnce(cfg) {
   if (!head) {
     // Git Data API tidak bisa dipakai di repo kosong; buat commit pertama lewat Contents API.
     await gh.req('PUT', '/contents/README.md', {
-      message: 'Mulai data Baca Novel',
-      content: btoa('Data sinkron aplikasi Baca Novel. Jangan diubah manual.\n'),
+      message: 'Mulai data LumenRead',
+      content: btoa('Data sinkron aplikasi LumenRead. Jangan diubah manual.\n'),
     });
     head = await gh.head(branch);
   }
