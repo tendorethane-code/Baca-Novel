@@ -10,6 +10,7 @@ import {
   headingBefore,
   isTlHead,
   isSeparator,
+  autoTlNote,
 } from './parse.js';
 import { readZip, writeZip } from './zip.js';
 import { buildEpub } from './epub.js';
@@ -1142,6 +1143,31 @@ async function editNovelInfo(n) {
   route();
 }
 
+/** Rapikan TL note format lama di semua chapter tersimpan (aturan sama dengan saat impor). */
+async function tidyTlNotes(n) {
+  const fixes = await busy('Memeriksa TL note…', async () =>
+    (await db.getChapterRange(n.id))
+      .map((c) => {
+        const paragraphs = autoTlNote(c.paragraphs, c.num);
+        return paragraphs && { num: c.num, title: c.title, paragraphs };
+      })
+      .filter(Boolean),
+  );
+  if (!fixes.length) return toast('Tidak ada TL note format lama yang perlu dirapikan.');
+  const nums = fixes.map((f) => f.num);
+  const shown = nums.slice(0, 12).join(', ') + (nums.length > 12 ? `, … (+${nums.length - 12})` : '');
+  const ok = await confirmDialog(
+    'Rapikan TL note?',
+    `${fmtNum(fixes.length)} chapter punya TL note format lama (Chapter ${shown}). Judul catatannya akan diganti "TL note Chapter N"; isi catatan tidak berubah.`,
+    'Rapikan',
+  );
+  if (!ok) return;
+  await db.saveChapters(n.id, fixes);
+  changed();
+  toast(`${fmtNum(fixes.length)} chapter dirapikan.`);
+  route();
+}
+
 function novelMenu(n) {
   const has = n.toc.length > 0;
   const locked = settings.changeLock;
@@ -1189,6 +1215,7 @@ function novelMenu(n) {
     el('div', { class: 'section-label' }, 'Aksi'),
     act('Info novel', () => openNovelInfo(n)),
     act('Impor / tambah chapter', () => openImport(n.id)),
+    act('Rapikan TL note semua chapter', () => tidyTlNotes(n), { disabled: !has, change: true }),
     act('Compile ke EPUB', () => openEpub(n), { disabled: !has }),
     act('Ekspor sebagai .zip (txt)', () => exportTxt(n), { disabled: !has }),
     act('Edit judul & info novel', () => editNovelInfo(n), { change: true }),
@@ -2145,13 +2172,18 @@ async function showReader(id, wantNum, wantPara = 0) {
     const prevEntry = novel.toc[idx - 1];
     if (!prevEntry || settings.recapCount <= 0) return null;
     const prev = await db.getChapter(novel.id, prevEntry.num);
-    if (!prev?.paragraphs.length) return null;
-    const tail = prev.paragraphs.slice(-settings.recapCount);
+    // Yang diingatkan adalah akhir cerita: TL note dan baris pemisah di akhir chapter dilewati.
+    let story = prev?.paragraphs || [];
+    const tl = story.findIndex(isTlHead);
+    if (tl >= 0) story = story.slice(0, tl);
+    while (story.length && isSeparator(story[story.length - 1])) story = story.slice(0, -1);
+    if (!story.length) return null;
+    const tail = story.slice(-settings.recapCount);
     const d = el(
       'details',
       { class: 'recap', open: settings.recapOpen },
       el('summary', null, `Akhir ${chapterLabel(prev.num, prev.title)} · ${tail.length} paragraf terakhir`),
-      tail.length < prev.paragraphs.length ? el('p', { class: 'gap' }, '…') : null,
+      tail.length < story.length ? el('p', { class: 'gap' }, '…') : null,
       tail.map((p) => el('p', null, p)),
     );
     d.addEventListener('toggle', () => {
@@ -2547,7 +2579,8 @@ async function showReader(id, wantNum, wantPara = 0) {
       },
     });
     if (v !== 'save' || !dirty()) return;
-    const paragraphs = splitLines(area.value);
+    const lines = splitLines(area.value);
+    const paragraphs = autoTlNote(lines, entry.num) || lines;
     await db.saveChapters(novel.id, [{ num: entry.num, title: titleIn.value.trim(), paragraphs }]);
     Object.assign(novel, await db.getNovel(novel.id));
     toast('Chapter disimpan.');

@@ -2,7 +2,7 @@
 // Data uji di sini sintetis; jangan menaruh teks novel asli di repo.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseHeading, splitChapters, buildImport, decodeText, numberFromName, missingNumbers, formatTlNote, headingBefore, isTlHead, isSeparator } from '../js/parse.js';
+import { parseHeading, splitChapters, buildImport, decodeText, numberFromName, missingNumbers, formatTlNote, headingBefore, isTlHead, isSeparator, autoTlNote } from '../js/parse.js';
 import { readZip, writeZip, crc32 } from '../js/zip.js';
 import { buildEpub } from '../js/epub.js';
 
@@ -125,4 +125,24 @@ test('TL note: deteksi judul, pemisah, dan nomor chapter terdekat', () => {
   assert.equal(headingBefore(t, t.length), 6);
   assert.equal(headingBefore(t, 12), 5);
   assert.equal(headingBefore('tanpa judul', 5), null);
+});
+
+test('TL note otomatis: hanya di akhir chapter dan dengan judul khas', () => {
+  const story = ['a', 'b', 'c', 'd'];
+  assert.deepEqual(autoTlNote([...story, '—-', 'TL: isi'], 9), [...story, '—-', 'TL note Chapter 9', 'isi']);
+  assert.deepEqual(autoTlNote([...story, 'T/N', 'x', 'y'], 9), [...story, 'TL note Chapter 9', 'x', 'y']);
+  assert.deepEqual(autoTlNote([...story, 'Catatan penerjemah: isi'], 3), [...story, 'TL note Chapter 3', 'isi']);
+  // Nomor salah (salin dari chapter lain) dibetulkan; yang sudah benar tidak diubah.
+  assert.deepEqual(autoTlNote([...story, 'TL note Chapter 8', 'isi'], 9), [...story, 'TL note Chapter 9', 'isi']);
+  assert.equal(autoTlNote([...story, 'TL note Chapter 9', 'isi'], 9), null);
+  // Di awal chapter tanpa pemisah, atau judul umum ("Note:"), tidak disentuh.
+  assert.equal(autoTlNote(['TL: bukan catatan', ...story], 9), null);
+  assert.equal(autoTlNote([...story, 'Note: kalimat cerita'], 9), null);
+  assert.equal(autoTlNote(story, 9), null);
+});
+
+test('buildImport merapikan TL note otomatis', () => {
+  const r = buildImport([{ text: 'Chapter 4: A\nsatu\ndua\n---\nTL: catatan' }]);
+  assert.deepEqual(r.items[0].paragraphs, ['satu', 'dua', '---', 'TL note Chapter 4', 'catatan']);
+  assert.ok(r.warnings.some((w) => w.includes('TL note')));
 });
