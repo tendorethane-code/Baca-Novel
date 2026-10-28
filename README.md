@@ -14,7 +14,7 @@ Repo ini hanya berisi kode. Jangan commit teks novel; `.gitignore` sudah menolak
   - File `.txt` tanpa baris judul dianggap satu chapter; nomornya diambil dari nama file (`012.txt`, `Chapter 12 - Judul.txt`).
   - **Pratinjau** sebelum disimpan: jumlah chapter/paragraf, cuplikan isi, peringatan (teks sebelum chapter pertama, nomor kembar, nomor yang hilang, chapter kosong). Chapter bisa dicentang/dilepas.
   - Kalau nomor chapter sudah ada di novel tujuan, aplikasi bertanya per chapter: **ganti** atau **lewati** (bawaan: lewati).
-- **Perpustakaan**: cari judul/pengarang, urutkan (terakhir dibaca / judul / baru ditambah), status baca (*Sedang dibaca*, *Nanti*, *Selesai*) dengan filter. Status diubah lewat menu ⋯ di kartu novel.
+- **Perpustakaan**: cari judul/pengarang, urutkan (terakhir dibaca / judul / baru ditambah), status baca (*Sedang dibaca*, *Nanti*, *Selesai*) dengan filter. Status diubah lewat menu ⋯ di kartu novel. Tiap kartu punya tombol **Daftar isi** untuk langsung memilih chapter (atau bookmark) tanpa masuk ke layar baca dulu; tombol **+** untuk menambah chapter.
 - **Tampilan**: 11 tema latar (termasuk *Claude*: latar #151515, teks #f9f9f7) + tema kustom (pilih warna latar & teks, dengan peringatan kontras rendah).
   - **Ukuran huruf** lewat tombol A−/A+ atau garis bertitik (14–34px), **jenis huruf** dan **kecerahan teks** (Terang/Sedang/Redup/Sangat redup) dari menu pilihan, jarak baris, jarak antarparagraf (px), lebar teks (hanya tampil di layar lebar ≥ 480px; di HP teks sudah selebar layar), rata kiri-kanan.
   - Huruf *Noto Serif*, *Source Serif*, dan *Roboto* disertakan di aplikasi (`fonts/`), jadi tampil sama di semua perangkat dan tetap ada saat offline. Pilihan lain bergantung pada huruf perangkat.

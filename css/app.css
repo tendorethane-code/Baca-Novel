@@ -263,6 +263,8 @@ label.field > span {
   gap: 8px;
   margin-top: 4px;
 }
+.card .actions .btn { flex: 1; min-width: 0; }
+.card .actions .btn.add { flex: none; width: 44px; padding: 0; }
 .empty {
   text-align: center;
   padding: 48px 12px;
