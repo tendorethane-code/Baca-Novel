@@ -18,8 +18,9 @@
       // Terapkan tema sebelum render supaya tidak berkedip.
       try {
         var s = JSON.parse(localStorage.getItem('baca-novel:settings') || '{}');
-        var dark = s.paint ? s.paint.dark : matchMedia('(prefers-color-scheme: dark)').matches;
-        var bg = s.paint ? s.paint.bg : dark ? '#07070d' : '#fbfaf7';
+        // Belum pernah dibuka: tema bawaan Neon (gelap).
+        var dark = s.paint ? s.paint.dark : true;
+        var bg = s.paint ? s.paint.bg : '#07070d';
         document.documentElement.style.background = bg;
         document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
       } catch (e) {}

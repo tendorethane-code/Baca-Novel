@@ -339,17 +339,18 @@ function themeColors() {
 const SETTINGS_KEY = 'baca-novel:settings';
 // Bawaan tipografi meniru tampilan baca di aplikasi Claude (diukur dari tangkapan layar Android):
 // tinggi huruf kecil ±9,5px, jarak antarbaris ±25,7px, tepi kiri-kanan ±20px, teks rata kiri.
-const SETTINGS_VERSION = 3;
+const SETTINGS_VERSION = 4;
 const DEFAULTS = {
   font: 'noto',
-  size: 17,
+  size: 18,
   lh: 1.5,
   width: 680,
   justify: false,
   paraGap: 16,
   textLevel: 100,
   changeLock: false,
-  theme: matchMedia('(prefers-color-scheme: dark)').matches ? 'neon' : 'light',
+  // Neon (senada ikon) jadi bawaan di semua perangkat, tidak mengikuti mode terang/gelap sistem.
+  theme: 'neon',
   customBg: '#e9e4f0',
   customFg: '',
   recapCount: 3,
@@ -383,6 +384,8 @@ try {
   }
   // Versi 2 → 3: tema gelap bawaan (Claude) jadi Neon, senada dengan ikon baru.
   if (Object.keys(stored).length && !(stored.v >= 3) && settings.theme === 'claude') settings.theme = 'neon';
+  // Versi 3 → 4: ukuran huruf bawaan 17 → 18 (yang masih memakai bawaan lama ikut naik).
+  if (Object.keys(stored).length && !(stored.v >= 4) && settings.size === 17) settings.size = 18;
 } catch {}
 const migrated = settings.v !== SETTINGS_VERSION;
 settings.v = SETTINGS_VERSION;
