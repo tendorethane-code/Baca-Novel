@@ -1387,36 +1387,61 @@ function novelMenu(n) {
   dialog({ title: n.title, body, onOpen: (x) => (d = x) });
 }
 
-function rangeSelects(toc, onChange) {
-  const opts = () => toc.map((t) => el('option', { value: t.num }, `${t.num}${t.title ? ' · ' + t.title : ''}`));
-  const from = el('select', { 'aria-label': 'Dari chapter' }, opts());
-  const to = el('select', { 'aria-label': 'Sampai chapter' }, opts());
-  to.selectedIndex = toc.length - 1;
-  const fix = (changed) => {
-    if (from.selectedIndex > to.selectedIndex) {
-      if (changed === from) to.selectedIndex = from.selectedIndex;
-      else from.selectedIndex = to.selectedIndex;
-    }
+/**
+ * Pilih rentang chapter: dua tombol (Dari / Sampai) yang membuka daftar chapter aplikasi
+ * (daftar pilihan bawaan HP terlalu besar & tidak bisa diatur tampilannya). Bawaan: semua chapter.
+ */
+function rangePicker(n, onChange) {
+  const toc = n.toc;
+  let fromI = 0;
+  let toI = toc.length - 1;
+  const face = (i) => {
+    const t = toc[i];
+    const m = t.title && /^(.+?)\s*\(([^()]+)\)\s*$/.exec(t.title);
+    return [el('b', null, `Chapter ${t.num}`), el('span', null, m ? m[1] : t.title || '(tanpa judul)')];
+  };
+  const fromBtn = el('button', { type: 'button', class: 'range-btn', 'aria-label': 'Pilih chapter awal' });
+  const toBtn = el('button', { type: 'button', class: 'range-btn', 'aria-label': 'Pilih chapter akhir' });
+  const render = () => {
+    fromBtn.replaceChildren(...face(fromI));
+    toBtn.replaceChildren(...face(toI));
     onChange?.();
   };
-  from.onchange = () => fix(from);
-  to.onchange = () => fix(to);
+  fromBtn.onclick = () =>
+    openTocDialog(n, fromI, (i) => {
+      fromI = i;
+      if (toI < fromI) toI = fromI;
+      render();
+    }, null, { title: 'Dari chapter', pickOnly: true });
+  toBtn.onclick = () =>
+    openTocDialog(n, toI, (i) => {
+      toI = i;
+      if (fromI > toI) fromI = toI;
+      render();
+    }, null, { title: 'Sampai chapter', pickOnly: true });
   const node = el(
     'div',
-    { class: 'row-2' },
-    el('label', { class: 'field' }, el('span', null, 'Dari chapter'), from),
-    el('label', { class: 'field' }, el('span', null, 'Sampai chapter'), to),
+    { class: 'row-2 range-pick' },
+    el('div', { class: 'field' }, el('span', null, 'Dari chapter'), fromBtn),
+    el('div', { class: 'field' }, el('span', null, 'Sampai chapter'), toBtn),
   );
+  fromBtn.replaceChildren(...face(fromI));
+  toBtn.replaceChildren(...face(toI));
   return {
     node,
     get from() {
-      return Number(from.value);
+      return toc[fromI].num;
     },
     get to() {
-      return Number(to.value);
+      return toc[toI].num;
     },
     get count() {
-      return to.selectedIndex - from.selectedIndex + 1;
+      return toI - fromI + 1;
+    },
+    setAll() {
+      fromI = 0;
+      toI = toc.length - 1;
+      render();
     },
   };
 }
@@ -1450,21 +1475,16 @@ async function openExport(n) {
   const hint = el('p', { class: 'small muted export-hint' });
   let titleTouched = false;
   titleIn.oninput = () => (titleTouched = true);
-  const r = rangeSelects(n.toc, () => {
+  const r = rangePicker(n, () => {
     const all = r.count === n.toc.length;
-    if (!titleTouched) titleIn.value = all ? n.title : `${n.title} (${r.from}-${r.to})`;
+    if (!titleTouched) titleIn.value = all ? n.title : `${n.title} (${r.from === r.to ? r.from : `${r.from}-${r.to}`})`;
     info.textContent = `${fmtNum(r.count)} chapter akan dimasukkan.`;
   });
   info.textContent = `${fmtNum(r.count)} chapter akan dimasukkan.`;
   // "Semua chapter" (bawaan): rentang disembunyikan dan diset dari chapter pertama sampai terakhir.
-  const [fromSel, toSel] = r.node.querySelectorAll('select');
   const allBox = el('input', { type: 'checkbox', checked: true });
   const applyAll = () => {
-    if (allBox.checked) {
-      fromSel.selectedIndex = 0;
-      toSel.selectedIndex = n.toc.length - 1;
-      toSel.onchange();
-    }
+    if (allBox.checked) r.setAll();
     r.node.classList.toggle('hidden', allBox.checked);
   };
   allBox.onchange = applyAll;
@@ -1567,8 +1587,7 @@ async function openExport(n) {
 
 async function openDeleteRange(n) {
   const info = el('p', { class: 'small muted' });
-  const r = rangeSelects(n.toc, () => (info.textContent = `${fmtNum(r.count)} chapter akan dihapus.`));
-  r.node.querySelector('select').selectedIndex = 0;
+  const r = rangePicker(n, () => (info.textContent = `${fmtNum(r.count)} chapter akan dihapus.`));
   info.textContent = `${fmtNum(r.count)} chapter akan dihapus.`;
   const v = await dialog({
     title: 'Hapus rentang chapter',
@@ -2060,8 +2079,9 @@ function tocTitle(title) {
  * Daftar isi: tab Chapter (cari, urutan, ke chapter sekarang, per halaman 100) dan tab Bookmark.
  * Dipakai di layar baca dan di kartu novel perpustakaan. `idx` = indeks chapter yang sedang/terakhir dibaca (-1 bila belum),
  * `onChapter(i)` dan `onBookmark(num, para)` dipanggil setelah dialog ditutup.
+ * opts.title: judul dialog (bawaan judul novel); opts.pickOnly: hanya tab chapter (untuk memilih rentang).
  */
-function openTocDialog(novel, idx, onChapter, onBookmark) {
+function openTocDialog(novel, idx, onChapter, onBookmark, opts = {}) {
   const PAGE = 100;
   let d;
   let desc = false;
@@ -2182,17 +2202,19 @@ function openTocDialog(novel, idx, onChapter, onBookmark) {
     return b;
   };
   dialog({
-    title: novel.title,
+    title: opts.title || novel.title,
     className: 'toc-dlg',
     body: [
-      el(
-        'div',
-        { class: 'toc-tabs', role: 'tablist' },
-        tab(`Chapter (${fmtNum(novel.toc.length)})`, chPane, bmPane),
-        tab(`Bookmark (${fmtNum(bms.length)})`, bmPane, chPane),
-      ),
+      opts.pickOnly
+        ? null
+        : el(
+            'div',
+            { class: 'toc-tabs', role: 'tablist' },
+            tab(`Chapter (${fmtNum(novel.toc.length)})`, chPane, bmPane),
+            tab(`Bookmark (${fmtNum(bms.length)})`, bmPane, chPane),
+          ),
       chPane,
-      bmPane,
+      opts.pickOnly ? null : bmPane,
     ],
     onOpen: (x) => {
       d = x;

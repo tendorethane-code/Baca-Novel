@@ -1131,3 +1131,16 @@ textarea.plain { font-family: var(--ui-font); font-size: 1rem; line-height: 1.5;
 .small-btn { min-height: 34px; padding: 0 12px; font-size: 0.88rem; }
 .export-seg button { min-height: 44px; font-weight: 600; }
 .export-hint { margin: 8px 0 4px; }
+
+/* Pilih rentang chapter (Ekspor & compile, Hapus rentang) */
+.range-pick .field > span { display: block; font-size: 0.85em; color: var(--muted); margin-bottom: 4px; }
+.range-btn {
+  display: grid; gap: 2px; width: 100%; min-height: 58px; padding: 8px 30px 8px 12px; text-align: left; position: relative; cursor: pointer;
+  border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--fg);
+}
+.range-btn b { font-size: 0.95rem; }
+.range-btn span { font-size: 0.8rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.range-btn::after {
+  content: ''; position: absolute; right: 12px; top: 50%; width: 7px; height: 7px; margin-top: -6px;
+  border: solid var(--muted); border-width: 0 2px 2px 0; transform: rotate(45deg);
+}
