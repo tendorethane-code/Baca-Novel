@@ -2446,7 +2446,10 @@ function markTlNote(ps) {
   const at = ps.findIndex((p) => isTlHead(p.textContent));
   if (at < 0) return ps;
   ps[at].classList.add('tl-head');
-  for (const p of ps.slice(at + 1)) p.classList.add('tl-note');
+  for (const p of ps.slice(at + 1)) {
+    p.classList.add('tl-note');
+    if (p.textContent.startsWith('- ')) p.classList.add('tl-item'); // beberapa catatan: tampil menjorok seperti daftar
+  }
   ps[ps.length - 1].classList.add('tl-last');
   if (at > 0 && ps[at - 1].classList.contains('sep')) ps[at - 1].classList.add('tl-sep');
   return ps;
