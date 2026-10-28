@@ -20,9 +20,9 @@ Repo ini hanya berisi kode. Jangan commit teks novel; `.gitignore` sudah menolak
 - **Perpustakaan**: cari judul/pengarang, urutkan (terakhir dibaca / judul / baru ditambah), status baca (*Sedang dibaca*, *Nanti*, *Selesai*) dengan filter. Status diubah lewat menu ⋯ di kartu novel. Tiap kartu punya tombol **Daftar isi** untuk langsung memilih chapter (atau bookmark) tanpa masuk ke layar baca dulu; tombol **+** untuk menambah chapter.
 - **Halaman depan**: tampilan **Rak** (sampul + persen baca) atau **Daftar** (kartu dengan sampul kecil), ditukar lewat tombol di samping urutan. Tombol bulat di kanan bawah langsung melanjutkan novel yang terakhir dibaca.
 - **Layar pembuka**: nama LumenRead, logo, dan "by LinTendo" selama 2 detik saat aplikasi dibuka (menyambung dari layar pembuka Android, yang hanya bisa berisi ikon & warna latar). Kredit yang sama ada di bawah perpustakaan.
-- **Sampul**: otomatis dari EPUB, atau menu ⋯ kartu → *Ganti sampul…* (gambar dikecilkan jadi JPEG ±400×600, puluhan KB). Tanpa sampul, dibuat sampul berwarna berisi judul. Sampul ikut tersinkron dan ikut masuk saat compile EPUB (bersama sinopsis).
+- **Sampul**: otomatis dari EPUB, atau menu ⋯ kartu → *Edit judul & info novel* → *Pilih sampul* (di samping judul; *Hapus* untuk kembali ke sampul otomatis) (gambar dikecilkan jadi JPEG ±400×600, puluhan KB). Tanpa sampul, dibuat sampul berwarna berisi judul. Sampul ikut tersinkron dan ikut masuk saat compile EPUB (bersama sinopsis).
 - **Info novel** (menu ⋯ di kartu novel atau di layar baca): judul asli, penulis, penerjemah, status cerita (Bersambung/Tamat/Hiatus), genre, sumber/tautan, sinopsis, jumlah & rentang chapter, tanggal ditambahkan. Diubah lewat *Edit judul & info novel*; ikut tersinkron. Penulis & penerjemah tampil di kartu, dan pencarian perpustakaan juga mencari judul asli, penerjemah, dan genre.
-- **Tampilan**: 12 tema latar (termasuk *Neon*: hitam #07070d dengan aksen cyan menyala senada ikon, bawaan di semua perangkat; dan *Claude*: latar #151515, teks #f9f9f7) + tema kustom (pilih warna latar & teks, dengan peringatan kontras rendah).
+- **Tampilan**: 12 tema latar (termasuk *Neon*: hitam #07070d dengan aksen cyan menyala senada ikon, bawaan di semua perangkat; dan *CL*: latar #151515, teks #f9f9f7) + tema kustom (pilih warna latar & teks, dengan peringatan kontras rendah).
   - **Ukuran huruf** lewat tombol A−/A+ atau garis bertitik (14–34px), **jenis huruf** dan **kecerahan teks** (Terang/Sedang/Redup/Sangat redup) dari menu pilihan, jarak baris, jarak antarparagraf (px), lebar teks (hanya tampil di layar lebar ≥ 480px; di HP teks sudah selebar layar), rata kiri-kanan.
   - Huruf *Noto Serif*, *Source Serif*, dan *Roboto* disertakan di aplikasi (`fonts/`), jadi tampil sama di semua perangkat dan tetap ada saat offline. Pilihan lain bergantung pada huruf perangkat.
   - **Bawaan meniru tampilan baca aplikasi Claude** (diukur dari tangkapan layar Android): Noto Serif 18px (teks Claude ±17px) tebal 450, jarak baris 1,5, jarak paragraf 16px, tepi 20px, rata kiri; tema bawaan Neon. Setelan tipografi lama otomatis pindah ke bawaan ini sekali saat pembaruan.
@@ -49,8 +49,10 @@ Repo ini hanya berisi kode. Jangan commit teks novel; `.gitignore` sudah menolak
 - **Posisi baca** disimpan otomatis (chapter + paragraf), tombol/panah ←/→ untuk pindah chapter.
 - **Daftar isi**: tab *Chapter* dan *Bookmark*. Cari nomor/judul, balik urutan, tombol 📍 ke chapter yang sedang dibaca, 100 chapter per halaman dengan pilihan rentang (« ‹ 201–300 › »). Judul seperti `Water and Fire (Air dan Api)` tampil dua baris: bagian dalam kurung di baris kedua yang lebih kecil.
 - **Bar pindah chapter** di awal dan akhir tiap chapter (ikut tergulir bersama teks): ‹ sebelumnya, daftar pilihan semua chapter, berikutnya ›.
-- **Compile EPUB** dari rentang chapter (EPUB 3 + `toc.ncx` untuk pembaca lama).
-- **Ekspor .zip (txt)**: cadangan / pindah ke perangkat lain. Hasilnya bisa diimpor ulang apa adanya.
+- **Ekspor & compile** (menu ⋯ kartu novel): pilih format lalu rentang chapter.
+  - Rentang: centang *Semua chapter* (bawaan), atau lepas centangnya untuk memilih dari–sampai chapter.
+  - **EPUB** (EPUB 3 + `toc.ncx` untuk pembaca lama), dengan sampul & sinopsis.
+  - **.zip (txt)**: satu file .txt per chapter, untuk arsip / cadangan / pindah perangkat. Hasilnya bisa diimpor ulang apa adanya.
 
 ## Sinkronisasi
 
@@ -73,7 +75,7 @@ Catatan:
 
 ## Penting soal data
 
-- Tanpa sinkronisasi, tiap perangkat punya perpustakaan sendiri; pindahkan lewat *Ekspor .zip (txt)* lalu impor di perangkat lain.
+- Tanpa sinkronisasi, tiap perangkat punya perpustakaan sendiri; pindahkan lewat *Ekspor & compile* → *.zip (txt)* lalu impor di perangkat lain.
 - **iPhone/iPad (Safari)**: tambahkan ke Layar Utama (Bagikan → *Add to Home Screen*). Safari bisa menghapus data situs yang tidak dibuka selama 7 hari jika *tidak* dipasang di Layar Utama.
 - Menghapus data situs/riwayat browser akan menghapus novel. Rutin ekspor cadangan untuk novel yang penting.
 

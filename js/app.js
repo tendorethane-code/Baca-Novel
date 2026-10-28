@@ -302,7 +302,7 @@ const THEMES = {
   gray: { label: 'Abu', bg: '#d6d6d2', fg: '#22221f' },
   // Senada dengan ikon aplikasi: hitam pekat, aksen cyan menyala (tombol utama diberi cahaya).
   neon: { label: 'Neon', bg: '#07070d', fg: '#f4f6fa', accent: '#2be3ff', glow: true },
-  claude: { label: 'Claude', bg: '#151515', fg: '#f9f9f7' },
+  claude: { label: 'CL', bg: '#151515', fg: '#f9f9f7' },
   dusk: { label: 'Senja', bg: '#2b2530', fg: '#ddd4e1', accent: '#c9a6e0' },
   navy: { label: 'Biru malam', bg: '#141d2b', fg: '#cdd7e3', accent: '#8cb8e8' },
   dark: { label: 'Gelap', bg: '#141414', fg: '#d5d3ce' },
@@ -1135,24 +1135,6 @@ function coverEl(n, data, cls = '') {
   return ph;
 }
 
-function pickCover(n) {
-  const input = el('input', { type: 'file', accept: 'image/*' });
-  input.onchange = async () => {
-    const f = input.files[0];
-    if (!f) return;
-    try {
-      await db.setCover(n.id, await busy('Menyiapkan sampul…', () => coverData(f)));
-    } catch (e) {
-      console.error(e);
-      return toast('Gambar tidak bisa dibaca.');
-    }
-    changed();
-    toast('Sampul dipasang.');
-    route();
-  };
-  input.click();
-}
-
 // ---------- Info novel ----------
 // Disimpan di novel.info (ikut sinkron): { origTitle, translator, status, genres: [], source, synopsis }.
 const STORY_STATUS = {
@@ -1211,6 +1193,36 @@ async function openNovelInfo(n) {
 
 async function editNovelInfo(n) {
   const i = n.info || {};
+  // Sampul: diganti/dihapus di sini, baru disimpan saat Simpan. undefined = tidak berubah, null = dihapus.
+  const oldCover = await db.getCover(n.id);
+  let newCover;
+  const coverBox = el('div', { class: 'edit-cover' });
+  const coverInput = el('input', { type: 'file', accept: 'image/*', class: 'hidden' });
+  const removeBtn = el('button', { type: 'button', class: 'btn small-btn' }, 'Hapus');
+  const showCover = () => {
+    const data = newCover === undefined ? oldCover : newCover;
+    coverBox.replaceChildren(coverEl(n, data));
+    removeBtn.disabled = !data;
+  };
+  const pickBtn = el('button', { type: 'button', class: 'btn small-btn', onclick: () => coverInput.click() }, 'Pilih sampul');
+  coverBox.onclick = () => coverInput.click();
+  coverInput.onchange = async () => {
+    const f = coverInput.files[0];
+    if (!f) return;
+    try {
+      newCover = await busy('Menyiapkan sampul…', () => coverData(f));
+    } catch (e) {
+      console.error(e);
+      toast('Gambar tidak bisa dibaca.');
+    }
+    coverInput.value = '';
+    showCover();
+  };
+  removeBtn.onclick = () => {
+    newCover = null;
+    showCover();
+  };
+  showCover();
   const field = (label, input) => el('label', { class: 'field' }, el('span', null, label), input);
   const text = (value, placeholder = 'Opsional') => el('input', { type: 'text', value: value || '', placeholder });
   const titleIn = text(n.title, 'Wajib');
@@ -1228,7 +1240,12 @@ async function editNovelInfo(n) {
   const v = await dialog({
     title: 'Edit info novel',
     body: [
-      field('Judul', titleIn),
+      el(
+        'div',
+        { class: 'edit-head' },
+        coverBox,
+        el('div', { class: 'edit-head-main' }, field('Judul', titleIn), el('div', { class: 'edit-cover-btns' }, pickBtn, removeBtn), coverInput),
+      ),
       field('Judul asli', origIn),
       el('div', { class: 'row-2' }, field('Penulis', authorIn), field('Penerjemah', transIn)),
       el('div', { class: 'row-2' }, field('Status cerita', statusIn), field('Genre (pisahkan dengan koma)', genreIn)),
@@ -1261,8 +1278,10 @@ async function editNovelInfo(n) {
   for (const k of Object.keys(info)) if (!info[k] || (Array.isArray(info[k]) && !info[k].length)) delete info[k];
   const patch = { title: titleIn.value.trim(), author: authorIn.value.trim(), info };
   const same = patch.title === n.title && patch.author === (n.author || '') && JSON.stringify(info) === JSON.stringify(n.info || {});
-  if (same) return;
-  await db.updateMeta(n.id, patch);
+  const coverChanged = newCover !== undefined && newCover !== oldCover;
+  if (same && !coverChanged) return;
+  if (!same) await db.updateMeta(n.id, patch);
+  if (coverChanged) await db.setCover(n.id, newCover);
   changed();
   toast('Info novel disimpan.');
   route();
@@ -1341,23 +1360,8 @@ function novelMenu(n) {
     act('Info novel', () => openNovelInfo(n)),
     act('Impor / tambah chapter', () => openImport(n.id)),
     act('Rapikan TL note semua chapter', () => tidyTlNotes(n), { disabled: !has, change: true }),
-    act('Compile ke EPUB', () => openEpub(n), { disabled: !has }),
-    act('Ekspor sebagai .zip (txt)', () => exportTxt(n), { disabled: !has }),
+    act('Ekspor & compile…', () => openExport(n), { disabled: !has }),
     act('Edit judul & info novel', () => editNovelInfo(n), { change: true }),
-    act('Ganti sampul…', () => pickCover(n), { change: true }),
-    ...(n.cover && !n.cover.del
-      ? [
-          act(
-            'Hapus sampul',
-            async () => {
-              await db.setCover(n.id, null);
-              changed();
-              route();
-            },
-            { change: true },
-          ),
-        ]
-      : []),
     act('Hapus rentang chapter', () => openDeleteRange(n), { disabled: !has, danger: true, change: true }),
     act(
       'Hapus novel',
@@ -1417,11 +1421,33 @@ function rangeSelects(toc, onChange) {
   };
 }
 
-async function openEpub(n) {
+/** File .txt per chapter (format mentah, TL note dibakukan) dalam satu .zip; bisa diimpor ulang apa adanya. */
+async function buildTxtZip(chapters) {
+  const width = String(Math.floor(Math.max(...chapters.map((c) => c.num)))).length;
+  return writeZip(
+    chapters.map((c) => {
+      const [i, f] = String(c.num).split('.');
+      return {
+        name: `${i.padStart(Math.max(4, width), '0')}${f ? '.' + f : ''}.txt`,
+        data: [chapterLabel(c.num, c.title), ...tidyParagraphs(c.paragraphs, c.num)].join('\n\n') + '\n',
+      };
+    }),
+  );
+}
+
+const EXPORTS = {
+  epub: { label: 'EPUB', hint: 'Untuk dibaca di Moon+ Reader dan aplikasi lain; dengan sampul & sinopsis.' },
+  zip: { label: '.zip (txt)', hint: 'Arsip teks mentah, satu file .txt per chapter; bisa diimpor ulang.' },
+};
+
+/** Ekspor & compile: pilih format (EPUB / .zip berisi .txt) dan rentang chapter. */
+async function openExport(n) {
+  let format = EXPORTS[settings.exportFormat] ? settings.exportFormat : 'epub';
   const titleIn = el('input', { type: 'text', value: n.title });
   const authorIn = el('input', { type: 'text', value: n.author || '', placeholder: 'Opsional' });
   const langIn = el('input', { type: 'text', value: n.lang || 'id', placeholder: 'id / en / …' });
   const info = el('p', { class: 'small muted' });
+  const hint = el('p', { class: 'small muted export-hint' });
   let titleTouched = false;
   titleIn.oninput = () => (titleTouched = true);
   const r = rangeSelects(n.toc, () => {
@@ -1430,73 +1456,113 @@ async function openEpub(n) {
     info.textContent = `${fmtNum(r.count)} chapter akan dimasukkan.`;
   });
   info.textContent = `${fmtNum(r.count)} chapter akan dimasukkan.`;
+  // "Semua chapter" (bawaan): rentang disembunyikan dan diset dari chapter pertama sampai terakhir.
+  const [fromSel, toSel] = r.node.querySelectorAll('select');
+  const allBox = el('input', { type: 'checkbox', checked: true });
+  const applyAll = () => {
+    if (allBox.checked) {
+      fromSel.selectedIndex = 0;
+      toSel.selectedIndex = n.toc.length - 1;
+      toSel.onchange();
+    }
+    r.node.classList.toggle('hidden', allBox.checked);
+  };
+  allBox.onchange = applyAll;
+  applyAll();
+  const allLabel = el('label', { class: 'check' }, allBox, `Semua chapter (${fmtNum(n.toc.length)})`);
+  const titleLabel = el('span');
+  const epubFields = el(
+    'div',
+    { class: 'row-2' },
+    el('label', { class: 'field' }, el('span', null, 'Pengarang'), authorIn),
+    el('label', { class: 'field' }, el('span', null, 'Kode bahasa'), langIn),
+  );
+  const seg = el('div', { class: 'seg export-seg', role: 'radiogroup', 'aria-label': 'Format' });
+  let goBtn = null;
+  const sync = () => {
+    seg.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.k === format)));
+    hint.textContent = EXPORTS[format].hint;
+    epubFields.classList.toggle('hidden', format !== 'epub');
+    titleLabel.textContent = format === 'epub' ? 'Judul EPUB' : 'Nama file';
+    if (goBtn) goBtn.textContent = format === 'epub' ? 'Buat EPUB' : 'Buat .zip';
+  };
+  for (const [k, v] of Object.entries(EXPORTS)) {
+    const b = el('button', { type: 'button', role: 'radio' }, v.label);
+    b.dataset.k = k;
+    b.onclick = () => {
+      format = k;
+      settings.exportFormat = k;
+      saveSettings();
+      sync();
+    };
+    seg.append(b);
+  }
+  sync();
 
   let built = null;
   const ok = await dialog({
-    title: 'Compile ke EPUB',
+    title: 'Ekspor & compile',
     body: [
+      el('div', { class: 'section-label' }, 'Format'),
+      seg,
+      hint,
+      el('div', { class: 'section-label' }, 'Rentang chapter'),
+      allLabel,
       r.node,
       info,
-      el('label', { class: 'field' }, el('span', null, 'Judul EPUB'), titleIn),
-      el(
-        'div',
-        { class: 'row-2' },
-        el('label', { class: 'field' }, el('span', null, 'Pengarang'), authorIn),
-        el('label', { class: 'field' }, el('span', null, 'Kode bahasa'), langIn),
-      ),
+      el('label', { class: 'field' }, titleLabel, titleIn),
+      epubFields,
     ],
+    onOpen: (d) => {
+      goBtn = d.querySelector('.dlg-foot .btn.primary');
+      sync();
+    },
     actions: [
       { label: 'Batal', value: false },
       {
-        label: 'Buat EPUB',
+        label: 'Buat',
         primary: true,
         value: true,
         run: async () => {
           const title = titleIn.value.trim() || n.title;
-          const chapters = await busy('Menyusun EPUB…', async () => {
+          const epub = format === 'epub';
+          const chapters = await busy(epub ? 'Menyusun EPUB…' : 'Menyiapkan file…', async () => {
             const list = await db.getChapterRange(n.id, r.from, r.to);
-            const data = await buildEpub({
-              title,
-              author: authorIn.value.trim(),
-              lang: langIn.value.trim() || 'id',
-              description: n.info?.synopsis || '',
-              cover: await db.getCover(n.id),
-              chapters: list,
-            });
-            built = { data, name: `${safeFileName(title)}.epub` };
+            if (!list.length) return list;
+            const data = epub
+              ? await buildEpub({
+                  title,
+                  author: authorIn.value.trim(),
+                  lang: langIn.value.trim() || 'id',
+                  description: n.info?.synopsis || '',
+                  cover: await db.getCover(n.id),
+                  chapters: list,
+                })
+              : await buildTxtZip(list);
+            built = {
+              data,
+              name: `${safeFileName(title)}.${epub ? 'epub' : 'zip'}`,
+              mime: epub ? 'application/epub+zip' : 'application/zip',
+            };
             return list;
           });
           if (!chapters.length) {
             toast('Tidak ada chapter di rentang itu.');
             return false;
           }
-          const author = authorIn.value.trim();
-          const lang = langIn.value.trim() || 'id';
-          if (author !== (n.author || '') || lang !== (n.lang || 'id')) {
-            await db.updateMeta(n.id, { author, lang });
-            changed();
+          if (epub) {
+            const author = authorIn.value.trim();
+            const lang = langIn.value.trim() || 'id';
+            if (author !== (n.author || '') || lang !== (n.lang || 'id')) {
+              await db.updateMeta(n.id, { author, lang });
+              changed();
+            }
           }
         },
       },
     ],
   });
-  if (ok && built) downloadOrShare(built.data, built.name, 'application/epub+zip');
-}
-
-async function exportTxt(n) {
-  const data = await busy('Menyiapkan file…', async () => {
-    const chapters = await db.getChapterRange(n.id);
-    const width = String(Math.floor(Math.max(...chapters.map((c) => c.num)))).length;
-    const files = chapters.map((c) => {
-      const [i, f] = String(c.num).split('.');
-      return {
-        name: `${i.padStart(Math.max(4, width), '0')}${f ? '.' + f : ''}.txt`,
-        data: [chapterLabel(c.num, c.title), ...tidyParagraphs(c.paragraphs, c.num)].join('\n\n') + '\n',
-      };
-    });
-    return writeZip(files);
-  });
-  downloadOrShare(data, `${safeFileName(n.title)}.zip`, 'application/zip');
+  if (ok && built) downloadOrShare(built.data, built.name, built.mime);
 }
 
 async function openDeleteRange(n) {
