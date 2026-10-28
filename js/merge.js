@@ -5,6 +5,7 @@
 //   `info` dari sisi yang kalah dipakai hanya bila sisi pemenang belum punya `info` sama sekali
 //   (mis. ditulis aplikasi versi lama yang belum mengenalnya).
 // - Posisi baca dan status baca: yang `at` lebih baru menang.
+// - Sampul: `cover = { u }` (atau `{ u, del: true }` bila dihapus); yang `u` lebih baru menang. Gambarnya disimpan terpisah.
 // - Bookmark: per id, versi `at` lebih baru menang; bookmark yang dihapus dicatat di `bdel[id]`.
 // Modul murni supaya bisa diuji dengan `node --test`.
 
@@ -51,6 +52,7 @@ export function mergeNovel(L, R) {
   const info = meta.info ?? (meta === L ? R : L)?.info;
   const reads = [L?.lastRead, R?.lastRead].filter(Boolean).sort((a, b) => b.at - a.at);
   const statuses = [L?.status, R?.status].filter(Boolean).sort((a, b) => b.at - a.at);
+  const covers = [L?.cover, R?.cover].filter(Boolean).sort((a, b) => b.u - a.u);
   const { bookmarks, bdel } = mergeBookmarks(L, R);
   const novel = {
     id: (L || R).id,
@@ -68,6 +70,7 @@ export function mergeNovel(L, R) {
   };
   if (statuses[0]) novel.status = statuses[0];
   if (info) novel.info = info;
+  if (covers[0]) novel.cover = covers[0];
   if (novel.lang === undefined) delete novel.lang;
   return { novel, chapters };
 }

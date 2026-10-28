@@ -11,9 +11,11 @@ import {
   isTlHead,
   isSeparator,
   autoTlNote,
+  tidyParagraphs,
 } from './parse.js';
 import { readZip, writeZip } from './zip.js';
 import { buildEpub } from './epub.js';
+import { readEpub } from './epubin.js';
 import * as sync from './sync.js';
 
 const APP_VERSION = '1.2.0';
@@ -44,6 +46,9 @@ const ICONS = {
   more: 'M5 12h.01M12 12h.01M19 12h.01',
   close: 'M6 6l12 12M18 6L6 18',
   chevron: 'M9 6l6 6-6 6',
+  book: 'M12 6.5C10 5 7 4.5 3.5 4.6V18c3.5-.1 6.5.4 8.5 1.9 2-1.5 5-2 8.5-1.9V4.6C17 4.5 14 5 12 6.5zM12 6.5v13.4',
+  grid: 'M4 4h6.5v6.5H4zM13.5 4H20v6.5h-6.5zM4 13.5h6.5V20H4zM13.5 13.5H20V20h-6.5z',
+  list: 'M4 5h4v5H4zM11 6h9M11 9h6M4 14h4v5H4zM11 15h9M11 18h6',
   home: 'M3 11l9-7 9 7M5 10v10h5v-6h4v6h5V10',
   info: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 16.5v-5M12 8h.01',
   sort: 'M7 4v16M3.5 16.5L7 20l3.5-3.5M13 6h8M13 11h6M13 16h4',
@@ -352,6 +357,7 @@ const DEFAULTS = {
   barHidden: ['search', 'brightness'],
   libSort: 'recent',
   libFilter: 'all',
+  libView: 'shelf',
 };
 
 // Tombol yang bisa dipasang di bar layar baca. Semuanya juga selalu ada di menu ⋯.
@@ -865,7 +871,7 @@ window.addEventListener('hashchange', route);
 
 async function showLibrary() {
   document.title = 'Baca Novel';
-  const novels = await db.listNovels();
+  const [novels, covers] = await Promise.all([db.listNovels(), db.getCovers()]);
   const bar = el(
     'header',
     { class: 'bar' },
@@ -881,7 +887,7 @@ async function showLibrary() {
   );
 
   const body = novels.length
-    ? libraryList(novels)
+    ? libraryList(novels, covers)
     : el(
         'div',
         { class: 'empty' },
@@ -903,7 +909,22 @@ async function showLibrary() {
 
   const foot = el('p', { class: 'foot' });
   showStorageInfo(foot);
-  setView([bar, el('main', { class: 'page library' }, body, syncLine(), foot)]);
+  // Tombol bulat kanan bawah: lanjut ke novel yang terakhir dibaca.
+  const last = novels.filter((n) => n.lastRead && n.toc.length).sort((a, b) => b.lastRead.at - a.lastRead.at)[0];
+  const fab = last
+    ? el(
+        'button',
+        {
+          type: 'button',
+          class: 'fab',
+          'aria-label': `Lanjut baca ${last.title}, Chapter ${last.lastRead.num}`,
+          title: `Lanjut: ${last.title} · Chapter ${last.lastRead.num}`,
+          onclick: () => (location.hash = `#/read/${encodeURIComponent(last.id)}`),
+        },
+        icon('book'),
+      )
+    : null;
+  setView([bar, el('main', { class: 'page library' }, body, syncLine(), foot), fab].filter(Boolean));
 }
 
 const STATUSES = { reading: 'Sedang dibaca', later: 'Nanti', done: 'Selesai' };
@@ -921,8 +942,13 @@ const fold = (s) =>
 let libQuery = '';
 
 /** Perpustakaan: cari judul/pengarang, urutkan, dan saring menurut status baca. */
-function libraryList(novels) {
+function libraryList(novels, covers) {
   const cards = el('div', { class: 'cards' });
+  const viewBtn = iconBtn('grid', 'Ganti tampilan', () => {
+    settings.libView = settings.libView === 'shelf' ? 'list' : 'shelf';
+    saveSettings();
+    renderCards();
+  });
   const search = el('input', { type: 'search', placeholder: 'Cari judul atau pengarang…', value: libQuery, 'aria-label': 'Cari novel' });
   const sort = el(
     'select',
@@ -961,7 +987,13 @@ function libraryList(novels) {
         return !q || fold([n.title, n.author, i.origTitle, i.translator, ...(i.genres || [])].join(' ')).includes(q);
       })
       .sort(SORTS[settings.libSort]?.fn || SORTS.recent.fn);
-    cards.replaceChildren(...(shown.length ? shown.map(novelCard) : [el('p', { class: 'empty small' }, 'Tidak ada novel yang cocok.')]));
+    const shelf = settings.libView === 'shelf';
+    cards.className = shelf ? 'shelf' : 'cards';
+    viewBtn.replaceChildren(icon(shelf ? 'list' : 'grid'));
+    viewBtn.setAttribute('aria-label', shelf ? 'Tampilan daftar' : 'Tampilan rak');
+    viewBtn.title = viewBtn.getAttribute('aria-label');
+    const make = shelf ? (n) => shelfItem(n, covers.get(n.id)) : (n) => novelCard(n, covers.get(n.id));
+    cards.replaceChildren(...(shown.length ? shown.map(make) : [el('p', { class: 'empty small' }, 'Tidak ada novel yang cocok.')]));
   };
   search.oninput = () => {
     libQuery = search.value;
@@ -974,10 +1006,38 @@ function libraryList(novels) {
   };
   renderChips();
   renderCards();
-  return el('div', null, el('div', { class: 'lib-tools' }, search, sort), chips, cards);
+  return el('div', null, el('div', { class: 'lib-tools' }, search, sort, viewBtn), chips, cards);
 }
 
-function novelCard(n) {
+/** Progres baca (persen, menurut urutan chapter terakhir dibaca). */
+function readPct(n) {
+  const idx = n.lastRead ? n.toc.findIndex((t) => t.num === n.lastRead.num) : -1;
+  return n.toc.length && idx >= 0 ? ((idx + 1) / n.toc.length) * 100 : 0;
+}
+
+/** Tampilan rak: sampul + persen, judul di bawah; ⋯ membuka menu novel. */
+function shelfItem(n, cover) {
+  const pct = readPct(n);
+  const read = () => (n.toc.length ? (location.hash = `#/read/${encodeURIComponent(n.id)}`) : openImport(n.id));
+  return el(
+    'div',
+    { class: 'book' },
+    el(
+      'button',
+      { type: 'button', class: 'book-cover', 'aria-label': `Baca ${n.title}`, onclick: read },
+      coverEl(n, cover),
+      el('span', { class: 'pct' }, `${Math.round(pct)}%`),
+    ),
+    el(
+      'div',
+      { class: 'book-foot' },
+      el('span', { class: 'book-title', title: n.title }, n.title),
+      iconBtn('more', 'Menu novel', () => novelMenu(n)),
+    ),
+  );
+}
+
+function novelCard(n, cover) {
   const total = n.toc.length;
   const idx = n.lastRead ? n.toc.findIndex((t) => t.num === n.lastRead.num) : -1;
   const pct = total && idx >= 0 ? ((idx + 1) / total) * 100 : 0;
@@ -990,6 +1050,7 @@ function novelCard(n) {
   return el(
     'section',
     { class: 'card' },
+    el('button', { type: 'button', class: 'card-cover', 'aria-label': `Baca ${n.title}`, onclick: total ? read : () => openImport(n.id) }, coverEl(n, cover)),
     el('h2', { onclick: total ? read : null }, n.title, byline(n) ? el('small', { class: 'author' }, byline(n)) : null),
     iconBtn('more', 'Menu novel', () => novelMenu(n)),
     el(
@@ -1030,6 +1091,51 @@ function novelCard(n) {
   );
 }
 
+// ---------- Sampul ----------
+const COVER_W = 400;
+const COVER_H = 600;
+
+/** Gambar (Blob/File) → data URL JPEG maks 400×600, supaya ringan disimpan & disinkron. */
+async function coverData(blob) {
+  const img = await createImageBitmap(blob);
+  const scale = Math.min(1, COVER_W / img.width, COVER_H / img.height);
+  const c = document.createElement('canvas');
+  c.width = Math.max(1, Math.round(img.width * scale));
+  c.height = Math.max(1, Math.round(img.height * scale));
+  c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+  img.close?.();
+  return c.toDataURL('image/jpeg', 0.82);
+}
+
+/** Sampul novel; tanpa gambar dibuat sampul berwarna berisi judul (warna tetap per judul). */
+function coverEl(n, data, cls = '') {
+  if (data) return el('img', { class: `cover ${cls}`, src: data, alt: '', loading: 'lazy', decoding: 'async' });
+  let h = 0;
+  for (const ch of n.title) h = (h * 31 + ch.codePointAt(0)) >>> 0;
+  const hue = h % 360;
+  const ph = el('div', { class: `cover ph ${cls}`, 'aria-hidden': 'true' }, el('span', null, n.title));
+  ph.style.background = `linear-gradient(150deg, hsl(${hue} 55% 46%), hsl(${(hue + 40) % 360} 60% 30%))`;
+  return ph;
+}
+
+function pickCover(n) {
+  const input = el('input', { type: 'file', accept: 'image/*' });
+  input.onchange = async () => {
+    const f = input.files[0];
+    if (!f) return;
+    try {
+      await db.setCover(n.id, await busy('Menyiapkan sampul…', () => coverData(f)));
+    } catch (e) {
+      console.error(e);
+      return toast('Gambar tidak bisa dibaca.');
+    }
+    changed();
+    toast('Sampul dipasang.');
+    route();
+  };
+  input.click();
+}
+
 // ---------- Info novel ----------
 // Disimpan di novel.info (ikut sinkron): { origTitle, translator, status, genres: [], source, synopsis }.
 const STORY_STATUS = {
@@ -1045,8 +1151,9 @@ function byline(n) {
   return [n.author, t && `Terj. ${t}`].filter(Boolean).join(' · ');
 }
 
-function openNovelInfo(n) {
+async function openNovelInfo(n) {
   const i = n.info || {};
+  const cover = await db.getCover(n.id);
   const total = n.toc.length;
   const row = (label, value) => (value ? el('div', { class: 'info-row' }, el('dt', null, label), el('dd', null, value)) : null);
   let source = i.source;
@@ -1064,6 +1171,7 @@ function openNovelInfo(n) {
     body: el(
       'div',
       { class: 'novel-info' },
+      el('div', { class: 'info-cover' }, coverEl(n, cover)),
       i.origTitle ? el('p', { class: 'info-orig' }, i.origTitle) : null,
       el(
         'dl',
@@ -1071,7 +1179,7 @@ function openNovelInfo(n) {
         row('Penulis', n.author),
         row('Penerjemah', i.translator),
         row('Status cerita', i.status && STORY_STATUS[i.status]?.label),
-        row('Genre', i.genres?.length ? el('span', { class: 'chips' }, i.genres.map((g) => el('span', { class: 'chip' }, g))) : null),
+        row('Genre', i.genres?.length ? el('span', { class: 'genre-chips' }, i.genres.map((g) => el('span', { class: 'chip' }, g))) : null),
         row('Chapter', total ? `${fmtNum(total)} chapter · ${n.toc[0].num}–${n.toc[total - 1].num}` : 'Belum ada'),
         row('Sumber', source),
         row('Ditambahkan', new Date(n.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })),
@@ -1219,6 +1327,20 @@ function novelMenu(n) {
     act('Compile ke EPUB', () => openEpub(n), { disabled: !has }),
     act('Ekspor sebagai .zip (txt)', () => exportTxt(n), { disabled: !has }),
     act('Edit judul & info novel', () => editNovelInfo(n), { change: true }),
+    act('Ganti sampul…', () => pickCover(n), { change: true }),
+    ...(n.cover && !n.cover.del
+      ? [
+          act(
+            'Hapus sampul',
+            async () => {
+              await db.setCover(n.id, null);
+              changed();
+              route();
+            },
+            { change: true },
+          ),
+        ]
+      : []),
     act('Hapus rentang chapter', () => openDeleteRange(n), { disabled: !has, danger: true, change: true }),
     act(
       'Hapus novel',
@@ -1316,7 +1438,14 @@ async function openEpub(n) {
           const title = titleIn.value.trim() || n.title;
           const chapters = await busy('Menyusun EPUB…', async () => {
             const list = await db.getChapterRange(n.id, r.from, r.to);
-            const data = await buildEpub({ title, author: authorIn.value.trim(), lang: langIn.value.trim() || 'id', chapters: list });
+            const data = await buildEpub({
+              title,
+              author: authorIn.value.trim(),
+              lang: langIn.value.trim() || 'id',
+              description: n.info?.synopsis || '',
+              cover: await db.getCover(n.id),
+              chapters: list,
+            });
             built = { data, name: `${safeFileName(title)}.epub` };
             return list;
           });
@@ -1345,7 +1474,7 @@ async function exportTxt(n) {
       const [i, f] = String(c.num).split('.');
       return {
         name: `${i.padStart(Math.max(4, width), '0')}${f ? '.' + f : ''}.txt`,
-        data: [chapterLabel(c.num, c.title), ...c.paragraphs].join('\n\n') + '\n',
+        data: [chapterLabel(c.num, c.title), ...tidyParagraphs(c.paragraphs, c.num)].join('\n\n') + '\n',
       };
     });
     return writeZip(files);
@@ -1384,13 +1513,23 @@ async function openDeleteRange(n) {
 
 // ---------- Impor ----------
 
-const isZip = (f) => /\.zip$/i.test(f.name) || /zip/.test(f.type);
+const isEpub = (f) => /\.epub$/i.test(f.name) || f.type === 'application/epub+zip';
+const isZip = (f) => !isEpub(f) && (/\.zip$/i.test(f.name) || /zip/.test(f.type));
 const isTxtName = (name) => /\.txt$/i.test(name) && !/(^|\/)(__MACOSX\/|\.)/.test(name);
 
 async function readSources(files) {
   const sources = [];
   for (const f of files) {
-    if (isZip(f)) {
+    if (isEpub(f)) {
+      let ep;
+      try {
+        ep = await readEpub(await f.arrayBuffer());
+      } catch (e) {
+        throw new Error(`${f.name}: ${e.message}`);
+      }
+      if (!ep.chapters.length) throw new Error(`${f.name}: tidak ada chapter berisi teks di dalam EPUB.`);
+      sources.push({ name: f.name, chapters: ep.chapters, epub: ep });
+    } else if (isZip(f)) {
       const entries = readZip(await f.arrayBuffer())
         .filter((e) => !e.dir && isTxtName(e.name))
         .sort((a, b) => naturalCompare(a.name, b.name));
@@ -1429,11 +1568,15 @@ async function openImport(presetNovelId) {
     placeholder: 'Chapter 1: Awal Mula\nParagraf pertama…\nParagraf kedua…\n\nChapter 2: Judul Berikutnya\n…',
     spellcheck: 'false',
   });
-  const fileIn = el('input', { type: 'file', multiple: true, accept: '.txt,.zip,text/plain,application/zip,application/x-zip-compressed' });
+  const fileIn = el('input', {
+    type: 'file',
+    multiple: true,
+    accept: '.txt,.zip,.epub,text/plain,application/zip,application/x-zip-compressed,application/epub+zip',
+  });
   const fileHelp = el(
     'p',
     { class: 'small muted' },
-    'Pilih satu atau beberapa file .txt, atau .zip berisi .txt (diurutkan menurut nama file). File tanpa baris "Chapter N: …" dianggap satu chapter, nomornya diambil dari nama file.',
+    'Pilih file .epub, satu atau beberapa file .txt, atau .zip berisi .txt (diurutkan menurut nama file). File .txt tanpa baris "Chapter N: …" dianggap satu chapter, nomornya diambil dari nama file. Dari EPUB ikut diambil judul, pengarang, sinopsis, dan sampul.',
   );
   fileIn.onchange = () => {
     const f = fileIn.files[0];
@@ -1472,7 +1615,7 @@ async function openImport(presetNovelId) {
     title: 'Impor',
     className: 'wide',
     body: [
-      el('div', { class: 'tabs', role: 'tablist' }, tabBtn('paste', 'Tempel teks'), tabBtn('file', 'File .txt / .zip')),
+      el('div', { class: 'tabs', role: 'tablist' }, tabBtn('paste', 'Tempel teks'), tabBtn('file', 'File (txt, zip, epub)')),
       pastePane,
       filePane,
       el('div', { class: 'row-2' }, el('label', { class: 'field' }, el('span', null, 'Simpan ke'), target), titleField),
@@ -1500,10 +1643,13 @@ async function openImport(presetNovelId) {
           }
           const res = buildImport(sources);
           if (res.error) return (showErr(res.error), false);
+          const epub = sources.find((s) => s.epub)?.epub || null;
           let title = titleIn.value.trim();
+          // Judul file mengisi kolom judul otomatis; untuk EPUB judul dari metadata lebih tepat.
+          if (epub?.title && (!title || title === baseName(fileIn.files[0].name))) title = epub.title;
           if (!target.value && !title && mode === 'file' && fileIn.files.length) title = baseName(fileIn.files[0].name);
           // Teruskan ke pratinjau; dialog impor ditutup, pratinjau bisa kembali ke sini lewat tombol Batal.
-          pending = { res, novelId: target.value || null, title: title || 'Tanpa judul' };
+          pending = { res, novelId: target.value || null, title: title || 'Tanpa judul', epub };
         },
       },
     ],
@@ -1517,7 +1663,7 @@ async function openImport(presetNovelId) {
 }
 let pending = null;
 
-async function openPreview({ res, novelId, title }) {
+async function openPreview({ res, novelId, title, epub }) {
   const novel = novelId ? await db.getNovel(novelId) : null;
   const existing = new Map((novel?.toc || []).map((t) => [t.num, t]));
   const items = res.items.map((it, i) => ({ ...it, i, on: !it.dup }));
@@ -1550,6 +1696,8 @@ async function openPreview({ res, novelId, title }) {
       el('span', { class: 'ttl' }, it.title || el('i', { class: 'muted' }, '(tanpa judul)')),
       it.autoNum ? el('span', { class: 'badge auto' }, 'nomor otomatis') : null,
       it.dup ? el('span', { class: 'badge dup' }, 'nomor kembar') : null,
+      it.tl === 'fixed' ? el('span', { class: 'badge tl-fixed', title: 'Format TL note dirapikan otomatis' }, 'TL note dirapikan') : null,
+      it.tl === 'ok' ? el('span', { class: 'badge tl-ok' }, 'TL note') : null,
       existing.has(it.num) ? el('span', { class: 'badge exists' }, 'sudah ada') : el('span', { class: 'badge new' }, 'baru'),
       el('span', { class: 'cnt' }, `${fmtNum(it.paragraphs.length)} par.`),
     );
@@ -1557,12 +1705,19 @@ async function openPreview({ res, novelId, title }) {
     exp.onclick = () => {
       const show = body.classList.contains('hidden');
       if (show && !body.childElementCount) {
-        const ps = it.paragraphs;
+        // Chapter ber-TL note: tampilkan akhir cerita, pemisah "---" (apa adanya, di luar kotak), dan seluruh TL note
+        // supaya formatnya bisa dicek.
+        const tl = it.tl ? it.paragraphs.findIndex(isTlHead) : -1;
+        const ps = tl >= 0 ? it.paragraphs.slice(0, tl) : it.paragraphs.slice();
+        const seps = [];
+        if (tl >= 0) while (ps.length && isSeparator(ps[ps.length - 1])) seps.unshift(ps.pop());
         body.append(
           ...[
             ...ps.slice(0, 3).map((p) => el('p', null, p)),
             ps.length > 4 ? el('p', null, `… (${fmtNum(ps.length - 4)} paragraf lagi) …`) : null,
             ps.length > 3 ? el('p', null, ps[ps.length - 1]) : null,
+            ...seps.map((p) => el('p', null, p)),
+            ...(tl >= 0 ? it.paragraphs.slice(tl).map((p) => el('p', { class: 'ptl' }, p)) : []),
             !ps.length ? el('p', null, '(kosong)') : null,
             it.source ? el('p', { class: 'src' }, `Sumber: ${it.source}`) : null,
           ].filter(Boolean),
@@ -1586,7 +1741,7 @@ async function openPreview({ res, novelId, title }) {
       refreshSummary();
     };
     head.querySelector('.ttl').onclick = () => exp.click();
-    rows.push({ it, setOn });
+    rows.push({ it, setOn, row });
     list.append(row);
   }
 
@@ -1600,6 +1755,18 @@ async function openPreview({ res, novelId, title }) {
     refreshSummary();
   };
   refreshSummary();
+
+  // Saring daftar: hanya chapter yang punya TL note (yang dirapikan otomatis ditampilkan lebih dulu di pesan atas).
+  const tlCount = items.filter((x) => x.tl).length;
+  const tlFilter = tlCount
+    ? el('button', { type: 'button', class: 'btn', 'aria-pressed': 'false' }, `Hanya ber-TL note (${fmtNum(tlCount)})`)
+    : null;
+  if (tlFilter)
+    tlFilter.onclick = () => {
+      const on = tlFilter.getAttribute('aria-pressed') !== 'true';
+      tlFilter.setAttribute('aria-pressed', String(on));
+      for (const r of rows) r.row.classList.toggle('hidden', on && !r.it.tl);
+    };
 
   let toSave = null;
   const v = await dialog({
@@ -1619,6 +1786,7 @@ async function openPreview({ res, novelId, title }) {
         { class: 'preview-tools' },
         el('button', { type: 'button', class: 'btn', onclick: () => setAll(true) }, 'Pilih semua'),
         el('button', { type: 'button', class: 'btn', onclick: () => setAll(false) }, 'Kosongkan'),
+        tlFilter,
       ),
       list,
     ],
@@ -1651,12 +1819,24 @@ async function openPreview({ res, novelId, title }) {
     return;
   }
   const target = novel || (await db.createNovel(title));
-  await busy('Menyimpan…', () =>
-    db.saveChapters(
+  await busy('Menyimpan…', async () => {
+    await db.saveChapters(
       target.id,
       save.map(({ num, title, paragraphs }) => ({ num, title, paragraphs })),
-    ),
-  );
+    );
+    // Dari EPUB: pengarang & sinopsis untuk novel baru, sampul bila novel belum punya.
+    if (epub) {
+      if (!novel && (epub.author || epub.synopsis))
+        await db.updateMeta(target.id, { author: epub.author, ...(epub.synopsis ? { info: { synopsis: epub.synopsis } } : {}) });
+      if (epub.cover && !(novel?.cover && !novel.cover.del)) {
+        try {
+          await db.setCover(target.id, await coverData(new Blob([epub.cover.bytes], { type: epub.cover.type })));
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    }
+  });
   requestPersist();
   const parts = [`${fmtNum(save.length - replaced)} chapter baru`];
   if (replaced) parts.push(`${fmtNum(replaced)} diganti`);

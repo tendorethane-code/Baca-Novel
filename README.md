@@ -7,7 +7,8 @@ Repo ini hanya berisi kode. Jangan commit teks novel; `.gitignore` sudah menolak
 
 ## Fitur
 
-- **Impor**: tempel teks, satu atau beberapa file `.txt`, atau `.zip` berisi `.txt` (diurutkan menurut nama file).
+- **Impor**: tempel teks, satu atau beberapa file `.txt`, `.zip` berisi `.txt` (diurutkan menurut nama file), atau `.epub`.
+  - **EPUB** (2 & 3): tiap dokumen di urutan baca = satu chapter. Judul dari daftar isi EPUB atau judul pertama di dokumen; nomor dari `Chapter 12`, `Chapter 12, Judul`, `Bab 12`, `Ch. 12`, `12.`; dokumen tanpa nomor diberi nomor berikutnya, halaman sampul/judul yang pendek dilewati. `<br>` memisah baris, `<hr>` jadi `---`. Judul, pengarang, sinopsis, dan sampul ikut diambil.
   - Teks dipotong per baris judul `Chapter N: Judul` (juga `Chapter N - Judul`, `Chapter N`, `Bab N: Judul`, nomor desimal seperti `10.5`).
     Setelah nomor wajib ada pemisah (`:`, `-`, `.`, `—`) atau akhir baris, supaya kalimat seperti "Chapter 5 was…" tidak dianggap judul.
   - Tiap baris yang tidak kosong = satu paragraf; baris kosong diabaikan.
@@ -15,6 +16,8 @@ Repo ini hanya berisi kode. Jangan commit teks novel; `.gitignore` sudah menolak
   - **Pratinjau** sebelum disimpan: jumlah chapter/paragraf, cuplikan isi, peringatan (teks sebelum chapter pertama, nomor kembar, nomor yang hilang, chapter kosong). Chapter bisa dicentang/dilepas.
   - Kalau nomor chapter sudah ada di novel tujuan, aplikasi bertanya per chapter: **ganti** atau **lewati** (bawaan: lewati).
 - **Perpustakaan**: cari judul/pengarang, urutkan (terakhir dibaca / judul / baru ditambah), status baca (*Sedang dibaca*, *Nanti*, *Selesai*) dengan filter. Status diubah lewat menu ⋯ di kartu novel. Tiap kartu punya tombol **Daftar isi** untuk langsung memilih chapter (atau bookmark) tanpa masuk ke layar baca dulu; tombol **+** untuk menambah chapter.
+- **Halaman depan**: tampilan **Rak** (sampul + persen baca) atau **Daftar** (kartu dengan sampul kecil), ditukar lewat tombol di samping urutan. Tombol bulat di kanan bawah langsung melanjutkan novel yang terakhir dibaca.
+- **Sampul**: otomatis dari EPUB, atau menu ⋯ kartu → *Ganti sampul…* (gambar dikecilkan jadi JPEG ±400×600, puluhan KB). Tanpa sampul, dibuat sampul berwarna berisi judul. Sampul ikut tersinkron dan ikut masuk saat compile EPUB (bersama sinopsis).
 - **Info novel** (menu ⋯ di kartu novel atau di layar baca): judul asli, penulis, penerjemah, status cerita (Bersambung/Tamat/Hiatus), genre, sumber/tautan, sinopsis, jumlah & rentang chapter, tanggal ditambahkan. Diubah lewat *Edit judul & info novel*; ikut tersinkron. Penulis & penerjemah tampil di kartu, dan pencarian perpustakaan juga mencari judul asli, penerjemah, dan genre.
 - **Tampilan**: 11 tema latar (termasuk *Claude*: latar #151515, teks #f9f9f7) + tema kustom (pilih warna latar & teks, dengan peringatan kontras rendah).
   - **Ukuran huruf** lewat tombol A−/A+ atau garis bertitik (14–34px), **jenis huruf** dan **kecerahan teks** (Terang/Sedang/Redup/Sangat redup) dari menu pilihan, jarak baris, jarak antarparagraf (px), lebar teks (hanya tampil di layar lebar ≥ 480px; di HP teks sudah selebar layar), rata kiri-kanan.
@@ -29,6 +32,10 @@ Repo ini hanya berisi kode. Jangan commit teks novel; `.gitignore` sudah menolak
 - **Tombol panel bisa diatur** (Pengaturan → *Tombol di panel layar baca*): pilih tombol yang tampil dan urutannya. Semua aksi tetap ada di menu ⋯.
 - **Edit teks chapter**: lewat menu ⋯ di layar baca → *Edit teks chapter ini…* (sengaja dipisah dari tombol biasa). Tiap baris tidak kosong = satu paragraf. Menutup editor dengan perubahan yang belum disimpan selalu minta konfirmasi.
 - **TL note**: di kotak *Tempel teks* dan editor chapter ada tombol **+ TL note**. Blok catatan format lama (mis. `TL: …`, `T/N`, `Catatan penerjemah:`, `> TL note …`) lalu ketuk: baris judulnya diganti `TL note Chapter N` (nomor diambil dari judul chapter terdekat di atasnya / chapter yang diedit), isinya tetap. Saat dibaca, `TL note Chapter N` sampai akhir chapter tampil sebagai kotak catatan; baris pemisah seperti `---` / `—-` tampil sebagai garis.
+  - Format baku di akhir chapter: `…akhir cerita` → `---` → `TL note Chapter N` → isi catatan. Pemisah lama (`___`, `—-`, `***`, beberapa sekaligus) diganti satu `---`, dan `---` ditambahkan bila belum ada. Pemisah adegan di tengah cerita tidak disentuh.
+  - Pratinjau impor menandai chapter yang punya TL note (**TL note**) dan yang formatnya dirapikan (**TL note dirapikan**), dengan tombol *Hanya ber-TL note* dan isi TL note lengkap saat baris dibuka.
+  - Ekspor .zip (txt) dan EPUB selalu memakai format baku ini, termasuk chapter lama yang belum dirapikan.
+  - Pemisah `---` sebelum TL note hanya ada di **teks** (impor, editor, file .txt). Di layar baca dan EPUB tidak muncul, karena kotak TL note sudah jadi pemisah; di pratinjau impor tampil apa adanya supaya formatnya bisa dicek. Pemisah adegan di tengah cerita (mis. `***`) tetap seperti aslinya di teks dan tampil sebagai garis di layar baca/EPUB.
   - **Otomatis**: saat impor dan saat menyimpan editor chapter, TL note di akhir chapter yang diawali judul khas (`TL`, `T/N`, `TN`, `Translator's note`, `Catatan penerjemah`, `Catatan TL`) langsung dirapikan, asalkan ada setelah baris pemisah atau di paruh kedua chapter. Judul umum seperti `Note:` hanya lewat tombol, supaya kalimat cerita tidak ikut berubah.
   - Chapter yang sudah tersimpan: menu ⋯ kartu novel → **Rapikan TL note semua chapter** (menampilkan chapter mana saja sebelum disimpan).
   - Pengingat chapter sebelumnya melewati TL note dan baris pemisah, jadi yang ditampilkan paragraf cerita terakhir.
@@ -59,7 +66,7 @@ Catatan:
 - Token disimpan di browser tiap perangkat dan hanya dikirim ke `api.github.com`. Karena hanya bisa mengakses repo data, kebocoran token tidak membuka repo lain. Saat token kedaluwarsa, buat yang baru dan hubungkan ulang.
 - Aturan bentrok: versi chapter yang lebih baru menang, posisi baca yang paling baru menang, hapusan menang kalau lebih baru dari versi mana pun.
 - Impor novel di **satu** perangkat saja; novel yang sama diimpor terpisah di dua perangkat akan jadi dua novel.
-- Isi repo data: `library.json` (daftar novel, daftar isi, posisi) dan `novels/<id>/<blok>.json` (isi chapter per 50 nomor). Jangan diubah manual.
+- Isi repo data: `library.json` (daftar novel, daftar isi, posisi), `novels/<id>/<blok>.json` (isi chapter per 50 nomor), dan `covers/<id>.json` (sampul). Jangan diubah manual.
 
 ## Penting soal data
 
@@ -95,6 +102,6 @@ node --test tests/*.test.mjs    # unit test parser, zip, dan EPUB
 | `js/parse.js` | Dekode teks, potong chapter, susun hasil impor |
 | `js/db.js` | Penyimpanan IndexedDB |
 | `js/merge.js`, `js/sync.js` | Aturan gabung data antarperangkat, sinkron ke repo GitHub privat |
-| `js/zip.js`, `js/epub.js` | Baca/tulis ZIP, susun EPUB |
+| `js/zip.js`, `js/epub.js`, `js/epubin.js` | Baca/tulis ZIP, susun EPUB, baca EPUB untuk impor |
 | `fonts/` | Huruf Noto Serif, Source Serif 4, Roboto (semuanya SIL Open Font License, `fonts/LICENSE-*`) |
 | `sw.js`, `manifest.webmanifest`, `icons/` | PWA / offline |

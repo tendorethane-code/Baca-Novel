@@ -13,7 +13,12 @@ export function parseHeading(line) {
 }
 
 // ---------- TL note ----------
-// Format baku: baris "TL note Chapter N", lalu isi catatan di baris-baris berikutnya (biasanya di akhir chapter).
+// Format baku di akhir chapter:
+//   …akhir cerita
+//   ---
+//   TL note Chapter N
+//   isi catatan…
+export const TL_SEP = '---';
 const TL_HEAD_RE = /^tl note chapter\s+\d+(?:\.\d+)?\s*:?$/i;
 export const isTlHead = (line) => TL_HEAD_RE.test(line.trim());
 
@@ -45,8 +50,12 @@ export function formatTlNote(text, num, joiner = '\n') {
     .split('\n')
     .map((l) => l.replace(/^\s*>\s?/, '').trim())
     .filter(Boolean);
-  const lead = [];
-  while (lines.length && isSeparator(lines[0])) lead.push(lines.shift());
+  // Pemisah di depan blok (mis. "___", "—-") dibakukan jadi satu "---".
+  let lead = [];
+  while (lines.length && isSeparator(lines[0])) {
+    lines.shift();
+    lead = [TL_SEP];
+  }
   if (lines.length) {
     const rest = stripOldTlHead(lines[0]);
     if (rest !== null) {
@@ -62,21 +71,33 @@ export function formatTlNote(text, num, joiner = '\n') {
 const AUTO_TL_RE = /^(?:>\s*)?(?:tl|t\/n|tn|translator'?s?\s+notes?|catatan\s+(?:penerjemah|tl))(?=$|[\s:：\-–—.(\[])/i;
 
 /**
- * Rapikan TL note di akhir chapter tanpa perlu diblok (dipakai saat impor, simpan editor, dan "Rapikan TL note").
+ * Rapikan TL note di akhir chapter tanpa perlu diblok (dipakai saat impor, simpan editor, ekspor, dan "Rapikan TL note").
  * Catatan dikenali bila diawali judul khas (lihat AUTO_TL_RE) dan ada di akhir chapter: tepat setelah baris pemisah
- * atau di paruh kedua chapter. Judul baku dengan nomor yang salah ikut dibetulkan.
- * Mengembalikan daftar paragraf baru, atau null bila tidak ada yang berubah.
+ * atau di paruh kedua chapter. Hasilnya selalu "…cerita / --- / TL note Chapter N / isi": judul dengan nomor salah
+ * dibetulkan, pemisah lama ("___", "—-", "***", beberapa sekaligus) diganti satu "---", dan "---" ditambahkan bila
+ * belum ada. Mengembalikan daftar paragraf baru, atau null bila tidak ada yang berubah.
  */
 export function autoTlNote(paragraphs, num) {
+  const i = findTlNote(paragraphs);
+  if (i < 0) return null;
+  const story = paragraphs.slice(0, i);
+  while (story.length && isSeparator(story[story.length - 1])) story.pop();
+  const note = formatTlNote(paragraphs.slice(i).join('\n'), num).split('\n');
+  const out = story.length ? [...story, TL_SEP, ...note] : note;
+  return out.length === paragraphs.length && out.every((x, k) => x === paragraphs[k]) ? null : out;
+}
+
+/** Paragraf dengan TL note yang sudah dibakukan (untuk ekspor .txt & EPUB; chapter lama yang belum dirapikan ikut rapi). */
+export const tidyParagraphs = (paragraphs, num) => autoTlNote(paragraphs, num) || paragraphs;
+
+/** Indeks awal TL note (judul baku, atau judul lama yang khas di akhir chapter), atau -1. */
+export function findTlNote(paragraphs) {
   for (let i = 0; i < paragraphs.length; i++) {
     const p = paragraphs[i];
-    const head = isTlHead(p);
-    if (!head && !AUTO_TL_RE.test(p)) continue;
-    if (!head && !(i >= paragraphs.length / 2 || (i > 0 && isSeparator(paragraphs[i - 1])))) continue;
-    const out = [...paragraphs.slice(0, i), ...formatTlNote(paragraphs.slice(i).join('\n'), num).split('\n')];
-    return out.length === paragraphs.length && out.every((x, k) => x === paragraphs[k]) ? null : out;
+    if (isTlHead(p)) return i;
+    if (AUTO_TL_RE.test(p) && (i >= paragraphs.length / 2 || (i > 0 && isSeparator(paragraphs[i - 1])))) return i;
   }
-  return null;
+  return -1;
 }
 
 /** Nomor dari judul chapter terdekat sebelum posisi `pos` (untuk teks tempel berisi banyak chapter). */
@@ -164,7 +185,8 @@ export function buildImport(sources) {
 
   for (const src of sources) {
     const label = src.name || 'Teks tempelan';
-    const { chapters, preamble } = splitChapters(src.text);
+    // Sumber yang sudah terpotong per chapter (mis. EPUB) dipakai apa adanya.
+    const { chapters, preamble } = src.chapters ? { chapters: src.chapters, preamble: [] } : splitChapters(src.text);
     if (chapters.length) {
       for (const c of chapters) items.push({ ...c, source: src.name });
       if (preamble.length) {
@@ -203,15 +225,21 @@ export function buildImport(sources) {
     warnings.push(`${unnumbered.length} file tanpa nomor chapter diberi nomor otomatis (ditandai "nomor otomatis").`);
   }
 
-  let tlFixed = 0;
+  // TL note: dirapikan otomatis; it.tl = 'ok' (sudah benar) / 'fixed' (dirapikan), supaya bisa dicek di pratinjau.
   for (const it of items) {
     const fixed = autoTlNote(it.paragraphs, it.num);
-    if (fixed) {
-      it.paragraphs = fixed;
-      tlFixed++;
-    }
+    if (fixed) it.paragraphs = fixed;
+    if (it.paragraphs.some(isTlHead)) it.tl = fixed ? 'fixed' : 'ok';
   }
-  if (tlFixed) warnings.push(`${tlFixed} chapter: TL note format lama dirapikan otomatis jadi "TL note Chapter N".`);
+  const withTl = items.filter((i) => i.tl);
+  if (withTl.length) {
+    const list = (arr) => arr.slice(0, 20).map((i) => i.num).join(', ') + (arr.length > 20 ? `, … (+${arr.length - 20})` : '');
+    const fixedTl = withTl.filter((i) => i.tl === 'fixed');
+    warnings.push(
+      `TL note ada di ${withTl.length} chapter (${list(withTl)}).` +
+        (fixedTl.length ? ` Format ${fixedTl.length} chapter dirapikan otomatis: ${list(fixedTl)}.` : ' Semua formatnya sudah benar.'),
+    );
+  }
 
   const seen = new Set();
   let dupCount = 0;

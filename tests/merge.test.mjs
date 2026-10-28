@@ -57,6 +57,13 @@ test('info novel ikut metadata terbaru; tidak hilang oleh versi aplikasi lama', 
   assert.equal('info' in mergeNovel(novel({}), novel({})).novel, false);
 });
 
+test('sampul: cover.u terbaru menang, termasuk hapusan', () => {
+  assert.deepEqual(mergeNovel(novel({ cover: { u: 5 } }), novel({ cover: { u: 9 } })).novel.cover, { u: 9 });
+  assert.deepEqual(mergeNovel(novel({ cover: { u: 12, del: true } }), novel({ cover: { u: 9 } })).novel.cover, { u: 12, del: true });
+  assert.deepEqual(mergeNovel(novel({ cover: { u: 3 } }), novel({})).novel.cover, { u: 3 });
+  assert.equal('cover' in mergeNovel(novel({}), novel({})).novel, false);
+});
+
 test('novel hanya ada di satu sisi', () => {
   const { novel: m, chapters } = mergeNovel(undefined, novel({ toc: [ch(1, 3)] }));
   assert.equal(m.id, 'n1');
