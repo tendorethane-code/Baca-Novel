@@ -21,6 +21,8 @@
         // Belum pernah dibuka: tema bawaan Neon (gelap).
         var dark = s.paint ? s.paint.dark : true;
         var bg = s.paint ? s.paint.bg : '#07070d';
+        // Halaman depan punya gaya sendiri (bawaan Eclipse Neon); layar baca memakai tema warna baca.
+        if (!/^#\/?read\//.test(location.hash) && (!s.paint || s.paint.home !== null)) { bg = (s.paint && s.paint.home) || '#07070d'; dark = true; }
         document.documentElement.style.background = bg;
         document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
       } catch (e) {}
