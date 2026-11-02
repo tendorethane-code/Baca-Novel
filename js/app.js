@@ -20,6 +20,7 @@ import { readZip, writeZip } from './zip.js';
 import { buildEpub } from './epub.js';
 import { readEpub } from './epubin.js';
 import * as sync from './sync.js';
+import { logoSvg } from './logo.js';
 
 const APP_VERSION = '1.2.0';
 const app = document.getElementById('app');
@@ -83,6 +84,12 @@ function icon(name) {
   p.setAttribute('d', ICONS[name]);
   svg.append(p);
   return svg;
+}
+/** Logo D (Gerhana) di dalam aplikasi; warnanya ikut aksen tema. */
+function brandLogo(cls = '') {
+  const span = el('span', { class: `brand-logo ${cls}`.trim(), 'aria-hidden': 'true' });
+  span.innerHTML = logoSvg('d');
+  return span;
 }
 const iconBtn = (name, label, onclick) =>
   el('button', { class: 'icon-btn', type: 'button', 'aria-label': label, title: label, onclick }, icon(name));
@@ -1034,7 +1041,7 @@ async function showLibrary() {
     : el(
         'div',
         { class: 'empty' },
-        el('img', { class: 'empty-logo', src: 'icons/icon.svg', alt: '' }),
+        brandLogo('empty-logo'),
         el('h2', null, 'Belum ada novel'),
         el(
           'p',
@@ -1053,7 +1060,7 @@ async function showLibrary() {
 
   const foot = el('p', { class: 'foot' });
   showStorageInfo(foot);
-  const credit = el('p', { class: 'credit' }, 'Lumen', el('span', null, 'Read'), ' · by ', el('b', null, 'LinTendo'));
+  const credit = el('p', { class: 'credit' }, brandLogo('credit-logo'), 'Lumen', el('span', null, 'Read'), ' · by ', el('b', null, 'LinTendo'));
   // Tombol bulat kanan bawah: lanjut ke novel yang terakhir dibaca.
   const last = novels.filter((n) => n.lastRead && n.toc.length).sort((a, b) => b.lastRead.at - a.lastRead.at)[0];
   const fab = last
@@ -1230,7 +1237,7 @@ function homeNav(novels, covers, active = 'rak') {
   const side = el(
     'aside',
     { class: 'sd', 'aria-label': 'Navigasi' },
-    el('div', { class: 'sd-brand' }, el('img', { src: 'icons/icon.svg', alt: '' }), el('b', null, 'Lumen', el('em', null, 'Read'))),
+    el('div', { class: 'sd-brand' }, brandLogo(), el('b', null, 'Lumen', el('em', null, 'Read'))),
     el(
       'nav',
       { class: 'sd-nav' },
@@ -1394,7 +1401,7 @@ async function showProfile() {
       storage,
       row('info', 'Tentang LumenRead', `Versi ${APP_VERSION} · by LinTendo`),
     ),
-    el('p', { class: 'credit' }, 'Lumen', el('span', null, 'Read'), ' · by ', el('b', null, 'LinTendo')),
+    el('div', { class: 'pf-brand' }, brandLogo(), el('p', { class: 'credit' }, 'Lumen', el('span', null, 'Read'), ' · by ', el('b', null, 'LinTendo'))),
   );
   setView([bar, main, ...(homeStyle() ? homeNav(novels, covers, 'profil') : [])]);
 }

@@ -1029,8 +1029,6 @@ textarea.plain { font-family: var(--ui-font); font-size: 1rem; line-height: 1.5;
 :root[data-glow] .toc-row.current,
 :root[data-glow] .rp-progress i,
 :root[data-glow] .card .progress > div { box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 50%, transparent); }
-.empty-logo { width: 96px; height: 96px; margin: 0 auto 8px; display: block; border-radius: 22px; }
-:root[data-glow] .empty-logo { box-shadow: 0 0 28px color-mix(in srgb, var(--accent) 35%, transparent); }
 .bar h1.brand { letter-spacing: 0.01em; }
 .bar h1.brand .brand-accent { color: var(--accent); }
 .credit { text-align: center; font-size: 0.8rem; color: var(--muted); margin: 6px 0 0; letter-spacing: 0.02em; }
@@ -1786,7 +1784,7 @@ body[data-home] .library { padding-bottom: calc(110px + env(safe-area-inset-bott
   }
 }
 .sd-brand { display: flex; align-items: center; gap: 10px; padding: 0 8px 22px; }
-.sd-brand img { width: 34px; height: 34px; border-radius: 9px; }
+.sd-brand .brand-logo { width: 38px; height: 38px; margin: -2px 0; }
 .sd-brand b { font-family: var(--serif); font-weight: 500; font-size: 1.45rem; }
 .sd-brand em { font-style: italic; color: var(--accent); }
 .sd-nav { display: grid; gap: 4px; }
@@ -1864,3 +1862,12 @@ button.pf-row:hover { background: color-mix(in srgb, var(--fg) 4%, transparent);
 .h-txt h2.h-title.l { font-size: clamp(2.1rem, 9vw, 3.5rem); }
 .h-txt h2.h-title.xl { font-size: clamp(1.75rem, 7vw, 2.8rem); line-height: 1.08; }
 .h-txt small { letter-spacing: 0.2em; }
+
+/* ---------- Logo D (Gerhana) di dalam aplikasi: warna ikut aksen tema ---------- */
+.brand-logo { --a: var(--accent); --b: var(--accent-2, #ffffff); display: inline-block; flex: none; line-height: 0; }
+.brand-logo svg { width: 100%; height: 100%; overflow: visible; }
+.empty-logo { width: 112px; height: 112px; margin: 0 auto 6px; display: block; }
+.credit-logo { width: 18px; height: 18px; margin-right: 6px; vertical-align: -4px; }
+.pf-brand { display: grid; justify-items: center; gap: 2px; margin-top: 8px; }
+.pf-brand .brand-logo { width: 44px; height: 44px; }
+.pf-brand .credit { margin: 0; }
