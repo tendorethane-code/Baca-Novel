@@ -63,6 +63,8 @@ const ICONS = {
   note: 'M6 3h8.5L19 7.5V21H6zM14 3v5h5M9 13h7M9 17h4.5',
   upload: 'M12 15V4M7.5 8.5L12 4l4.5 4.5M4 15v3.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V15',
   play: 'M8 5.5v13l10-6.5z',
+  shelf: 'M4 19V5M9 19V5M14 19l-3-14M17 19h3V8h-3zM3 19h18',
+  user: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4.5 20a7.5 7.5 0 0 1 15 0',
   spark: 'M12 2c.6 5.3 4.7 9.4 10 10-5.3.6-9.4 4.7-10 10-.6-5.3-4.7-9.4-10-10 5.3-.6 9.4-4.7 10-10z',
   sync: 'M20 11a8 8 0 0 0-14.3-4.9L4 8M4 4v4h4M4 13a8 8 0 0 0 14.3 4.9L20 16M20 20v-4h-4',
 };
@@ -70,9 +72,10 @@ function icon(name) {
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.setAttribute('viewBox', '0 0 24 24');
   const solid = name === 'play' || name === 'spark';
+  const thin = name === 'shelf' || name === 'user';
   svg.setAttribute('fill', solid ? 'currentColor' : 'none');
   svg.setAttribute('stroke', solid ? 'none' : 'currentColor');
-  svg.setAttribute('stroke-width', name === 'more' ? '3' : '2');
+  svg.setAttribute('stroke-width', name === 'more' ? '3' : thin ? '1.8' : '2');
   svg.setAttribute('stroke-linecap', 'round');
   svg.setAttribute('stroke-linejoin', 'round');
   svg.setAttribute('aria-hidden', 'true');
@@ -1066,6 +1069,7 @@ async function showLibrary() {
       )
     : null;
   const styled = homeStyle() && novels.length;
+  if (styled) bar.replaceChildren(bar.querySelector('h1'), syncButton());
   const glass = styled && HOME_STYLES[homeStyle()].hero === 'glass';
   const hero = styled ? (glass ? glassHero(novels, covers) : homeHero(novels, covers)) : null;
   const main = el(
@@ -1075,7 +1079,8 @@ async function showLibrary() {
     body,
     el('footer', { class: 'lib-foot' }, syncLine(), foot, credit),
   );
-  setView([bar, glass ? null : hero, main, styled ? null : fab].filter(Boolean));
+  const nav = styled ? homeNav(novels, covers) : [];
+  setView([bar, glass ? null : hero, main, styled ? null : fab, ...nav].filter(Boolean));
 }
 
 // ---------- Halaman depan bergaya (Eclipse Neon, dst.) ----------
@@ -1151,6 +1156,81 @@ function homeHero(novels, covers) {
     ),
   );
 }
+function focusSearch() {
+  const input = document.querySelector('.lib-search input');
+  if (!input) return;
+  input.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  input.focus({ preventScroll: true });
+}
+const openProfile = () => openSettings();
+/** Navigasi halaman depan bergaya: bar bawah (HP/iPad) dan sidebar (laptop ≥ 1100px). */
+function homeNav(novels, covers) {
+  const n = heroNovel(novels);
+  const go = () => (n ? (location.hash = `#/read/${encodeURIComponent(n.id)}`) : openImport());
+  const toTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+  const item = (ic, label, onclick, on) =>
+    el('button', { type: 'button', class: `n-it${on ? ' on' : ''}`, 'aria-current': on ? 'page' : null, onclick }, icon(ic), el('span', null, label));
+  const bottom = el(
+    'nav',
+    { class: 'n-bar', 'aria-label': 'Navigasi' },
+    item('shelf', 'Rak', toTop, true),
+    item('search', 'Cari', focusSearch),
+    el(
+      'button',
+      { type: 'button', class: 'n-star', 'aria-label': n ? `Lanjut baca ${n.title}` : 'Impor novel', title: n ? `Lanjut: ${n.title}` : 'Impor novel', onclick: go },
+      el('i', { 'aria-hidden': 'true' }),
+      icon('spark'),
+    ),
+    item('upload', 'Impor', () => openImport()),
+    item('user', 'Profil', openProfile),
+  );
+  const sItem = (ic, label, onclick, extra, on) =>
+    el('button', { type: 'button', class: `sd-it${on ? ' on' : ''}`, 'aria-current': on ? 'page' : null, onclick }, icon(ic), el('span', null, label), extra || null);
+  let now = null;
+  if (n) {
+    const pct = Math.round(readPct(n));
+    now = el(
+      'div',
+      { class: 'sd-now' },
+      el('small', null, icon('spark'), n.lastRead ? 'Sedang dibaca' : 'Mulai membaca'),
+      el(
+        'button',
+        { type: 'button', class: 'sd-now-row', onclick: () => openNovelInfo(n), 'aria-label': `Info ${n.title}` },
+        coverEl(n, covers.get(n.id), 'sd-cover'),
+        el('span', null, el('b', null, n.title), el('span', null, n.lastRead ? `Ch. ${n.lastRead.num} · ${pct}%` : `${fmtNum(n.toc.length)} chapter`)),
+      ),
+      el('div', { class: 'sd-bar' }, el('i', { style: `width:${pct}%` })),
+      el('a', { class: 'sd-go', href: `#/read/${encodeURIComponent(n.id)}` }, icon('play'), n.lastRead ? 'Lanjut baca' : 'Mulai baca'),
+    );
+    applyTint(now, n, covers.get(n.id));
+  }
+  const side = el(
+    'aside',
+    { class: 'sd', 'aria-label': 'Navigasi' },
+    el('div', { class: 'sd-brand' }, el('img', { src: 'icons/icon.svg', alt: '' }), el('b', null, 'Lumen', el('em', null, 'Read'))),
+    el(
+      'nav',
+      { class: 'sd-nav' },
+      sItem('shelf', 'Rak buku', toTop, el('em', null, fmtNum(novels.length)), true),
+      sItem('search', 'Cari', focusSearch, el('kbd', null, '/')),
+      sItem('upload', 'Impor novel', () => openImport()),
+      sItem('user', 'Profil & pengaturan', openProfile),
+    ),
+    el('div', { class: 'sd-sp' }),
+    now,
+    el('div', { class: 'sd-foot' }, syncLine() || el('span'), el('span', null, 'by ', el('b', null, 'LinTendo'))),
+  );
+  return [bottom, side];
+}
+// Laptop: tombol / langsung ke kolom cari perpustakaan.
+document.addEventListener('keydown', (e) => {
+  if (e.key !== '/' || e.ctrlKey || e.metaKey || e.altKey || currentView === 'read') return;
+  if (e.target.closest?.('input, textarea, select, [contenteditable], dialog')) return;
+  if (!document.querySelector('.lib-search input')) return;
+  e.preventDefault();
+  focusSearch();
+});
+
 /** Bagian atas gaya Aurora: sapaan + kartu kaca berisi sampul, tombol lanjut, daftar isi, progres. */
 function glassHero(novels, covers) {
   const n = heroNovel(novels);
