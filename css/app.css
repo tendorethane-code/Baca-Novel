@@ -1211,3 +1211,79 @@ dialog.nv-pop .nv-box { margin-bottom: 0; }
 }
 .pick-row.one { grid-template-columns: 1fr; }
 .reader article p.tl-item { padding-left: 30px; text-indent: -14px; }
+
+/* ---------- Pengingat chapter sebelumnya: slider jumlah paragraf, tutup dari bawah, TL note ---------- */
+.dot-slider { font-family: var(--ui-font); }
+.dot-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; font-size: 0.78rem; color: var(--muted); margin-bottom: 6px; }
+.dot-head > span { letter-spacing: 0.06em; text-transform: uppercase; font-weight: 600; }
+.dot-head output { color: var(--muted); font-size: 0.8rem; }
+.dot-head output b { color: var(--accent); font-size: 1.35rem; font-weight: 700; font-variant-numeric: tabular-nums; margin-right: 2px; }
+.recap .rc-ctl { font-size: 16px; line-height: 1.4; }
+/* Slider dalam panel kecil, terpisah dari teks cerita. Di tablet/laptop lebarnya dibatasi & di tengah,
+   supaya titiknya tidak terlalu berjauhan walau lebar teks diatur sampai 1200px. */
+.recap .rc-count {
+  max-width: 480px; margin: 2px auto 1em; padding: 10px 12px 2px; border-radius: 12px;
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--line));
+}
+.recap .rc-count .size-track { height: 44px; }
+.recap .size-ticks b { font-size: 11px; transition: color 0.15s, transform 0.15s; }
+/* Angka bisa diketuk: area sentuh diperbesar tanpa menggeser posisi angkanya. */
+.dot-slider .size-ticks b { pointer-events: auto; cursor: pointer; top: 20px; padding: 8px 6px; }
+.recap .size-ticks b.on { transform: translateX(-50%) scale(1.2); }
+.recap .size-ticks i { transition: background 0.15s; }
+.rc-foot {
+  /* Tutup di tengah, TL note (kalau ada) di kanan */
+  display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 8px;
+  border-top: 1px dashed var(--line); margin: 0 -14px; padding: 10px;
+}
+.rc-foot > .rc-btn { grid-column: 2; }
+.rc-foot > .rc-btn.rc-tl { grid-column: 3; justify-self: end; }
+.rc-btn {
+  display: inline-flex; align-items: center; gap: 7px; min-height: 36px; padding: 0 16px; border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line)); cursor: pointer; font: 600 0.85rem var(--ui-font);
+  background: color-mix(in srgb, var(--accent) 10%, transparent); color: var(--fg);
+  white-space: nowrap; transition: background 0.15s, transform 0.1s;
+}
+.rc-btn:active { transform: scale(0.96); background: color-mix(in srgb, var(--accent) 22%, transparent); }
+.rc-btn svg { width: 16px; height: 16px; flex: none; }
+.rc-btn.rc-tl { gap: 5px; padding: 0 6px 0 10px; background: none; color: var(--accent); }
+.rc-badge {
+  min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center;
+  background: var(--accent); color: var(--bg); font-size: 0.72rem; font-weight: 700; font-variant-numeric: tabular-nums;
+}
+/* Laptop (mouse): efek saat kursor di atas tombol & angka; tanda fokus untuk keyboard */
+@media (hover: hover) {
+  .rc-btn:hover { background: color-mix(in srgb, var(--accent) 18%, transparent); }
+  .rc-btn.rc-tl:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+  .dot-slider .size-ticks b:hover { color: var(--accent); }
+  .recap summary:hover { color: var(--fg); }
+}
+.rc-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* HP sempit: ikon TL note disembunyikan supaya Tutup tetap tepat di tengah. */
+@media (max-width: 389px) {
+  .rc-btn.rc-tl svg { display: none; }
+}
+/* HP sangat sempit (≤ 340px): Tutup boleh sedikit geser daripada bertumpuk dengan TL note. */
+@media (max-width: 340px) {
+  .rc-foot { grid-template-columns: minmax(0, 1fr) auto auto; }
+}
+/* Panah ke atas: lipat kembali */
+.rc-up { width: 7px; height: 7px; margin-top: 4px; border: solid currentColor; border-width: 2px 0 0 2px; transform: rotate(45deg); }
+/* Tema Neon: slider & tombol ikut menyala */
+:root[data-glow] .recap .size-range::-webkit-slider-thumb { box-shadow: var(--glow); }
+:root[data-glow] .recap .size-range::-moz-range-thumb { box-shadow: var(--glow); }
+:root[data-glow] .recap .size-ticks i.on { box-shadow: 0 0 6px color-mix(in srgb, var(--accent) 70%, transparent); }
+:root[data-glow] .recap .size-ticks b.on,
+:root[data-glow] .dot-head output b { text-shadow: 0 0 10px color-mix(in srgb, var(--accent) 60%, transparent); }
+:root[data-glow] .rc-badge { box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 60%, transparent); }
+/* Saat kunci sentuhan, slider & tombol di kotak pengingat tetap bisa dipakai. */
+html.touch-locked .reader .recap .rc-ctl { pointer-events: auto; }
+
+dialog.tl-pop { width: min(520px, calc(100vw - 32px)); }
+.tl-pop-body { font-family: var(--read-font); font-size: 1.02rem; line-height: 1.55; }
+.tl-pop-body p { margin: 0 0 0.8em; overflow-wrap: break-word; }
+.tl-pop-body p:last-child { margin-bottom: 0; }
+.tl-pop-body p.small { font-family: var(--ui-font); }
+.tl-pop-body p.tl-item { position: relative; padding-left: 1.1em; }
+.tl-pop-body p.tl-item::before { content: '•'; position: absolute; left: 0.1em; color: var(--accent); }

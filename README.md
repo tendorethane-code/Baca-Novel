@@ -46,10 +46,13 @@ Repo ini hanya berisi kode. Jangan commit teks novel; `.gitignore` sudah menolak
   - **Otomatis**: saat impor dan saat menyimpan editor chapter, TL note di akhir chapter yang diawali judul khas (`TL`, `T/N`, `TN`, `Translator's note`, `Catatan penerjemah`, `Catatan TL`) langsung dirapikan, asalkan ada setelah baris pemisah atau di paruh kedua chapter. Judul umum seperti `Note:` hanya lewat tombol, supaya kalimat cerita tidak ikut berubah.
   - Chapter yang sudah tersimpan: menu ⋯ kartu novel → **Rapikan TL note semua chapter** (menampilkan chapter mana saja sebelum disimpan).
   - Pengingat chapter sebelumnya melewati TL note dan baris pemisah, jadi yang ditampilkan paragraf cerita terakhir.
-- **Kunci sentuhan**: ikon gembok di layar baca. Kontrol disembunyikan dan tap diabaikan, hanya bisa scroll (kotak pengingat chapter sebelumnya tetap bisa dibuka/dilipat). Pindah chapter dan membuka kunci harus dengan *menahan* tombol.
+- **Kunci sentuhan**: ikon gembok di layar baca. Kontrol disembunyikan dan tap diabaikan, hanya bisa scroll (kotak pengingat chapter sebelumnya tetap bisa dibuka/dilipat, slider jumlah paragrafnya digeser, dan TL note-nya dibuka). Pindah chapter dan membuka kunci harus dengan *menahan* tombol.
 - **Kunci perubahan** (Pengaturan): mode baca-saja. Edit, hapus, ganti judul, dan impor yang menimpa chapter dimatikan sampai kunci dibuka.
 - **Sinkronisasi** antarperangkat lewat repo GitHub **privat** milik sendiri (lihat di bawah).
 - **Pengingat chapter sebelumnya**: di awal chapter tampil N paragraf terakhir chapter sebelumnya, bisa dilipat (jumlah diatur di Pengaturan; 0 = mati). Pilihan *Langsung terbuka* hanya tampil kalau pengingat menyala.
+  - **Slider bertitik** di dalam kotak (di bawah judulnya) untuk mengubah jumlah paragraf langsung (1–10) tanpa membuka Pengaturan, dengan angka di bawah tiap titik (angkanya juga bisa diketuk/diklik; di tablet & laptop slidernya selebar maks. 480px di tengah); mematikan pengingat (0) tetap lewat Pengaturan.
+  - Tombol **Tutup** di tengah bawah kotak untuk melipatnya tanpa menggulir ke atas; judul chapter yang sedang dibaca tetap di posisinya di layar.
+  - Hanya kalau chapter sebelumnya punya TL note, judul kotak diberi tanda *ada TL note* dan di kanan bawah kotak ada tombol **TL note** (dengan jumlah catatannya) yang membuka isinya sebagai popup.
 - **Posisi baca** disimpan otomatis (chapter + paragraf), tombol/panah ←/→ untuk pindah chapter.
 - **Daftar isi**: tab *Chapter* dan *Bookmark*. Cari nomor/judul, balik urutan, tombol 📍 ke chapter yang sedang dibaca, 100 chapter per halaman dengan pilihan rentang (« ‹ 201–300 › »). Judul seperti `Water and Fire (Air dan Api)` tampil dua baris: bagian dalam kurung di baris kedua yang lebih kecil.
 - **Bar pindah chapter** di awal dan akhir tiap chapter (ikut tergulir bersama teks): ‹ sebelumnya, daftar pilihan semua chapter, berikutnya ›.
