@@ -1407,34 +1407,28 @@ dialog.nv-pop .nv-gaps.warn { margin-bottom: 12px; }
 .prog-label b { flex: none; color: var(--fg); font-size: 0.9rem; font-weight: 700; font-variant-numeric: tabular-nums; }
 .card .progress { height: 6px; border-radius: 99px; overflow: hidden; background: color-mix(in srgb, var(--fg) 10%, transparent); }
 .card .progress > div { height: 100%; border-radius: inherit; background: var(--accent); }
-.card .actions { grid-column: 1 / -1; display: flex; gap: 8px; }
-.card .actions .btn { flex: 1; min-width: 0; min-height: 44px; border-radius: 12px; font-weight: 600; }
+.card .actions { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; }
+/* Tombol tidak pernah menyusut di bawah lebar teksnya: kalau tidak muat (HP sempit / huruf sistem besar),
+   Daftar isi & + turun ke baris kedua. Lebih andal daripada menebak batas lebar. */
+.card .actions .btn { flex: 1 0 auto; min-height: 44px; border-radius: 12px; font-weight: 600; }
+.card .actions .btn.primary { flex-grow: 1.4; }
 .card .actions .btn:not(.primary) { background: color-mix(in srgb, var(--fg) 5%, transparent); }
 .card .actions .btn svg { width: 18px; height: 18px; flex: none; }
 .card .actions .btn.add { flex: none; width: 44px; padding: 0; }
-.card .actions .btn .t { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-/* Kartu sempit (HP kecil atau huruf sistem diperbesar): batas dalam em, jadi ikut membesar bersama huruf.
-   Mula-mula ikon tombol disembunyikan, lalu Daftar isi tinggal ikon saja. */
+.card .actions > .muted { flex: 1 0 auto; align-self: center; }
+/* Kartu sempit (HP kecil atau huruf sistem diperbesar; batas dalam em, ikut membesar bersama huruf). */
 .cards { container-type: inline-size; }
+@container (max-width: 24em) {
+  .card .actions .btn:not(.add) svg { display: none; }
+}
 @container (max-width: 21.5em) {
   .prog-label .pre { display: none; }
-  .card .actions .btn.primary svg { display: none; }
-  .card .actions .btn { padding: 0 10px; }
-}
-@container (max-width: 19em) {
-  .card .actions .btn:not(.primary):not(.add) { flex: none; width: 52px; padding: 0; }
-  .card .actions .btn:not(.primary):not(.add) .t { display: none; }
   .card { grid-template-columns: 64px minmax(0, 1fr); gap: 10px 12px; padding: 12px; }
 }
 /* Sangat sempit: sampul kecil di atas, teks selebar kartu. */
 @container (max-width: 14.5em) {
   .card { grid-template-columns: minmax(0, 1fr); }
   .card-cover { width: 64px; }
-  .card .meta { gap: 4px 6px; }
-  .card .actions { flex-wrap: wrap; }
-  .card .actions .btn.primary { flex-basis: 100%; }
-  .card .actions .btn:not(.primary):not(.add) { flex: 1; width: auto; padding: 0 10px; }
-  .card .actions .btn:not(.primary):not(.add) .t { display: inline; }
 }
 @media (min-width: 600px) {
   .card { grid-template-columns: 104px minmax(0, 1fr); padding: 16px; gap: 12px 18px; }
