@@ -1871,3 +1871,23 @@ button.pf-row:hover { background: color-mix(in srgb, var(--fg) 4%, transparent);
 .pf-brand { display: grid; justify-items: center; gap: 2px; margin-top: 8px; }
 .pf-brand .brand-logo { width: 44px; height: 44px; }
 .pf-brand .credit { margin: 0; }
+
+/* ---------- Tanda pembuat Kristal */
+.sig { display: inline-flex; align-items: baseline; gap: 0.35em; font-family: 'Source Serif 4', 'Noto Serif', Georgia, serif; white-space: nowrap; }
+.sig-by { font-style: italic; font-size: 0.72em; color: var(--sig-by, #8f97ab); }
+.sig-name { display: inline-flex; align-items: baseline; font-weight: 600; font-style: normal; font-size: 1.32em; letter-spacing: 0.03em;
+  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--a) 45%, transparent)); }
+.sig-name > span { background: linear-gradient(180deg, var(--sig-top, #fff) 20%, var(--b) 55%, var(--a)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.sig-cap { height: 0.665em; width: auto; overflow: visible; }
+.sig-L { margin-right: 0.01em; }
+.sig-T { margin: 0 0.02em 0 0.04em; }
+.sig-star { font-style: normal; font-size: 0.62em; color: var(--a); align-self: center; text-shadow: 0 0 8px var(--a); }
+/* Warna di dalam aplikasi: ikut aksen tema; di tema terang (gaya Klasik) huruf jadi gelap supaya terbaca. */
+.credit .sig, .sd-foot .sig { --a: var(--accent); --b: var(--accent-2, var(--accent)); --sig-by: var(--muted); }
+body:not([data-home]) .sig { --sig-top: var(--fg); --sig-groove: var(--bg); }
+.credit .sig { font-size: 0.95em; vertical-align: -0.05em; }
+.credit .sig-name, .sd-foot .sig-name { background: none; -webkit-background-clip: border-box; background-clip: border-box; }
+.sd-foot .sig { font-size: 0.82rem; }
+.credit .sig-name { font-weight: 600; letter-spacing: 0.03em; }
+.credit .sig-by { color: var(--sig-by); font-weight: 400; }
+.credit .sig-name > span { color: transparent; font-weight: 600; }

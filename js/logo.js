@@ -56,3 +56,20 @@ export function logoSvg(kind = 'd', id = `lg${++seq}`) {
   const body = kind === 'k2' ? kristalUkir(id) : gerhana(id);
   return `<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">${body}</svg>`;
 }
+
+// ---------- Tanda pembuat "by LinTendo" (Kristal; L & T berukir seperti huruf L di logo K2) ----------
+const T_PATH = 'M0 0H30L29.6 8.2H28.4Q27.6 1.8 24 1.6H18.2V30.6Q19 32.4 23 32.6V34H7V32.6Q11 32.4 11.8 30.6V1.6H6Q2.4 1.8 1.6 8.2H.4Z';
+function capSvg(kind, id) {
+  const [path, box, groove] =
+    kind === 'L' ? [LPATH, '47 40 30 34', 'M55 44.2V71.2'] : [T_PATH, '0 0 30 34', 'M15 4V30.6'];
+  return `<svg class="sig-cap sig-${kind}" viewBox="${box}" aria-hidden="true"><defs><linearGradient id="sg${id}" x1="0" y1="0" x2="0" y2="1">` +
+    `<stop offset="0" stop-color="var(--sig-top, #fff)"/><stop offset=".55" stop-color="var(--b)"/><stop offset="1" stop-color="var(--a)"/></linearGradient></defs>` +
+    `<path d="${path}" fill="url(#sg${id})"/><path d="${groove}" fill="none" stroke="var(--sig-groove, #04050c)" stroke-width="1" stroke-linecap="round"/>` +
+    `<path d="${path}" fill="none" stroke="var(--sig-top, #fff)" stroke-width=".4" opacity=".6"/></svg>`;
+}
+/** HTML tanda pembuat. Warna dari --a/--b (dan --sig-top untuk latar terang) pada elemen induk. */
+export function signatureHtml(id = `sig${++seq}`) {
+  return `<span class="sig"><span class="sig-by">by</span><b class="sig-name" aria-label="LinTendo">` +
+    `${capSvg('L', id + 'l')}<span aria-hidden="true">in</span>${capSvg('T', id + 't')}<span aria-hidden="true">endo</span></b>` +
+    `<em class="sig-star" aria-hidden="true">✦</em></span>`;
+}

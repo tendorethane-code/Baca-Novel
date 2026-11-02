@@ -20,7 +20,7 @@ import { readZip, writeZip } from './zip.js';
 import { buildEpub } from './epub.js';
 import { readEpub } from './epubin.js';
 import * as sync from './sync.js';
-import { logoSvg } from './logo.js';
+import { logoSvg, signatureHtml } from './logo.js';
 
 const APP_VERSION = '1.2.0';
 const app = document.getElementById('app');
@@ -90,6 +90,12 @@ function brandLogo(cls = '') {
   const span = el('span', { class: `brand-logo ${cls}`.trim(), 'aria-hidden': 'true' });
   span.innerHTML = logoSvg('d');
   return span;
+}
+/** Tanda pembuat "by LinTendo" (Kristal, L & T berukir). */
+function signature() {
+  const t = document.createElement('template');
+  t.innerHTML = signatureHtml();
+  return t.content.firstElementChild;
 }
 const iconBtn = (name, label, onclick) =>
   el('button', { class: 'icon-btn', type: 'button', 'aria-label': label, title: label, onclick }, icon(name));
@@ -1060,7 +1066,7 @@ async function showLibrary() {
 
   const foot = el('p', { class: 'foot' });
   showStorageInfo(foot);
-  const credit = el('p', { class: 'credit' }, brandLogo('credit-logo'), 'Lumen', el('span', null, 'Read'), ' · by ', el('b', null, 'LinTendo'));
+  const credit = el('p', { class: 'credit' }, brandLogo('credit-logo'), 'Lumen', el('span', null, 'Read'), ' · ', signature());
   // Tombol bulat kanan bawah: lanjut ke novel yang terakhir dibaca.
   const last = novels.filter((n) => n.lastRead && n.toc.length).sort((a, b) => b.lastRead.at - a.lastRead.at)[0];
   const fab = last
@@ -1248,7 +1254,7 @@ function homeNav(novels, covers, active = 'rak') {
     ),
     el('div', { class: 'sd-sp' }),
     now,
-    el('div', { class: 'sd-foot' }, syncLine() || el('span'), el('span', null, 'by ', el('b', null, 'LinTendo'))),
+    el('div', { class: 'sd-foot' }, syncLine() || el('span'), signature()),
   );
   return [bottom, side];
 }
@@ -1401,7 +1407,7 @@ async function showProfile() {
       storage,
       row('info', 'Tentang LumenRead', `Versi ${APP_VERSION} · by LinTendo`),
     ),
-    el('div', { class: 'pf-brand' }, brandLogo(), el('p', { class: 'credit' }, 'Lumen', el('span', null, 'Read'), ' · by ', el('b', null, 'LinTendo'))),
+    el('div', { class: 'pf-brand' }, brandLogo(), el('p', { class: 'credit' }, 'Lumen', el('span', null, 'Read'), ' · ', signature())),
   );
   setView([bar, main, ...(homeStyle() ? homeNav(novels, covers, 'profil') : [])]);
 }
