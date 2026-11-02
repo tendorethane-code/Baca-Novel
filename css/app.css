@@ -840,10 +840,18 @@ textarea.editor {
 
 .lib-tools { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; margin-bottom: 10px; }
 .lib-tools select { width: auto; }
-.chips { display: flex; gap: 6px; overflow-x: auto; margin-bottom: 12px; padding-bottom: 2px; }
+/* Filter status: chip membungkus ke baris berikut, bukan digulir ke samping. Dengan gulir samping, cahaya
+   chip aktif (tema Neon) terpotong jadi kotak, chip terakhir terpotong di tepi, dan di Android batang
+   gulirnya menimpa bagian bawah chip. Membungkus aman untuk lebar layar & ukuran huruf apa pun. */
+.chips { display: flex; flex-wrap: wrap; gap: 8px 6px; margin-bottom: 14px; }
 .chips button {
-  flex: none; border: 1px solid var(--line); border-radius: 99px; background: transparent; padding: 6px 12px; cursor: pointer; font-size: 0.88rem;
+  flex: none; max-width: 100%; min-height: 36px; border: 1px solid var(--line); border-radius: 99px; background: transparent;
+  padding: 6px 12px; cursor: pointer; font-size: 0.88rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+@media (hover: hover) and (pointer: fine) {
+  .chips button:not([aria-selected='true']):hover { border-color: color-mix(in srgb, var(--accent) 50%, var(--line)); }
+}
+.chips button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .chips button[aria-selected='true'] { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
 .card h2 .author { display: block; font-size: 0.82rem; font-weight: normal; color: var(--muted); margin-top: 2px; }
 .badge.st-reading { color: var(--accent); }
