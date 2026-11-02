@@ -1211,3 +1211,32 @@ dialog.nv-pop .nv-box { margin-bottom: 0; }
 }
 .pick-row.one { grid-template-columns: 1fr; }
 .reader article p.tl-item { padding-left: 30px; text-indent: -14px; }
+
+/* ---------- Pengingat chapter sebelumnya: slider jumlah paragraf, tutup dari bawah, TL note ---------- */
+.dot-slider { font-family: var(--ui-font); }
+.dot-head { display: flex; justify-content: space-between; gap: 10px; font-size: 0.8rem; color: var(--muted); margin-bottom: 4px; }
+.dot-head output { color: var(--accent); font-weight: 600; font-variant-numeric: tabular-nums; }
+.recap .rc-ctl { font-size: 16px; line-height: 1.4; }
+.recap .dot-slider { margin-bottom: 0.4em; }
+.recap .size-ticks b { font-size: 11px; }
+.rc-foot {
+  display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap;
+  border-top: 1px dashed var(--line); margin: 0 -14px; padding: 8px 10px;
+}
+.rc-btn {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 14px; border-radius: 999px;
+  border: 1px solid var(--line); background: none; color: var(--fg); cursor: pointer; font: 500 0.85rem var(--ui-font);
+}
+.rc-btn.rc-tl { margin-right: auto; color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+/* Panah ke atas: lipat kembali */
+.rc-up { width: 7px; height: 7px; margin-top: 4px; border: solid currentColor; border-width: 2px 0 0 2px; transform: rotate(45deg); }
+/* Saat kunci sentuhan, slider & tombol di kotak pengingat tetap bisa dipakai. */
+html.touch-locked .reader .recap .rc-ctl { pointer-events: auto; }
+
+dialog.tl-pop { width: min(520px, calc(100vw - 32px)); }
+.tl-pop-body { font-family: var(--read-font); font-size: 1.02rem; line-height: 1.55; }
+.tl-pop-body p { margin: 0 0 0.8em; overflow-wrap: break-word; }
+.tl-pop-body p:last-child { margin-bottom: 0; }
+.tl-pop-body p.small { font-family: var(--ui-font); }
+.tl-pop-body p.tl-item { position: relative; padding-left: 1.1em; }
+.tl-pop-body p.tl-item::before { content: '•'; position: absolute; left: 0.1em; color: var(--accent); }

@@ -292,6 +292,7 @@ const TEXT_LEVELS = {
 };
 const SIZE_MIN = 14;
 const SIZE_MAX = 34;
+const RECAP_MAX = 15; // jumlah paragraf terbanyak di pengingat chapter sebelumnya
 // Tema latar: cukup warna latar (bg) dan teks (fg); warna lain diturunkan otomatis.
 const THEMES = {
   light: { label: 'Terang', bg: '#fbfaf7', fg: '#1f1f1c' },
@@ -514,7 +515,7 @@ function openSettings() {
     );
 
   // Pilihan terbuka/terlipat hanya berlaku kalau pengingat menyala.
-  const recapCountSlider = slider('Jumlah paragraf terakhir yang ditampilkan (0 = mati)', 'recapCount', 0, 15, 1, (v) => String(v));
+  const recapCountSlider = slider('Jumlah paragraf terakhir yang ditampilkan (0 = mati)', 'recapCount', 0, RECAP_MAX, 1, (v) => String(v));
   const recapOpenBox = check('Langsung terbuka (tidak dilipat)', 'recapOpen');
   const syncRecapOpen = () => recapOpenBox.classList.toggle('hidden', settings.recapCount <= 0);
   recapCountSlider.querySelector('input').addEventListener('input', syncRecapOpen);
@@ -688,6 +689,48 @@ function resetSettings() {
   };
   apply(DEFAULTS);
   toast('Pengaturan dikembalikan ke bawaan.', { label: 'Batalkan', run: () => apply(before) });
+}
+
+/**
+ * Slider bertitik: titik di tiap nilai bulat, angka di bawah titik `labels` dan di nilai yang dipilih.
+ * `onInput(v)` dipanggil tiap nilai berubah (saat digeser maupun diketuk).
+ */
+function dotSlider({ label, min, max, value, labels = [], fmt = String, onInput }) {
+  const n = max - min;
+  const pos = (v) => `${((v - min) / n) * 100}%`;
+  const range = el('input', { type: 'range', class: 'size-range', min, max, step: 1, value, 'aria-label': label });
+  const ticks = el('div', { class: 'size-ticks', 'aria-hidden': 'true' });
+  const dots = [];
+  for (let v = min; v <= max; v++) {
+    const dot = el('i');
+    const lab = el('b', null, String(v));
+    dot.style.left = lab.style.left = pos(v);
+    ticks.append(dot, lab);
+    dots.push([v, dot, lab]);
+  }
+  const head = el('div', { class: 'dot-head' }, el('span', null, label), el('output'));
+  let cur = null;
+  const show = (v) => {
+    range.style.setProperty('--p', pos(v));
+    for (const [x, dot, lab] of dots) {
+      dot.className = x < v ? 'on' : '';
+      dot.style.visibility = x === v ? 'hidden' : '';
+      lab.className = x === v ? 'on' : '';
+      lab.hidden = x !== v && !labels.includes(x);
+    }
+    range.setAttribute('aria-valuetext', fmt(v));
+    head.lastChild.textContent = fmt(v);
+  };
+  range.oninput = () => {
+    const v = Number(range.value);
+    if (v === cur) return;
+    cur = v;
+    show(v);
+    onInput(v);
+  };
+  cur = Number(range.value);
+  show(cur);
+  return el('div', { class: 'dot-slider' }, head, el('div', { class: 'size-track' }, range, ticks));
 }
 
 /** Pemilih ukuran huruf: A− / A+ dan garis bertitik di tiap ukuran genap (ukuran ganjil tetap bisa dipilih). */
@@ -2455,6 +2498,20 @@ function markTlNote(ps) {
   return ps;
 }
 
+/** Popup TL note chapter sebelumnya (dari kotak pengingat). Catatan berawalan "- " tampil seperti daftar. */
+function showTlNotes(prev, notes) {
+  dialog({
+    title: `TL note · Chapter ${prev.num}`,
+    className: 'tl-pop',
+    body: el(
+      'div',
+      { class: 'tl-pop-body' },
+      prev.title ? el('p', { class: 'muted small' }, chapterLabel(prev.num, prev.title)) : null,
+      notes.map((p) => (p.startsWith('- ') ? el('p', { class: 'tl-item' }, p.slice(2)) : el('p', null, p))),
+    ),
+  });
+}
+
 async function showReader(id, wantNum, wantPara = 0) {
   const novel = await db.getNovel(id);
   if (!novel) {
@@ -2554,7 +2611,7 @@ async function showReader(id, wantNum, wantPara = 0) {
   const main = el('main', {
     class: 'page reader',
     onclick: (e) => {
-      if (touchLocked || e.target.closest('button, a, summary, input, select, textarea, label, .hold')) return;
+      if (touchLocked || e.target.closest('button, a, summary, input, select, textarea, label, .hold, .rc-ctl')) return;
       if (String(getSelection?.() || '').trim()) return; // sedang memilih teks
       showPanel(!controls);
     },
@@ -2681,14 +2738,59 @@ async function showReader(id, wantNum, wantPara = 0) {
     if (tl >= 0) story = story.slice(0, tl);
     while (story.length && isSeparator(story[story.length - 1])) story = story.slice(0, -1);
     if (!story.length) return null;
-    const tail = story.slice(-settings.recapCount);
-    const d = el(
-      'details',
-      { class: 'recap', open: settings.recapOpen },
-      el('summary', null, `Akhir ${chapterLabel(prev.num, prev.title)} · ${tail.length} paragraf terakhir`),
-      tail.length < story.length ? el('p', { class: 'gap' }, '…') : null,
-      tail.map((p) => el('p', null, p)),
+    // TL note chapter sebelumnya tidak ikut ditampilkan, tapi bisa dibuka sebagai popup.
+    const notes = tl >= 0 ? prev.paragraphs.slice(tl + 1).filter((p) => p.trim() && !isSeparator(p)) : [];
+    const label = chapterLabel(prev.num, prev.title);
+
+    const summary = el('summary');
+    const body = el('div', { class: 'rc-body' });
+    const show = () => {
+      const tail = story.slice(-settings.recapCount);
+      summary.textContent = `Akhir ${label} · ${tail.length} paragraf terakhir${notes.length ? ' · ada TL note' : ''}`;
+      body.replaceChildren(tail.length < story.length ? el('p', { class: 'gap' }, '…') : null, ...tail.map((p) => el('p', null, p)));
+    };
+    // Jumlah paragraf bisa diatur langsung di sini (1–15; mematikan pengingat tetap lewat Pengaturan).
+    const count = dotSlider({
+      label: 'Jumlah paragraf terakhir',
+      min: 1,
+      max: RECAP_MAX,
+      value: Math.min(RECAP_MAX, settings.recapCount),
+      labels: [1, 5, 10, 15],
+      fmt: (v) => `${v} paragraf`,
+      onInput: (v) => {
+        settings.recapCount = v;
+        saveSettings();
+        show();
+      },
+    });
+
+    const d = el('details', { class: 'recap', open: settings.recapOpen });
+    // Tutup dari bawah: chapter yang sedang dibaca tetap di posisi layarnya, jadi tidak perlu gulir ke atas.
+    const closeBtn = el(
+      'button',
+      {
+        type: 'button',
+        class: 'rc-btn',
+        onclick: () => {
+          const ref = d.parentElement?.nextElementSibling;
+          const before = ref?.getBoundingClientRect().top;
+          // Penyesuaian gulir dilakukan sendiri; scroll anchoring browser dimatikan sebentar supaya tidak dobel.
+          const root = document.documentElement;
+          root.style.overflowAnchor = 'none';
+          d.open = false;
+          if (ref) window.scrollBy(0, ref.getBoundingClientRect().top - before);
+          lastY = window.scrollY;
+          requestAnimationFrame(() => requestAnimationFrame(() => (root.style.overflowAnchor = '')));
+        },
+      },
+      'Tutup',
+      el('span', { class: 'rc-up', 'aria-hidden': 'true' }),
     );
+    const noteBtn = notes.length
+      ? el('button', { type: 'button', class: 'rc-btn rc-tl', onclick: () => showTlNotes(prev, notes) }, `TL note Ch. ${prev.num}`)
+      : null;
+    d.append(summary, el('div', { class: 'rc-ctl' }, count), body, el('div', { class: 'rc-foot rc-ctl' }, noteBtn, closeBtn));
+    show();
     d.addEventListener('toggle', () => {
       settings.recapOpen = d.open;
       saveSettings();
