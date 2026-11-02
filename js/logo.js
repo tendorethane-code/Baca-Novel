@@ -57,17 +57,26 @@ export function logoSvg(kind = 'd', id = `lg${++seq}`) {
   return `<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">${body}</svg>`;
 }
 
-// ---------- Tanda pembuat "by LinTendo" (Kristal; L & T berukir seperti huruf L di logo K2) ----------
+// ---------- Tanda pembuat "by LinTendo" (B · Foil) ----------
+// Gradasi khas LinTendo (cyan → ungu → pink) dengan kilau logam hologram; huruf L & T digambar sebagai SVG
+// Didone berukir (L sama dengan huruf L di logo K2). Tidak ikut warna tema: tanda tangan selalu sama.
+// Warna lewat variabel --f0..--f6 & --sig-sheen supaya di latar terang bisa diganti versi gelap (css/app.css).
 const T_PATH = 'M0 0H30L29.6 8.2H28.4Q27.6 1.8 24 1.6H18.2V30.6Q19 32.4 23 32.6V34H7V32.6Q11 32.4 11.8 30.6V1.6H6Q2.4 1.8 1.6 8.2H.4Z';
+export const FOIL = [[0, '#2be3ff'], [0.14, '#dcfbff'], [0.34, '#7f8cff'], [0.5, '#f1e9ff'], [0.68, '#b35cff'], [0.84, '#ff6fb5'], [1, '#ffe3f0']];
+const fstop = (i) => `var(--f${i}, ${FOIL[i][1]})`;
+// Posisi L & T di dalam kata (bagian dari lebar kata, huruf Source Serif 4), supaya gradasi menyambung mulus.
+const CAP_POS = { L: [0, 0.1322], T: [0.3532, 0.1322] };
 function capSvg(kind, id) {
-  const [path, box, groove] =
-    kind === 'L' ? [LPATH, '47 40 30 34', 'M55 44.2V71.2'] : [T_PATH, '0 0 30 34', 'M15 4V30.6'];
-  return `<svg class="sig-cap sig-${kind}" viewBox="${box}" aria-hidden="true"><defs><linearGradient id="sg${id}" x1="0" y1="0" x2="0" y2="1">` +
-    `<stop offset="0" stop-color="var(--sig-top, #fff)"/><stop offset=".55" stop-color="var(--b)"/><stop offset="1" stop-color="var(--a)"/></linearGradient></defs>` +
-    `<path d="${path}" fill="url(#sg${id})"/><path d="${groove}" fill="none" stroke="var(--sig-groove, #04050c)" stroke-width="1" stroke-linecap="round"/>` +
-    `<path d="${path}" fill="none" stroke="var(--sig-top, #fff)" stroke-width=".4" opacity=".6"/></svg>`;
+  const [path, box, groove] = kind === 'L' ? [LPATH, '47 40 30 34', 'M55 44.2V71.2'] : [T_PATH, '0 0 30 34', 'M15 4V30.6'];
+  const [a, w] = CAP_POS[kind];
+  return `<svg class="sig-cap sig-${kind}" viewBox="${box}" aria-hidden="true"><defs>` +
+    `<linearGradient id="h${id}" x1="${(-a / w).toFixed(3)}" y1="0" x2="${((1 - a) / w).toFixed(3)}" y2="0">${FOIL.map(([o], i) => `<stop offset="${o}" stop-color="${fstop(i)}"/>`).join('')}</linearGradient>` +
+    `<linearGradient id="v${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="var(--sig-sheen, .4)"/><stop offset=".45" stop-color="#fff" stop-opacity="0"/></linearGradient></defs>` +
+    `<path d="${path}" fill="url(#h${id})"/><path d="${path}" fill="url(#v${id})"/>` +
+    `<path d="${groove}" fill="none" stroke="var(--sig-groove, #04050c)" stroke-width="1" stroke-linecap="round"/>` +
+    `<path d="${path}" fill="none" stroke="#fff" stroke-width=".4" opacity="var(--sig-edge, .55)"/></svg>`;
 }
-/** HTML tanda pembuat. Warna dari --a/--b (dan --sig-top untuk latar terang) pada elemen induk. */
+/** HTML tanda pembuat. Gaya ada di css/app.css (.sig) dan index.html (layar pembuka). */
 export function signatureHtml(id = `sig${++seq}`) {
   return `<span class="sig"><span class="sig-by">by</span><b class="sig-name" aria-label="LinTendo">` +
     `${capSvg('L', id + 'l')}<span aria-hidden="true">in</span>${capSvg('T', id + 't')}<span aria-hidden="true">endo</span></b>` +
