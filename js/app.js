@@ -57,6 +57,7 @@ const ICONS = {
   bookmark: 'M7 4h10v16l-5-4-5 4z',
   search: 'M11 18a7 7 0 1 1 0-14 7 7 0 0 1 0 14zM20 20l-4-4',
   sun: 'M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4',
+  note: 'M6 3h8.5L19 7.5V21H6zM14 3v5h5M9 13h7M9 17h4.5',
   sync: 'M20 11a8 8 0 0 0-14.3-4.9L4 8M4 4v4h4M4 13a8 8 0 0 0 14.3 4.9L20 16M20 20v-4h-4',
 };
 function icon(name) {
@@ -696,7 +697,7 @@ function resetSettings() {
  * Slider bertitik: titik di tiap nilai bulat, angka di bawah titik `labels` dan di nilai yang dipilih.
  * `onInput(v)` dipanggil tiap nilai berubah (saat digeser maupun diketuk).
  */
-function dotSlider({ label, min, max, value, labels = [], fmt = String, onInput }) {
+function dotSlider({ label, min, max, value, labels = [], unit = '', onInput }) {
   const n = max - min;
   const pos = (v) => `${((v - min) / n) * 100}%`;
   const range = el('input', { type: 'range', class: 'size-range', min, max, step: 1, value, 'aria-label': label });
@@ -709,7 +710,8 @@ function dotSlider({ label, min, max, value, labels = [], fmt = String, onInput 
     ticks.append(dot, lab);
     dots.push([v, dot, lab]);
   }
-  const head = el('div', { class: 'dot-head' }, el('span', null, label), el('output'));
+  const num = el('b');
+  const head = el('div', { class: 'dot-head' }, el('span', null, label), el('output', null, num, unit ? ` ${unit}` : null));
   let cur = null;
   const show = (v) => {
     range.style.setProperty('--p', pos(v));
@@ -719,8 +721,8 @@ function dotSlider({ label, min, max, value, labels = [], fmt = String, onInput 
       lab.className = x === v ? 'on' : '';
       lab.hidden = x !== v && !labels.includes(x);
     }
-    range.setAttribute('aria-valuetext', fmt(v));
-    head.lastChild.textContent = fmt(v);
+    range.setAttribute('aria-valuetext', `${v} ${unit}`.trim());
+    num.textContent = String(v);
   };
   range.oninput = () => {
     const v = Number(range.value);
@@ -2748,16 +2750,18 @@ async function showReader(id, wantNum, wantPara = 0) {
     const show = () => {
       const tail = story.slice(-settings.recapCount);
       summary.textContent = `Akhir ${label} · ${tail.length} paragraf terakhir${notes.length ? ' · ada TL note' : ''}`;
-      body.replaceChildren(tail.length < story.length ? el('p', { class: 'gap' }, '…') : null, ...tail.map((p) => el('p', null, p)));
+      const ps = tail.map((p) => el('p', null, p));
+      if (tail.length < story.length) ps.unshift(el('p', { class: 'gap' }, '…'));
+      body.replaceChildren(...ps);
     };
     // Jumlah paragraf bisa diatur langsung di sini (1–10; mematikan pengingat tetap lewat Pengaturan).
     const count = dotSlider({
-      label: 'Jumlah paragraf terakhir',
+      label: 'Paragraf terakhir',
       min: 1,
       max: RECAP_MAX,
       value: settings.recapCount,
-      labels: [1, 5, 10],
-      fmt: (v) => `${v} paragraf`,
+      labels: Array.from({ length: RECAP_MAX }, (_, i) => i + 1),
+      unit: 'paragraf',
       onInput: (v) => {
         settings.recapCount = v;
         saveSettings();
@@ -2789,9 +2793,20 @@ async function showReader(id, wantNum, wantPara = 0) {
     );
     // Tombol TL note hanya ada kalau chapter sebelumnya punya TL note.
     const noteBtn = notes.length
-      ? el('button', { type: 'button', class: 'rc-btn rc-tl', onclick: () => showTlNotes(prev, notes) }, `TL note Ch. ${prev.num}`)
+      ? el(
+          'button',
+          {
+            type: 'button',
+            class: 'rc-btn rc-tl',
+            'aria-label': `TL note Chapter ${prev.num} (${notes.length} catatan)`,
+            onclick: () => showTlNotes(prev, notes),
+          },
+          icon('note'),
+          'TL note',
+          el('span', { class: 'rc-badge' }, String(notes.length)),
+        )
       : null;
-    d.append(summary, el('div', { class: 'rc-ctl' }, count), body, el('div', { class: 'rc-foot rc-ctl' }, closeBtn, noteBtn));
+    d.append(summary, el('div', { class: 'rc-ctl rc-count' }, count), body, el('div', { class: 'rc-foot rc-ctl' }, closeBtn, noteBtn));
     show();
     d.addEventListener('toggle', () => {
       settings.recapOpen = d.open;
