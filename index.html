@@ -23,6 +23,8 @@
         var bg = s.paint ? s.paint.bg : '#07070d';
         // Halaman depan punya gaya sendiri (bawaan Eclipse Neon); layar baca memakai tema warna baca.
         if (!/^#\/?read\//.test(location.hash) && (!s.paint || s.paint.home !== null)) { bg = (s.paint && s.paint.home) || '#07070d'; dark = true; }
+        // Layar pembuka ikut gaya halaman depan (Klasik memakai Eclipse Neon).
+        if (s.homeStyle === 'royal' || s.homeStyle === 'aurora') document.documentElement.classList.add('splash-' + s.homeStyle);
         document.documentElement.style.background = bg;
         document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
       } catch (e) {}
@@ -33,36 +35,79 @@
       } catch (e) {}
     </script>
     <style>
-      /* Layar pembuka: menyambung dari layar pembuka Android (latar & logo sama), lalu memudar.
-         Gayanya di sini supaya langsung tampil sebelum CSS/JS aplikasi dimuat. */
+      /* Layar pembuka: ikut gaya halaman depan (Eclipse Neon / Royal Eclipse / Aurora), logo & nama di tengah
+         (sedikit di atas tengah, titik yang terasa pas di mata), lalu memudar. Gayanya di sini supaya langsung
+         tampil sebelum JS aplikasi dimuat. */
       #splash {
+        --a: #2be3ff; --a2: #bff6ff; --sbg: #07070d; --glow: rgba(43, 227, 255, 0.24);
         position: fixed; inset: 0; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center;
-        gap: 22px; background: #07070d; color: #f4f6fa; text-align: center;
+        background: var(--sbg); color: #f4f6fa; text-align: center; overflow: hidden;
         font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
         transition: opacity 0.45s ease; animation: splash-auto 0.45s ease 5s forwards;
       }
+      .splash-royal #splash { --a: #a77bff; --a2: #e7d9ff; --sbg: #0b0716; --glow: rgba(167, 123, 255, 0.28); }
+      .splash-aurora #splash { --glow: rgba(43, 227, 255, 0.2); }
       #splash.out { opacity: 0; pointer-events: none; }
       .no-splash #splash { display: none; }
-      #splash .s-name { font-size: 38px; font-weight: 800; letter-spacing: 0.01em; }
-      #splash .s-name span { color: #2be3ff; text-shadow: 0 0 16px rgba(43, 227, 255, 0.6); }
-      #splash img { width: 220px; height: 220px; margin: -24px 0; }
-      #splash .s-dev { font-size: 15px; color: #8a90a0; letter-spacing: 0.04em; }
-      /* Nama developer: gradasi neon cyan → ungu → merah muda (warna logo) dengan cahaya. */
-      #splash .s-dev b {
-        font-size: 21px; font-weight: 800; letter-spacing: 0.03em;
-        background: linear-gradient(90deg, #2be3ff, #a45cff 55%, #ff3d9a); -webkit-background-clip: text; background-clip: text;
-        color: transparent; filter: drop-shadow(0 0 10px rgba(164, 92, 255, 0.55));
-      }
+      #splash .s-sky { position: absolute; inset: 0; background: radial-gradient(70% 40% at 50% 41%, var(--glow), transparent 70%),
+        radial-gradient(120% 60% at 50% 110%, var(--glow), transparent 60%); }
+      .splash-aurora #splash .s-sky { background: radial-gradient(45% 30% at 30% 34%, rgba(43, 227, 255, 0.22), transparent 70%),
+        radial-gradient(45% 30% at 72% 46%, rgba(164, 92, 255, 0.24), transparent 70%), radial-gradient(120% 60% at 50% 110%, rgba(164, 92, 255, 0.14), transparent 60%); }
+      #splash .s-stars { position: absolute; inset: 0; }
+      #splash .s-stars i { position: absolute; width: var(--s); height: var(--s); border-radius: 50%; background: #fff; opacity: var(--o); box-shadow: 0 0 6px #fff; }
+      #splash .s-box { display: flex; flex-direction: column; align-items: center; margin-top: -8vh; }
+      #splash .s-lw { width: 150px; height: 150px; display: grid; place-items: center; }
+      #splash .s-lw { position: relative; }
+      #splash .s-ring { position: absolute; left: 50%; top: 50%; width: 220px; height: 220px; margin: -110px; border-radius: 50%; border: 1px solid var(--a); opacity: 0.3; }
+      #splash .s-ring.r2 { width: 290px; height: 290px; margin: -145px; opacity: 0.14; }
+      #splash .s-ring::before { content: '✦'; position: absolute; top: -9px; left: 50%; transform: translateX(-50%); color: var(--a); font-size: 14px; text-shadow: 0 0 10px var(--a); }
+      /* Ikon: latar gelapnya menyatu dengan layar. */
+      #splash img { position: relative; width: 180px; height: 180px; mix-blend-mode: lighten; }
+      #splash .s-name { margin: 64px 0 0; font: 400 46px/1 'Source Serif 4', 'Noto Serif', Georgia, serif; letter-spacing: -0.01em; }
+      #splash .s-name em { font-style: italic; padding-right: 0.08em; color: var(--a); text-shadow: 0 0 24px var(--glow); }
+      .splash-aurora #splash .s-name em { background: linear-gradient(95deg, #2be3ff, #a45cff); -webkit-background-clip: text; background-clip: text; color: transparent; text-shadow: none; }
+      #splash .s-orn { display: flex; align-items: center; gap: 10px; margin-top: 16px; color: var(--a); font-size: 12px; }
+      #splash .s-orn i { width: 50px; height: 1px; background: linear-gradient(90deg, transparent, var(--a)); }
+      #splash .s-orn i:last-child { transform: scaleX(-1); }
+      #splash .s-foot { position: absolute; left: 0; right: 0; bottom: calc(48px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; align-items: center; gap: 14px; }
+      #splash .s-load { width: 150px; height: 3px; border-radius: 3px; background: rgba(255, 255, 255, 0.12); overflow: hidden; }
+      #splash .s-load i { display: block; width: 40%; height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--a2), var(--a)); box-shadow: 0 0 10px var(--a);
+        animation: splash-load 1.8s ease-out forwards; }
+      .splash-aurora #splash .s-load i { background: linear-gradient(90deg, #2be3ff, #a45cff); }
+      #splash .s-dev { font-size: 14px; color: #8a90a0; letter-spacing: 0.06em; }
+      /* Nama developer: gradasi neon cyan → ungu → merah muda (warna logo). */
+      #splash .s-dev b { font-weight: 800; background: linear-gradient(90deg, #2be3ff, #a45cff 55%, #ff3d9a); -webkit-background-clip: text; background-clip: text; color: transparent; }
+      @keyframes splash-load { from { width: 8%; } to { width: 100%; } }
       @keyframes splash-auto { to { opacity: 0; visibility: hidden; } }
+      @media (prefers-reduced-motion: reduce) { #splash .s-load i { animation: none; width: 100%; } }
+      @media (max-height: 560px) { #splash .s-ring.r2 { display: none; } #splash .s-name { margin-top: 44px; font-size: 38px; } #splash .s-foot { bottom: 20px; } }
     </style>
     <script type="module" src="js/app.js"></script>
   </head>
   <body>
     <div id="splash" aria-hidden="true">
-      <div class="s-name">Lumen<span>Read</span></div>
-      <img src="icons/icon.svg" alt="" />
-      <div class="s-dev">by <b>LinTendo</b></div>
+      <div class="s-sky"></div>
+      <div class="s-stars"></div>
+      <div class="s-box">
+        <div class="s-lw"><i class="s-ring"></i><i class="s-ring r2"></i><img src="icons/icon.svg" alt="" /></div>
+        <div class="s-name">Lumen<em>Read</em></div>
+        <div class="s-orn"><i></i>✦<i></i></div>
+      </div>
+      <div class="s-foot"><div class="s-load"><i></i></div><div class="s-dev">by <b>LinTendo</b></div></div>
     </div>
+    <script>
+      // Bintang di layar pembuka (posisi tetap, bukan acak tiap buka).
+      (function () {
+        var box = document.querySelector('#splash .s-stars'), seed = 5;
+        if (!box) return;
+        function r() { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; }
+        for (var i = 0; i < 46; i++) {
+          var e = document.createElement('i');
+          e.style.cssText = 'left:' + r() * 100 + '%;top:' + r() * 100 + '%;--s:' + (0.6 + r() * 1.8) + 'px;--o:' + (0.2 + r() * 0.7);
+          box.appendChild(e);
+        }
+      })();
+    </script>
     <div id="app"></div>
     <div id="toasts" aria-live="polite"></div>
     <noscript>Aplikasi ini butuh JavaScript.</noscript>

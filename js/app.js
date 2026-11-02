@@ -1735,10 +1735,11 @@ function applyTint(node, n, cover) {
 }
 
 // ---------- Sampul ----------
-const COVER_W = 400;
-const COVER_H = 600;
+// Cukup tajam untuk lukisan sampul selebar laptop (bagian atas halaman depan), ±150–300 KB.
+const COVER_W = 800;
+const COVER_H = 1200;
 
-/** Gambar (Blob/File) → data URL JPEG maks 400×600, supaya ringan disimpan & disinkron. */
+/** Gambar (Blob/File) → data URL JPEG maks 800×1200, supaya tetap ringan disimpan & disinkron. */
 async function coverData(blob) {
   const img = await createImageBitmap(blob);
   const scale = Math.min(1, COVER_W / img.width, COVER_H / img.height);
