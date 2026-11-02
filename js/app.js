@@ -20,6 +20,7 @@ import { readZip, writeZip } from './zip.js';
 import { buildEpub } from './epub.js';
 import { readEpub } from './epubin.js';
 import * as sync from './sync.js';
+import { logoSvg, signatureHtml } from './logo.js';
 
 const APP_VERSION = '1.2.0';
 const app = document.getElementById('app');
@@ -62,14 +63,20 @@ const ICONS = {
   sun: 'M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4',
   note: 'M6 3h8.5L19 7.5V21H6zM14 3v5h5M9 13h7M9 17h4.5',
   upload: 'M12 15V4M7.5 8.5L12 4l4.5 4.5M4 15v3.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V15',
+  play: 'M8 5.5v13l10-6.5z',
+  shelf: 'M4 19V5M9 19V5M14 19l-3-14M17 19h3V8h-3zM3 19h18',
+  user: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4.5 20a7.5 7.5 0 0 1 15 0',
+  spark: 'M12 2c.6 5.3 4.7 9.4 10 10-5.3.6-9.4 4.7-10 10-.6-5.3-4.7-9.4-10-10 5.3-.6 9.4-4.7 10-10z',
   sync: 'M20 11a8 8 0 0 0-14.3-4.9L4 8M4 4v4h4M4 13a8 8 0 0 0 14.3 4.9L20 16M20 20v-4h-4',
 };
 function icon(name) {
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.setAttribute('viewBox', '0 0 24 24');
-  svg.setAttribute('fill', 'none');
-  svg.setAttribute('stroke', 'currentColor');
-  svg.setAttribute('stroke-width', name === 'more' ? '3' : '2');
+  const solid = name === 'play' || name === 'spark';
+  const thin = name === 'shelf' || name === 'user';
+  svg.setAttribute('fill', solid ? 'currentColor' : 'none');
+  svg.setAttribute('stroke', solid ? 'none' : 'currentColor');
+  svg.setAttribute('stroke-width', name === 'more' ? '3' : thin ? '1.8' : '2');
   svg.setAttribute('stroke-linecap', 'round');
   svg.setAttribute('stroke-linejoin', 'round');
   svg.setAttribute('aria-hidden', 'true');
@@ -77,6 +84,18 @@ function icon(name) {
   p.setAttribute('d', ICONS[name]);
   svg.append(p);
   return svg;
+}
+/** Logo D (Gerhana) di dalam aplikasi; warnanya ikut aksen tema. */
+function brandLogo(cls = '') {
+  const span = el('span', { class: `brand-logo ${cls}`.trim(), 'aria-hidden': 'true' });
+  span.innerHTML = logoSvg('d');
+  return span;
+}
+/** Tanda pembuat "by LinTendo" (Kristal, L & T berukir). */
+function signature() {
+  const t = document.createElement('template');
+  t.innerHTML = signatureHtml();
+  return t.content.firstElementChild;
 }
 const iconBtn = (name, label, onclick) =>
   el('button', { class: 'icon-btn', type: 'button', 'aria-label': label, title: label, onclick }, icon(name));
@@ -342,6 +361,29 @@ function themeColors() {
   return { bg, fg, dark, glow: !!t.glow, accent: t.accent || (dark ? '#7fc4ae' : '#2f6f5e') };
 }
 
+// Gaya halaman depan. Palet & susunannya di css/app.css (body[data-home=…]); di sini nama & warna latarnya
+// (untuk warna bar status HP). "Klasik" = tampilan lama yang mengikuti tema warna baca.
+const HOME_STYLES = {
+  neon: { label: 'Eclipse Neon', hint: 'Hitam pekat, cyan menyala', bg: '#07070d', hero: 'paint' },
+  royal: { label: 'Royal Eclipse', hint: 'Ungu royal, lukisan sampul', bg: '#0b0716', hero: 'paint' },
+  aurora: { label: 'Aurora', hint: 'Kaca & cahaya aurora', bg: '#07070d', hero: 'glass' },
+  classic: { label: 'Klasik', hint: 'Ikut tema warna baca', bg: null, hero: null },
+};
+const homeStyle = () => (HOME_STYLES[settings.homeStyle]?.bg ? settings.homeStyle : null);
+let currentView = 'home';
+
+/** Pasang gaya halaman depan di <body> (bukan di layar baca). */
+function applyHome() {
+  const st = currentView === 'read' ? null : homeStyle();
+  const b = document.body;
+  if (st) b.dataset.home = st;
+  else delete b.dataset.home;
+  const bg = st ? HOME_STYLES[st].bg : themeColors().bg;
+  document.documentElement.style.background = bg;
+  if (st) document.documentElement.style.colorScheme = 'dark';
+  document.querySelector('meta[name="theme-color"]').content = bg;
+}
+
 const SETTINGS_KEY = 'baca-novel:settings';
 // Bawaan tipografi meniru tampilan baca di aplikasi Claude (diukur dari tangkapan layar Android):
 // tinggi huruf kecil ±9,5px, jarak antarbaris ±25,7px, tepi kiri-kanan ±20px, teks rata kiri.
@@ -368,6 +410,8 @@ const DEFAULTS = {
   libFilter: 'all',
   libView: 'shelf',
   coverTap: 'popup',
+  // Gaya halaman depan (perpustakaan, info novel, profil); layar baca tetap memakai tema warna di atas.
+  homeStyle: 'neon',
 };
 
 // Tombol yang bisa dipasang di bar layar baca. Semuanya juga selalu ada di menu ⋯.
@@ -402,6 +446,7 @@ if (!TEXT_LEVELS[settings.textLevel]) settings.textLevel = DEFAULTS.textLevel;
 settings.size = Math.min(SIZE_MAX, Math.max(SIZE_MIN, settings.size));
 settings.recapCount = Math.min(RECAP_MAX, Math.max(0, settings.recapCount)); // batas lama 15
 if (!THEMES[settings.theme]) settings.theme = DEFAULTS.theme;
+if (!HOME_STYLES[settings.homeStyle]) settings.homeStyle = DEFAULTS.homeStyle;
 // Tombol bar baru (dari versi aplikasi yang lebih baru) ikut muncul di urutan.
 settings.barOrder = [
   ...settings.barOrder.filter((k) => BAR_ITEMS[k]),
@@ -445,8 +490,9 @@ function applySettings() {
   r.toggleAttribute('data-glow', c.glow);
   document.querySelector('meta[name="theme-color"]').content = c.bg;
   dimLayer.style.opacity = settings.dim;
+  applyHome();
   // Disimpan untuk skrip kecil di index.html yang mewarnai latar sebelum aplikasi dimuat.
-  settings.paint = { bg: c.bg, dark: c.dark };
+  settings.paint = { bg: c.bg, dark: c.dark, home: HOME_STYLES[homeStyle()]?.bg || null };
 }
 const dimLayer = document.createElement('div');
 dimLayer.className = 'dim-layer';
@@ -614,7 +660,9 @@ function openSettings() {
     title: 'Pengaturan',
     className: 'sheet',
     body: [
-      el('div', { class: 'section-label' }, 'Tema latar'),
+      el('div', { class: 'section-label' }, 'Gaya halaman depan'),
+      homeStylePicker(),
+      el('div', { class: 'section-label' }, 'Tema latar (layar baca)'),
       swatches,
       customBox,
       el('div', { class: 'section-label' }, 'Kecerahan'),
@@ -681,7 +729,38 @@ const RESETTABLE = [
   'barOrder',
   'barHidden',
   'coverTap',
+  'homeStyle',
 ];
+
+/** Kartu pilihan gaya halaman depan, dengan pratinjau kecil. Dipakai Pengaturan & Profil. */
+function homeStylePicker() {
+  const box = el('div', { class: 'style-pick', role: 'radiogroup', 'aria-label': 'Gaya halaman depan' });
+  const render = () =>
+    box.replaceChildren(
+      ...Object.entries(HOME_STYLES).map(([k, st]) =>
+        el(
+          'button',
+          {
+            type: 'button',
+            role: 'radio',
+            class: `sp-card sp-${k}`,
+            'aria-checked': String(settings.homeStyle === k),
+            onclick: () => {
+              if (settings.homeStyle === k) return;
+              updateSettings({ homeStyle: k });
+              render();
+              if (currentView !== 'read') route();
+            },
+          },
+          el('span', { class: 'sp-prev', 'aria-hidden': 'true' }, el('i'), el('i'), el('i')),
+          el('b', null, st.label),
+          el('small', null, st.hint),
+        ),
+      ),
+    );
+  render();
+  return box;
+}
 
 function resetSettings() {
   const before = structuredClone(settings);
@@ -928,10 +1007,13 @@ function setView(nodes, teardown) {
 
 async function route() {
   const [view, id, num, para] = location.hash.replace(/^#\/?/, '').split('/');
+  currentView = view === 'read' && id ? 'read' : 'home';
+  applyHome();
   try {
     if (view === 'read' && id)
       await showReader(decodeURIComponent(id), num != null && num !== '' ? Number(num) : null, Number(para) || 0);
     else if (view === 'novel' && id) await showNovel(decodeURIComponent(id));
+    else if (view === 'profil') await showProfile();
     else await showLibrary();
   } catch (e) {
     console.error(e);
@@ -965,7 +1047,7 @@ async function showLibrary() {
     : el(
         'div',
         { class: 'empty' },
-        el('img', { class: 'empty-logo', src: 'icons/icon.svg', alt: '' }),
+        brandLogo('empty-logo'),
         el('h2', null, 'Belum ada novel'),
         el(
           'p',
@@ -984,7 +1066,7 @@ async function showLibrary() {
 
   const foot = el('p', { class: 'foot' });
   showStorageInfo(foot);
-  const credit = el('p', { class: 'credit' }, 'Lumen', el('span', null, 'Read'), ' · by ', el('b', null, 'LinTendo'));
+  const credit = el('p', { class: 'credit' }, brandLogo('credit-logo'), 'Lumen', el('span', null, 'Read'), ' · ', signature());
   // Tombol bulat kanan bawah: lanjut ke novel yang terakhir dibaca.
   const last = novels.filter((n) => n.lastRead && n.toc.length).sort((a, b) => b.lastRead.at - a.lastRead.at)[0];
   const fab = last
@@ -1000,7 +1082,406 @@ async function showLibrary() {
         icon('book'),
       )
     : null;
-  setView([bar, el('main', { class: 'page library' }, body, syncLine(), foot, credit), fab].filter(Boolean));
+  const styled = homeStyle() && novels.length;
+  if (styled) bar.replaceChildren(bar.querySelector('h1'));
+  const glass = styled && HOME_STYLES[homeStyle()].hero === 'glass';
+  const hero = styled ? (glass ? glassHero(novels, covers) : homeHero(novels, covers)) : null;
+  const main = el(
+    'main',
+    { class: `page library${hero && !glass ? ' has-hero' : ''}` },
+    glass ? hero : null,
+    body,
+    el('footer', { class: 'lib-foot' }, syncLine(), foot, credit),
+  );
+  const nav = styled ? homeNav(novels, covers) : [];
+  if (pendingSearch) {
+    pendingSearch = false;
+    requestAnimationFrame(focusSearch);
+  }
+  setView([bar, glass ? null : hero, main, styled ? null : fab, ...nav].filter(Boolean));
+}
+
+// ---------- Halaman depan bergaya (Eclipse Neon, dst.) ----------
+const greeting = () => {
+  const h = new Date().getHours();
+  return h < 4 ? 'Selamat malam' : h < 11 ? 'Selamat pagi' : h < 15 ? 'Selamat siang' : h < 18 ? 'Selamat sore' : 'Selamat malam';
+};
+/** Novel di bagian atas: terakhir dibaca; kalau belum ada, novel terbaru yang punya chapter. */
+function heroNovel(novels) {
+  const read = novels.filter((n) => n.lastRead && n.toc.length).sort((a, b) => b.lastRead.at - a.lastRead.at);
+  return read[0] || novels.filter((n) => n.toc.length).sort((a, b) => b.createdAt - a.createdAt)[0] || null;
+}
+let ringSeq = 0;
+/** Lingkaran progres (persen di tengah). */
+function progressRing(pct, size = 54, stroke = 4) {
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const id = `rg${++ringSeq}`;
+  const box = el('div', { class: 'p-ring', role: 'img', 'aria-label': `${Math.round(pct)}% terbaca`, style: `width:${size}px;height:${size}px` });
+  box.innerHTML = `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" aria-hidden="true"><defs><linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="var(--accent-2)"/><stop offset="1" stop-color="var(--accent)"/></linearGradient></defs><circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="currentColor" stroke-opacity=".14" stroke-width="${stroke}"/><circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="url(#${id})" stroke-width="${stroke}" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${c * (1 - pct / 100)}" transform="rotate(-90 ${size / 2} ${size / 2})"/></svg>`;
+  box.append(el('b', null, `${Math.round(pct)}%`));
+  return box;
+}
+function starField(count = 34) {
+  let seed = 7;
+  const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+  const box = el('div', { class: 'h-stars', 'aria-hidden': 'true' });
+  for (let i = 0; i < count; i++)
+    box.append(el('i', { style: `left:${(rnd() * 100).toFixed(1)}%;top:${(rnd() * 100).toFixed(1)}%;--s:${(0.6 + rnd() * 1.8).toFixed(1)}px;--o:${(0.3 + rnd() * 0.7).toFixed(2)};--d:${(rnd() * 4).toFixed(1)}s` }));
+  return box;
+}
+function openToc(n) {
+  const idx = n.lastRead ? n.toc.findIndex((t) => t.num === n.lastRead.num) : -1;
+  openTocDialog(
+    n,
+    idx,
+    (i) => (location.hash = `#/read/${encodeURIComponent(n.id)}/${n.toc[i].num}`),
+    (num, para) => (location.hash = `#/read/${encodeURIComponent(n.id)}/${num}/${para}`),
+  );
+}
+/** Bagian atas: sampul novel yang sedang dibaca jadi lukisan latar, sapaan, tombol lanjut, daftar isi, progres. */
+function homeHero(novels, covers) {
+  const n = heroNovel(novels);
+  if (!n) return null;
+  const cover = covers.get(n.id);
+  const pct = readPct(n);
+  const total = n.toc[n.toc.length - 1].num;
+  const art = el('div', { class: 'h-art' });
+  if (cover) art.style.backgroundImage = `url("${cover}")`;
+  else {
+    const hue = 185 + (titleHue(n.title) % 150);
+    art.style.background = `radial-gradient(70% 60% at 70% 30%, hsl(${hue} 80% 45% / .55), transparent 70%)`;
+  }
+  return el(
+    'section',
+    { class: 'h-hero' },
+    art,
+    el('div', { class: 'h-moon', 'aria-hidden': 'true' }),
+    starField(),
+    el(
+      'div',
+      { class: 'h-txt' },
+      el('small', null, icon('spark'), `${greeting()} · ${n.lastRead ? 'lanjut membaca' : 'mulai membaca'}`),
+      // Judul besar = judul novel (ukurannya menyesuaikan panjang judul).
+      el(
+        'h2',
+        { class: `h-title${n.title.length > 30 ? ' xl' : n.title.length > 16 ? ' l' : ''}`, onclick: () => openNovelInfo(n), title: 'Info novel' },
+        n.title,
+      ),
+      el(
+        'p',
+        null,
+        n.lastRead ? [el('b', null, `Chapter ${n.lastRead.num}`), ` dari ${total}`] : el('b', null, `${fmtNum(n.toc.length)} chapter`),
+        n.author ? ` · ${n.author}` : '',
+        n.lastRead ? el('span', { class: 'h-pct' }, ` · ${Math.round(pct)}%`) : null,
+      ),
+      el(
+        'div',
+        { class: 'h-btns' },
+        el('a', { class: 'h-cta', href: `#/read/${encodeURIComponent(n.id)}` }, icon('play'), n.lastRead ? 'Lanjut baca' : 'Mulai baca'),
+        el('button', { type: 'button', class: 'h-round', 'aria-label': 'Daftar isi', title: 'Daftar isi', onclick: () => openToc(n) }, icon('toc')),
+        n.lastRead ? progressRing(pct) : null,
+      ),
+    ),
+  );
+}
+function focusSearch() {
+  const input = document.querySelector('.lib-search input');
+  if (!input) return;
+  input.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  input.focus({ preventScroll: true });
+}
+let pendingSearch = false;
+const openProfile = () => (location.hash = '#/profil');
+/** Navigasi halaman depan bergaya: bar bawah (HP/iPad) dan sidebar (laptop ≥ 1100px). */
+function homeNav(novels, covers, active = 'rak') {
+  const n = heroNovel(novels);
+  const go = () => (n ? (location.hash = `#/read/${encodeURIComponent(n.id)}`) : openImport());
+  const onLib = active === 'rak';
+  const toTop = () => (onLib ? window.scrollTo({ top: 0, behavior: 'smooth' }) : (location.hash = '#/'));
+  const search = () => {
+    if (onLib) return focusSearch();
+    pendingSearch = true;
+    location.hash = '#/';
+  };
+  const item = (ic, label, onclick, on) =>
+    el('button', { type: 'button', class: `n-it${on ? ' on' : ''}`, 'aria-current': on ? 'page' : null, onclick }, icon(ic), el('span', null, label));
+  const bottom = el(
+    'nav',
+    { class: 'n-bar', 'aria-label': 'Navigasi' },
+    item('shelf', 'Rak', toTop, onLib),
+    item('search', 'Cari', search),
+    el(
+      'button',
+      { type: 'button', class: 'n-star', 'aria-label': n ? `Lanjut baca ${n.title}` : 'Impor novel', title: n ? `Lanjut: ${n.title}` : 'Impor novel', onclick: go },
+      el('i', { 'aria-hidden': 'true' }),
+      icon('spark'),
+    ),
+    item('upload', 'Impor', () => openImport()),
+    item('user', 'Profil', openProfile, active === 'profil'),
+  );
+  const sItem = (ic, label, onclick, extra, on) =>
+    el('button', { type: 'button', class: `sd-it${on ? ' on' : ''}`, 'aria-current': on ? 'page' : null, onclick }, icon(ic), el('span', null, label), extra || null);
+  let now = null;
+  if (n) {
+    const pct = Math.round(readPct(n));
+    now = el(
+      'div',
+      { class: 'sd-now' },
+      el('small', null, icon('spark'), n.lastRead ? 'Sedang dibaca' : 'Mulai membaca'),
+      el(
+        'button',
+        { type: 'button', class: 'sd-now-row', onclick: () => openNovelInfo(n), 'aria-label': `Info ${n.title}` },
+        coverEl(n, covers.get(n.id), 'sd-cover'),
+        el('span', null, el('b', null, n.title), el('span', null, n.lastRead ? `Ch. ${n.lastRead.num} · ${pct}%` : `${fmtNum(n.toc.length)} chapter`)),
+      ),
+      el('div', { class: 'sd-bar' }, el('i', { style: `width:${pct}%` })),
+      el('a', { class: 'sd-go', href: `#/read/${encodeURIComponent(n.id)}` }, icon('play'), n.lastRead ? 'Lanjut baca' : 'Mulai baca'),
+    );
+    applyTint(now, n, covers.get(n.id));
+  }
+  const side = el(
+    'aside',
+    { class: 'sd', 'aria-label': 'Navigasi' },
+    el('div', { class: 'sd-brand' }, brandLogo(), el('b', null, 'Lumen', el('em', null, 'Read'))),
+    el(
+      'nav',
+      { class: 'sd-nav' },
+      sItem('shelf', 'Rak buku', toTop, el('em', null, fmtNum(novels.length)), onLib),
+      sItem('search', 'Cari', search, el('kbd', null, '/')),
+      sItem('upload', 'Impor novel', () => openImport()),
+      sItem('user', 'Profil & pengaturan', openProfile, null, active === 'profil'),
+    ),
+    el('div', { class: 'sd-sp' }),
+    now,
+    el('div', { class: 'sd-foot' }, syncLine() || el('span'), signature()),
+  );
+  return [bottom, side];
+}
+// Laptop: tombol / langsung ke kolom cari perpustakaan.
+document.addEventListener('keydown', (e) => {
+  if (e.key !== '/' || e.ctrlKey || e.metaKey || e.altKey || currentView === 'read') return;
+  if (e.target.closest?.('input, textarea, select, [contenteditable], dialog')) return;
+  e.preventDefault();
+  if (document.querySelector('.lib-search input')) focusSearch();
+  else if (document.querySelector('.sd')) {
+    pendingSearch = true;
+    location.hash = '#/';
+  }
+});
+
+// ---------- Profil (lokal, tanpa akun) ----------
+const PROFILE_KEY = 'lumenread:profile';
+function loadProfile() {
+  try {
+    return { name: '', photo: '', ...JSON.parse(localStorage.getItem(PROFILE_KEY) || '{}') };
+  } catch {
+    return { name: '', photo: '' };
+  }
+}
+function saveProfile(p) {
+  try {
+    localStorage.setItem(PROFILE_KEY, JSON.stringify(p));
+    return true;
+  } catch {
+    toast('Foto terlalu besar untuk disimpan di browser ini.');
+    return false;
+  }
+}
+/** Foto profil: dipotong persegi di tengah, dikecilkan jadi JPEG 192×192 (±10–20 KB). */
+async function avatarData(file) {
+  const img = await createImageBitmap(file);
+  const side = Math.min(img.width, img.height);
+  const c = document.createElement('canvas');
+  c.width = c.height = 192;
+  c.getContext('2d').drawImage(img, (img.width - side) / 2, (img.height - side) / 2, side, side, 0, 0, 192, 192);
+  img.close?.();
+  return c.toDataURL('image/jpeg', 0.85);
+}
+function avatarEl(p, cls = 'pf-ava') {
+  const inner = p.photo ? el('img', { src: p.photo, alt: '' }) : el('span', null, (p.name || 'L').trim().charAt(0).toUpperCase() || 'L');
+  return el('span', { class: cls, 'aria-hidden': 'true' }, inner);
+}
+function editProfile(onDone) {
+  const p = loadProfile();
+  const name = el('input', { type: 'text', value: p.name, placeholder: 'Nama kamu', maxlength: '40', 'aria-label': 'Nama' });
+  const preview = el('div', { class: 'pf-edit-ava' }, avatarEl(p));
+  const file = el('input', { type: 'file', accept: 'image/*', class: 'drop-input' });
+  const pick = el('button', { type: 'button', class: 'btn small-btn', onclick: () => file.click() }, 'Pilih foto');
+  const remove = el('button', { type: 'button', class: 'btn small-btn danger', onclick: () => ((p.photo = ''), preview.replaceChildren(avatarEl(p)), (remove.hidden = true)) }, 'Hapus foto');
+  remove.hidden = !p.photo;
+  file.onchange = async () => {
+    if (!file.files[0]) return;
+    try {
+      p.photo = await avatarData(file.files[0]);
+      preview.replaceChildren(avatarEl(p));
+      remove.hidden = false;
+    } catch {
+      toast('Gambar tidak bisa dibaca.');
+    }
+  };
+  dialog({
+    title: 'Ubah nama & foto',
+    body: [
+      el('div', { class: 'pf-edit' }, preview, el('div', { class: 'pf-edit-btns' }, pick, remove, file)),
+      el('label', { class: 'field' }, el('span', null, 'Nama'), name),
+      el('p', { class: 'small muted' }, 'Hanya disimpan di perangkat ini (tidak ikut sinkron).'),
+    ],
+    actions: [
+      { label: 'Batal' },
+      {
+        label: 'Simpan',
+        primary: true,
+        run: () => {
+          p.name = name.value.trim();
+          if (!saveProfile(p)) return false;
+          onDone?.();
+        },
+      },
+    ],
+  });
+}
+
+async function showProfile() {
+  document.title = 'Profil · LumenRead';
+  const [novels, covers] = await Promise.all([db.listNovels(), db.getCovers()]);
+  const p = loadProfile();
+  const read = novels.reduce((t, n) => t + (n.lastRead ? n.toc.findIndex((c) => c.num === n.lastRead.num) + 1 : 0), 0);
+  const marks = novels.reduce((t, n) => t + Object.keys(n.bookmarks || {}).length, 0);
+  const done = novels.filter((n) => statusOf(n) === 'done').length;
+  const since = novels.length ? Math.min(...novels.map((n) => n.createdAt || Date.now())) : null;
+  const row = (ic, title, sub, onclick, extra) =>
+    el(
+      onclick ? 'button' : 'div',
+      { type: onclick ? 'button' : null, class: 'pf-row', onclick },
+      el('span', { class: 'pf-ic' }, icon(ic)),
+      el('span', { class: 'pf-txt' }, el('b', null, title), sub ? el('span', null, sub) : null),
+      extra || (onclick ? icon('chevron') : null),
+    );
+  const cfg = sync.loadConfig();
+  const syncSub = !cfg
+    ? 'Belum dinyalakan · samakan HP, iPad, laptop'
+    : syncState.error
+      ? `Gagal: ${syncState.error}`
+      : syncState.last
+        ? `Terakhir ${fmtTime(syncState.last)}`
+        : 'Belum pernah sinkron';
+  const storage = row('book', 'Penyimpanan', 'Menghitung…');
+  const storageText = storage.querySelector('.pf-txt span');
+  showStorageInfo(storageText).then(() => (storageText.textContent = storageText.textContent.replace(/^Versi [^·]+·\s*/, '')));
+  const bar = el('header', { class: 'bar' }, el('h1', { class: 'brand' }, 'Profil'));
+  const main = el(
+    'main',
+    { class: 'page profile' },
+    el(
+      'section',
+      { class: 'pf-head' },
+      avatarEl(p),
+      el(
+        'div',
+        { class: 'pf-who' },
+        el('h2', null, p.name || 'Pembaca'),
+        el('p', null, since ? `Pembaca sejak ${new Date(since).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}` : 'Selamat datang di LumenRead'),
+        el('button', { type: 'button', class: 'link-btn pf-edit-btn', onclick: () => editProfile(route) }, 'Ubah nama & foto'),
+      ),
+    ),
+    el(
+      'section',
+      { class: 'pf-stats', 'aria-label': 'Statistik' },
+      [['Novel', novels.length], ['Chapter terbaca', read], ['Selesai', done], ['Bookmark', marks]].map(([l, v]) => el('div', null, el('b', null, fmtNum(v)), el('span', null, l))),
+    ),
+    el('h3', { class: 'pf-sec' }, 'Gaya halaman depan'),
+    homeStylePicker(),
+    el('h3', { class: 'pf-sec' }, 'Pengaturan'),
+    el(
+      'div',
+      { class: 'pf-list' },
+      row('type', 'Tampilan & pengaturan', 'Tema baca, huruf, ukuran, pengingat, tombol panel', openSettings),
+      row('upload', 'Impor novel', 'File .txt, .zip, .epub, atau tempel teks', () => openImport()),
+    ),
+    el('h3', { class: 'pf-sec' }, 'Data'),
+    el(
+      'div',
+      { class: 'pf-list' },
+      row('sync', 'Sinkronisasi', syncSub, openSync, cfg && !syncState.error && syncState.last ? el('em', { class: 'pf-ok' }, '● aktif') : null),
+      storage,
+      row('info', 'Tentang LumenRead', `Versi ${APP_VERSION} · by LinTendo`),
+    ),
+    el('div', { class: 'pf-brand' }, brandLogo(), el('p', { class: 'credit' }, 'Lumen', el('span', null, 'Read'), ' · ', signature())),
+  );
+  setView([bar, main, ...(homeStyle() ? homeNav(novels, covers, 'profil') : [])]);
+}
+
+/** Bagian atas gaya Aurora: sapaan + kartu kaca berisi sampul, tombol lanjut, daftar isi, progres. */
+function glassHero(novels, covers) {
+  const n = heroNovel(novels);
+  if (!n) return null;
+  const cover = covers.get(n.id);
+  const total = n.toc[n.toc.length - 1].num;
+  const part = greeting().replace('Selamat ', '');
+  const card = el(
+    'section',
+    { class: 'g-hero' },
+    cover ? el('div', { class: 'g-bg', style: `background-image:url("${cover}")` }) : null,
+    el('button', { type: 'button', class: 'g-cover', 'aria-label': `Info ${n.title}`, onclick: () => openNovelInfo(n) }, coverEl(n, cover)),
+    el(
+      'div',
+      { class: 'g-body' },
+      el('small', null, icon('spark'), n.lastRead ? 'Lanjut membaca' : 'Mulai membaca'),
+      el('h3', null, n.title),
+      el('p', null, [n.author, n.lastRead ? `Ch ${n.lastRead.num} dari ${total}` : `${fmtNum(n.toc.length)} chapter`].filter(Boolean).join(' · ')),
+    ),
+    el(
+      'div',
+      { class: 'h-btns g-btns' },
+      el('a', { class: 'h-cta', href: `#/read/${encodeURIComponent(n.id)}` }, icon('play'), n.lastRead ? 'Lanjut baca' : 'Mulai baca'),
+      el('button', { type: 'button', class: 'h-round', 'aria-label': 'Daftar isi', title: 'Daftar isi', onclick: () => openToc(n) }, icon('toc')),
+    ),
+    n.lastRead ? progressRing(readPct(n), 50, 4) : null,
+  );
+  applyTint(card, n, cover);
+  return el(
+    'div',
+    { class: 'g-wrap' },
+    el('header', { class: 'g-hello' }, el('small', null, greeting()), el('h2', null, 'Mau baca ', el('span', null, 'apa'), ` ${part} ini?`)),
+    card,
+  );
+}
+
+/** Kartu ringkas untuk halaman depan bergaya: satu tombol baca; daftar isi & lainnya di menu ⋯. */
+function compactCard(n, cover) {
+  const total = n.toc.length;
+  const pct = readPct(n);
+  const st = statusOf(n);
+  const info = () => openNovelInfo(n);
+  const card = el(
+    'section',
+    { class: 'hcard' },
+    el('button', { type: 'button', class: 'card-cover', 'aria-label': `Buka ${n.title}`, onclick: info }, coverEl(n, cover)),
+    el(
+      'div',
+      { class: 'hc-info' },
+      el('h2', { onclick: info }, n.title),
+      byline(n) ? el('p', { class: 'hc-by' }, byline(n)) : null,
+      el(
+        'p',
+        { class: 'hc-meta' },
+        el('span', { class: `hc-st st-${st}` }, STATUSES[st]),
+        n.lastRead && total ? `Ch ${n.lastRead.num} / ${n.toc[total - 1].num}` : `${fmtNum(total)} chapter`,
+      ),
+      el('div', { class: 'hc-prog' }, el('i', null, el('i', { style: `width:${pct}%` })), el('b', null, `${Math.round(pct)}%`)),
+    ),
+    el(
+      'div',
+      { class: 'hc-acts' },
+      total
+        ? el('a', { class: 'hc-go', href: `#/read/${encodeURIComponent(n.id)}`, 'aria-label': `${n.lastRead ? 'Lanjut' : 'Mulai'} baca ${n.title}`, title: n.lastRead ? 'Lanjut baca' : 'Mulai baca' }, icon('play'))
+        : null,
+      iconBtn('more', 'Menu novel', () => novelMenu(n)),
+    ),
+  );
+  applyTint(card, n, cover);
+  return card;
 }
 
 const STATUSES = { reading: 'Sedang dibaca', later: 'Nanti', done: 'Selesai' };
@@ -1020,43 +1501,47 @@ let libQuery = '';
 /** Perpustakaan: cari judul/pengarang, urutkan, dan saring menurut status baca. */
 function libraryList(novels, covers) {
   const cards = el('div', { class: 'cards' });
-  const viewBtn = iconBtn('grid', 'Ganti tampilan', () => {
-    settings.libView = settings.libView === 'shelf' ? 'list' : 'shelf';
+  const styled = !!homeStyle();
+  const hero = styled ? heroNovel(novels) : null;
+  const pickView = (v) => {
+    if (settings.libView === v) return;
+    settings.libView = v;
     saveSettings();
     renderCards();
-  });
-  const search = el('input', { type: 'search', placeholder: 'Cari judul atau pengarang…', value: libQuery, 'aria-label': 'Cari novel' });
+  };
+  const viewBtns = {
+    list: el('button', { type: 'button', 'aria-label': 'Tampilan daftar', title: 'Tampilan daftar', onclick: () => pickView('list') }, icon('list')),
+    shelf: el('button', { type: 'button', 'aria-label': 'Tampilan rak', title: 'Tampilan rak', onclick: () => pickView('shelf') }, icon('grid')),
+  };
+  const search = el('input', { type: 'search', placeholder: 'Cari judul, pengarang, genre…', value: libQuery, 'aria-label': 'Cari novel' });
   const sort = el(
     'select',
     { 'aria-label': 'Urutkan' },
     Object.entries(SORTS).map(([k, v]) => el('option', { value: k, selected: settings.libSort === k }, v.label)),
   );
-  const chips = el('div', { class: 'chips', role: 'tablist' });
+  const chips = el('div', { class: 'chips', role: 'tablist', 'aria-label': 'Saring menurut status' });
   const counts = { all: novels.length };
   for (const n of novels) counts[statusOf(n)] = (counts[statusOf(n)] || 0) + 1;
+  const setFilter = (k) => {
+    settings.libFilter = k;
+    saveSettings();
+    renderChips();
+    renderCards();
+  };
   const renderChips = () =>
     chips.replaceChildren(
       ...Object.entries({ all: 'Semua', ...STATUSES }).map(([k, label]) =>
         el(
           'button',
-          {
-            type: 'button',
-            role: 'tab',
-            'aria-selected': String(settings.libFilter === k),
-            onclick: () => {
-              settings.libFilter = k;
-              saveSettings();
-              renderChips();
-              renderCards();
-            },
-          },
-          `${label} ${counts[k] || 0}`,
+          { type: 'button', role: 'tab', 'aria-selected': String(settings.libFilter === k), onclick: () => setFilter(k) },
+          el('span', { class: 'l' }, el('span', { class: 'l-full' }, label), k === 'reading' ? el('span', { class: 'l-short' }, 'Dibaca') : null),
+          el('span', { class: 'n' }, fmtNum(counts[k] || 0)),
         ),
       ),
     );
   const renderCards = () => {
     const q = fold(libQuery.trim());
-    const shown = novels
+    let shown = novels
       .filter((n) => settings.libFilter === 'all' || statusOf(n) === settings.libFilter)
       .filter((n) => {
         const i = n.info || {};
@@ -1064,12 +1549,34 @@ function libraryList(novels, covers) {
       })
       .sort(SORTS[settings.libSort]?.fn || SORTS.recent.fn);
     const shelf = settings.libView === 'shelf';
+    // Halaman depan bergaya: novel di bagian atas tidak diulang di daftar (kecuali saat mencari, atau bila
+    // daftarnya jadi kosong, mis. baru punya satu novel).
+    if (styled && !q && hero && shown.length > 1 && shown.includes(hero)) shown = shown.filter((n) => n !== hero);
     cards.className = shelf ? 'shelf' : 'cards';
-    viewBtn.replaceChildren(icon(shelf ? 'list' : 'grid'));
-    viewBtn.setAttribute('aria-label', shelf ? 'Tampilan daftar' : 'Tampilan rak');
-    viewBtn.title = viewBtn.getAttribute('aria-label');
-    const make = shelf ? (n) => shelfItem(n, covers.get(n.id)) : (n) => novelCard(n, covers.get(n.id));
-    cards.replaceChildren(...(shown.length ? shown.map(make) : [el('p', { class: 'empty small' }, 'Tidak ada novel yang cocok.')]));
+    viewBtns.list.setAttribute('aria-pressed', String(!shelf));
+    viewBtns.shelf.setAttribute('aria-pressed', String(shelf));
+    const make = shelf ? (n) => shelfItem(n, covers.get(n.id)) : styled ? (n) => compactCard(n, covers.get(n.id)) : (n) => novelCard(n, covers.get(n.id));
+    if (shown.length) return cards.replaceChildren(...shown.map(make));
+    // Tidak ada yang cocok: tawarkan cara keluar dari pencarian/saringan.
+    const reset = el('button', {
+      type: 'button',
+      class: 'btn small-btn',
+      onclick: () => {
+        libQuery = search.value = '';
+        if (settings.libFilter !== 'all') setFilter('all');
+        else renderCards();
+      },
+    });
+    reset.textContent = q ? 'Hapus pencarian' : 'Tampilkan semua';
+    cards.replaceChildren(
+      el(
+        'div',
+        { class: 'lib-empty' },
+        icon('search'),
+        el('p', null, q ? `Tidak ada novel yang cocok dengan “${libQuery.trim()}”.` : `Belum ada novel berstatus ${STATUSES[settings.libFilter] || ''}.`),
+        reset,
+      ),
+    );
   };
   search.oninput = () => {
     libQuery = search.value;
@@ -1082,7 +1589,23 @@ function libraryList(novels, covers) {
   };
   renderChips();
   renderCards();
-  return el('div', null, el('div', { class: 'lib-tools' }, search, sort, viewBtn), chips, cards);
+  const read = novels.reduce((t, n) => t + (n.lastRead ? n.toc.findIndex((c) => c.num === n.lastRead.num) + 1 : 0), 0);
+  return el(
+    'div',
+    null,
+    styled
+      ? el('div', { class: 'h-sec' }, el('h3', null, icon('spark'), 'Rak buku'), el('span', null, `${fmtNum(novels.length)} novel · ${fmtNum(read)} chapter terbaca`))
+      : null,
+    el(
+      'div',
+      { class: 'lib-tools' },
+      el('label', { class: 'lib-search' }, icon('search'), search),
+      el('label', { class: 'lib-sort' }, icon('sort'), sort),
+      el('div', { class: 'view-seg', role: 'group', 'aria-label': 'Tampilan' }, viewBtns.list, viewBtns.shelf),
+    ),
+    chips,
+    cards,
+  );
 }
 
 /** Progres baca (persen, menurut urutan chapter terakhir dibaca). */
@@ -1091,26 +1614,30 @@ function readPct(n) {
   return n.toc.length && idx >= 0 ? ((idx + 1) / n.toc.length) * 100 : 0;
 }
 
-/** Tampilan rak: sampul + persen, judul di bawah; ⋯ membuka menu novel. */
+/** Tampilan rak: sampul + garis progres, judul & posisi baca di bawah; ⋯ membuka menu novel. */
 function shelfItem(n, cover) {
   const pct = readPct(n);
-  const open = () => openNovelInfo(n);
-  return el(
+  const st = statusOf(n);
+  const sub = n.lastRead && pct ? `Ch ${n.lastRead.num} · ${Math.round(pct)}%` : STATUSES[st];
+  const item = el(
     'div',
     { class: 'book' },
     el(
       'button',
-      { type: 'button', class: 'book-cover', 'aria-label': `Buka ${n.title}`, onclick: open },
+      { type: 'button', class: 'book-cover', 'aria-label': `Buka ${n.title}`, onclick: () => openNovelInfo(n) },
       coverEl(n, cover),
-      el('span', { class: 'pct' }, `${Math.round(pct)}%`),
+      pct ? el('span', { class: 'book-bar', 'aria-hidden': 'true' }, el('i', { style: `width:${pct}%` })) : null,
     ),
     el(
       'div',
       { class: 'book-foot' },
       el('span', { class: 'book-title', title: n.title }, n.title),
       iconBtn('more', 'Menu novel', () => novelMenu(n)),
+      el('span', { class: 'book-sub' }, sub),
     ),
   );
+  applyTint(item, n, cover);
+  return item;
 }
 
 function novelCard(n, cover) {
@@ -1118,31 +1645,49 @@ function novelCard(n, cover) {
   const idx = n.lastRead ? n.toc.findIndex((t) => t.num === n.lastRead.num) : -1;
   const pct = total && idx >= 0 ? ((idx + 1) / total) * 100 : 0;
   const read = () => (location.hash = `#/read/${encodeURIComponent(n.id)}`);
-  const meta = [`${fmtNum(total)} chapter`];
-  if (total) meta.push(`Ch ${n.toc[0].num}–${n.toc[total - 1].num}`);
-  if (idx >= 0) meta.push(`terakhir dibaca: Chapter ${n.lastRead.num}`);
-  const st = statusOf(n);
+  const info = () => openNovelInfo(n);
+  const facts = [`${fmtNum(total)} chapter`];
+  if (total) facts.push(`Ch ${n.toc[0].num}–${n.toc[total - 1].num}`);
   const marks = Object.keys(n.bookmarks || {}).length;
-  return el(
+  if (marks) facts.push(`${fmtNum(marks)} bookmark`);
+  const st = statusOf(n);
+  const card = el(
     'section',
     { class: 'card' },
-    el('button', { type: 'button', class: 'card-cover', 'aria-label': `Buka ${n.title}`, onclick: () => openNovelInfo(n) }, coverEl(n, cover)),
-    el('h2', { onclick: () => openNovelInfo(n) }, n.title, byline(n) ? el('small', { class: 'author' }, byline(n)) : null),
-    iconBtn('more', 'Menu novel', () => novelMenu(n)),
+    el('button', { type: 'button', class: 'card-cover', 'aria-label': `Buka ${n.title}`, onclick: info }, coverEl(n, cover)),
     el(
       'div',
-      { class: 'meta' },
-      el('span', { class: `badge st-${st}` }, STATUSES[st]),
-      ' ',
-      meta.join(' · '),
-      marks ? ` · ${fmtNum(marks)} bookmark` : '',
+      { class: 'card-main' },
+      el(
+        'div',
+        { class: 'card-head' },
+        el('h2', { onclick: info }, n.title, byline(n) ? el('small', { class: 'author' }, byline(n)) : null),
+        iconBtn('more', 'Menu novel', () => novelMenu(n)),
+      ),
+      el('div', { class: 'meta' }, el('span', { class: `badge st-${st}` }, STATUSES[st]), el('span', null, facts.join(' · '))),
+      total
+        ? el(
+            'div',
+            { class: 'card-prog' },
+            el(
+              'div',
+              { class: 'prog-label' },
+              el('span', null, idx >= 0 ? [el('span', { class: 'pre' }, 'Terakhir: '), `Chapter ${n.lastRead.num}`] : 'Belum dibaca'),
+              el('b', null, `${Math.round(pct)}%`),
+            ),
+            el(
+              'div',
+              { class: 'progress', role: 'progressbar', 'aria-label': 'Progres baca', 'aria-valuemin': '0', 'aria-valuemax': '100', 'aria-valuenow': String(Math.round(pct)) },
+              el('div', { style: `width:${pct}%` }),
+            ),
+          )
+        : null,
     ),
-    el('div', { class: 'progress', title: `${Math.round(pct)}%` }, el('div', { style: `width:${pct}%` })),
     el(
       'div',
       { class: 'actions' },
       total
-        ? el('button', { type: 'button', class: 'btn primary', onclick: read }, idx >= 0 ? 'Lanjut baca' : 'Mulai baca')
+        ? el('button', { type: 'button', class: 'btn primary', onclick: read }, icon('book'), el('span', { class: 't' }, idx >= 0 ? 'Lanjut baca' : 'Mulai baca'))
         : el('span', { class: 'muted small' }, 'Belum ada chapter.'),
       total
         ? el(
@@ -1150,6 +1695,7 @@ function novelCard(n, cover) {
             {
               type: 'button',
               class: 'btn',
+              title: 'Daftar isi',
               onclick: () =>
                 openTocDialog(
                   n,
@@ -1159,19 +1705,66 @@ function novelCard(n, cover) {
                 ),
             },
             icon('toc'),
-            'Daftar isi',
+            el('span', { class: 't' }, 'Daftar isi'),
           )
         : null,
       el('button', { type: 'button', class: 'btn add', 'aria-label': 'Tambah chapter', title: 'Tambah chapter', onclick: () => openImport(n.id) }, icon('plus')),
     ),
   );
+  applyTint(card, n, cover);
+  return card;
+}
+
+// ---------- Rona sampul ----------
+// Warna khas sampul dipakai untuk rona kartu & cahaya di bawah sampul, supaya tiap novel punya nuansanya sendiri.
+const tintCache = new Map();
+
+/** Warna khas gambar: rata-rata 12×12 piksel, piksel yang lebih berwarna diberi bobot lebih besar. */
+async function imageTint(src) {
+  const img = new Image();
+  img.src = src;
+  await img.decode();
+  const c = document.createElement('canvas');
+  c.width = c.height = 12;
+  const g = c.getContext('2d', { willReadFrequently: true });
+  g.drawImage(img, 0, 0, 12, 12);
+  const d = g.getImageData(0, 0, 12, 12).data;
+  let r = 0, gr = 0, b = 0, w = 0;
+  for (let i = 0; i < d.length; i += 4) {
+    const s = Math.max(d[i], d[i + 1], d[i + 2]) - Math.min(d[i], d[i + 1], d[i + 2]);
+    const k = s * s + 64;
+    r += d[i] * k;
+    gr += d[i + 1] * k;
+    b += d[i + 2] * k;
+    w += k;
+  }
+  return `rgb(${Math.round(r / w)} ${Math.round(gr / w)} ${Math.round(b / w)})`;
+}
+
+function applyTint(node, n, cover) {
+  const key = `${n.id}:${cover ? cover.length : `ph:${n.title}`}`;
+  const set = (t) => t && node.style.setProperty('--tint', t);
+  if (tintCache.has(key)) return set(tintCache.get(key));
+  if (!cover) {
+    const h = titleHue(n.title);
+    const t = `hsl(${THEMES[settings.theme]?.glow ? 185 + (h % 150) : h % 360} 70% 50%)`;
+    tintCache.set(key, t);
+    return set(t);
+  }
+  imageTint(cover)
+    .then((t) => {
+      tintCache.set(key, t);
+      set(t);
+    })
+    .catch(() => tintCache.set(key, null));
 }
 
 // ---------- Sampul ----------
-const COVER_W = 400;
-const COVER_H = 600;
+// Cukup tajam untuk lukisan sampul selebar laptop (bagian atas halaman depan), ±150–300 KB.
+const COVER_W = 800;
+const COVER_H = 1200;
 
-/** Gambar (Blob/File) → data URL JPEG maks 400×600, supaya ringan disimpan & disinkron. */
+/** Gambar (Blob/File) → data URL JPEG maks 800×1200, supaya tetap ringan disimpan & disinkron. */
 async function coverData(blob) {
   const img = await createImageBitmap(blob);
   const scale = Math.min(1, COVER_W / img.width, COVER_H / img.height);
@@ -1183,11 +1776,17 @@ async function coverData(blob) {
   return c.toDataURL('image/jpeg', 0.82);
 }
 
+/** Angka tetap per judul, dasar warna sampul otomatis. */
+function titleHue(title) {
+  let h = 0;
+  for (const ch of title) h = (h * 31 + ch.codePointAt(0)) >>> 0;
+  return h;
+}
+
 /** Sampul novel; tanpa gambar dibuat sampul berwarna berisi judul (warna tetap per judul). */
 function coverEl(n, data, cls = '') {
   if (data) return el('img', { class: `cover ${cls}`, src: data, alt: '', loading: 'lazy', decoding: 'async' });
-  let h = 0;
-  for (const ch of n.title) h = (h * 31 + ch.codePointAt(0)) >>> 0;
+  const h = titleHue(n.title);
   const ph = el('div', { class: `cover ph ${cls}`, 'aria-hidden': 'true' }, el('span', null, n.title));
   if (THEMES[settings.theme]?.glow) {
     // Tema Neon: warna di rentang cyan → ungu → merah muda, gelap di bawah, supaya senada.
@@ -1641,6 +2240,7 @@ function novelMenu(n) {
     el('div', { class: 'section-label' }, 'Status baca'),
     statusSeg,
     el('div', { class: 'section-label' }, 'Aksi'),
+    act('Daftar isi', () => openToc(n), { disabled: !has }),
     act('Info novel', () => openNovelInfo(n)),
     act('Impor / tambah chapter', () => openImport(n.id)),
     act('Rapikan TL note semua chapter', () => tidyTlNotes(n), { disabled: !has, change: true }),
@@ -2839,7 +3439,7 @@ async function showReader(id, wantNum, wantPara = 0) {
   function restore(p) {
     const target = article?.children[p];
     window.scrollTo(0, !p || !target ? 0 : target.getBoundingClientRect().top + window.scrollY - topOffset());
-    if (pinned?.para === p) pinned.y = window.scrollY;
+    if (pinned && pinned.para === p) pinned.y = window.scrollY;
     lastY = window.scrollY; // gulir oleh aplikasi, bukan pengguna: jangan tutup panel
   }
 
@@ -3433,7 +4033,8 @@ function syncLine() {
       : syncState.last
         ? `Sinkron terakhir ${fmtTime(syncState.last)}`
         : 'Belum pernah sinkron';
-  return el('p', { class: `sync-line${syncState.error ? ' err' : ''}` }, text);
+  const ok = !syncState.running && !syncState.error && syncState.last;
+  return el('p', { class: `sync-line${syncState.error ? ' err' : ok ? ' ok' : ''}` }, text);
 }
 
 function refreshSyncUi() {

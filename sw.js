@@ -11,6 +11,7 @@ const FILES = [
   'manifest.webmanifest',
   'css/app.css',
   'js/app.js',
+  'js/logo.js',
   'js/db.js',
   'js/merge.js',
   'js/parse.js',

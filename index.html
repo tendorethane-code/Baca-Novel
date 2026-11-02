@@ -21,6 +21,10 @@
         // Belum pernah dibuka: tema bawaan Neon (gelap).
         var dark = s.paint ? s.paint.dark : true;
         var bg = s.paint ? s.paint.bg : '#07070d';
+        // Halaman depan punya gaya sendiri (bawaan Eclipse Neon); layar baca memakai tema warna baca.
+        if (!/^#\/?read\//.test(location.hash) && (!s.paint || s.paint.home !== null)) { bg = (s.paint && s.paint.home) || '#07070d'; dark = true; }
+        // Layar pembuka ikut gaya halaman depan (Klasik memakai Eclipse Neon).
+        if (s.homeStyle === 'royal' || s.homeStyle === 'aurora') document.documentElement.classList.add('splash-' + s.homeStyle);
         document.documentElement.style.background = bg;
         document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
       } catch (e) {}
@@ -31,36 +35,112 @@
       } catch (e) {}
     </script>
     <style>
-      /* Layar pembuka: menyambung dari layar pembuka Android (latar & logo sama), lalu memudar.
-         Gayanya di sini supaya langsung tampil sebelum CSS/JS aplikasi dimuat. */
+      /* Layar pembuka: ikut gaya halaman depan (Eclipse Neon / Royal Eclipse / Aurora), logo & nama di tengah
+         (sedikit di atas tengah, titik yang terasa pas di mata), lalu memudar. Gayanya di sini supaya langsung
+         tampil sebelum JS aplikasi dimuat. */
       #splash {
+        --a: #2be3ff; --a2: #bff6ff; --b: #e8fdff; --sbg: #07070d; --glow: rgba(43, 227, 255, 0.24);
         position: fixed; inset: 0; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center;
-        gap: 22px; background: #07070d; color: #f4f6fa; text-align: center;
+        background: var(--sbg); color: #f4f6fa; text-align: center; overflow: hidden;
         font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
         transition: opacity 0.45s ease; animation: splash-auto 0.45s ease 5s forwards;
       }
+      .splash-royal #splash { --a: #a77bff; --a2: #e7d9ff; --b: #f0e6ff; --sbg: #0b0716; --glow: rgba(167, 123, 255, 0.28); }
+      .splash-aurora #splash { --glow: rgba(43, 227, 255, 0.2); }
       #splash.out { opacity: 0; pointer-events: none; }
       .no-splash #splash { display: none; }
-      #splash .s-name { font-size: 38px; font-weight: 800; letter-spacing: 0.01em; }
-      #splash .s-name span { color: #2be3ff; text-shadow: 0 0 16px rgba(43, 227, 255, 0.6); }
-      #splash img { width: 220px; height: 220px; margin: -24px 0; }
-      #splash .s-dev { font-size: 15px; color: #8a90a0; letter-spacing: 0.04em; }
-      /* Nama developer: gradasi neon cyan → ungu → merah muda (warna logo) dengan cahaya. */
-      #splash .s-dev b {
-        font-size: 21px; font-weight: 800; letter-spacing: 0.03em;
-        background: linear-gradient(90deg, #2be3ff, #a45cff 55%, #ff3d9a); -webkit-background-clip: text; background-clip: text;
-        color: transparent; filter: drop-shadow(0 0 10px rgba(164, 92, 255, 0.55));
-      }
+      #splash .s-sky { position: absolute; inset: 0; background: radial-gradient(70% 40% at 50% 41%, var(--glow), transparent 70%),
+        radial-gradient(120% 60% at 50% 110%, var(--glow), transparent 60%); }
+      .splash-aurora #splash .s-sky { background: radial-gradient(45% 30% at 30% 34%, rgba(43, 227, 255, 0.22), transparent 70%),
+        radial-gradient(45% 30% at 72% 46%, rgba(164, 92, 255, 0.24), transparent 70%), radial-gradient(120% 60% at 50% 110%, rgba(164, 92, 255, 0.14), transparent 60%); }
+      #splash .s-stars { position: absolute; inset: 0; }
+      #splash .s-stars i { position: absolute; width: var(--s); height: var(--s); border-radius: 50%; background: #fff; opacity: var(--o); box-shadow: 0 0 6px #fff; }
+      #splash .s-box { display: flex; flex-direction: column; align-items: center; margin-top: -8vh; }
+      #splash .s-lw { width: 150px; height: 150px; display: grid; place-items: center; }
+      #splash .s-lw { position: relative; }
+      #splash .s-ring { position: absolute; left: 50%; top: 50%; width: 220px; height: 220px; margin: -110px; border-radius: 50%; border: 1px solid var(--a); opacity: 0.3; }
+      #splash .s-ring.r2 { width: 290px; height: 290px; margin: -145px; opacity: 0.14; }
+      #splash .s-ring::before { content: '✦'; position: absolute; top: -9px; left: 50%; transform: translateX(-50%); color: var(--a); font-size: 14px; text-shadow: 0 0 10px var(--a); }
+      /* Logo K2 (Kristal Ukir), warna dari --a/--b. */
+      #splash .s-logo { position: relative; width: 168px; height: 168px; overflow: visible; }
+      #splash .s-name { margin: 64px 0 0; font: 400 46px/1 'Source Serif 4', 'Noto Serif', Georgia, serif; letter-spacing: -0.01em; }
+      #splash .s-name em { font-style: italic; padding-right: 0.08em; color: var(--a); text-shadow: 0 0 24px var(--glow); }
+      .splash-aurora #splash .s-name em { background: linear-gradient(95deg, #2be3ff, #a45cff); -webkit-background-clip: text; background-clip: text; color: transparent; text-shadow: none; }
+      #splash .s-orn { display: flex; align-items: center; gap: 10px; margin-top: 16px; color: var(--a); font-size: 12px; }
+      #splash .s-orn i { width: 50px; height: 1px; background: linear-gradient(90deg, transparent, var(--a)); }
+      #splash .s-orn i:last-child { transform: scaleX(-1); }
+      #splash .s-foot { position: absolute; left: 0; right: 0; bottom: calc(48px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; align-items: center; gap: 14px; }
+      #splash .s-load { width: 150px; height: 3px; border-radius: 3px; background: rgba(255, 255, 255, 0.12); overflow: hidden; }
+      #splash .s-load i { display: block; width: 40%; height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--a2), var(--a)); box-shadow: 0 0 10px var(--a);
+        animation: splash-load 1.8s ease-out forwards; }
+      .splash-aurora #splash .s-load i { background: linear-gradient(90deg, #2be3ff, #a45cff); }
+      #splash .s-dev { font-size: 15px; }
+      /* Tanda pembuat "by LinTendo" · B Foil: gradasi khas + kilau logam; L & T = SVG berukir (js/logo.js). */
+      #splash .sig { display: inline-flex; align-items: baseline; gap: 0.35em; font-family: 'Source Serif 4', 'Noto Serif', Georgia, serif; font-style: normal; white-space: nowrap; }
+      #splash .sig .sig-by { font-style: italic; font-size: 0.72em; font-weight: 400; color: var(--sig-by, #8f97ab); }
+      #splash .sig .sig-name { display: inline-flex; align-items: baseline; font-weight: 600; font-style: normal; font-size: 1.32em; letter-spacing: 0.03em;
+        background: linear-gradient(180deg, rgb(255 255 255 / var(--sig-sheen, .4)) 0%, rgb(255 255 255 / 0) 45%),
+          linear-gradient(90deg, var(--f0, #2be3ff) 0%, var(--f1, #dcfbff) 14%, var(--f2, #7f8cff) 34%, var(--f3, #f1e9ff) 50%, var(--f4, #b35cff) 68%, var(--f5, #ff6fb5) 84%, var(--f6, #ffe3f0) 100%);
+        -webkit-background-clip: text; background-clip: text; filter: drop-shadow(0 0 8px var(--sig-glow, rgba(164, 92, 255, 0.5))); }
+      #splash .sig .sig-name > span { color: transparent; background: none; font-weight: 600; }
+      #splash .sig .sig-cap { height: 0.665em; width: auto; overflow: visible; }
+      #splash .sig-L { margin-right: 0.01em; }
+      #splash .sig-T { margin: 0 0.02em 0 0.04em; }
+      #splash .sig .sig-star { font-style: normal; font-size: 0.62em; align-self: center; background: linear-gradient(135deg, var(--f0, #2be3ff), var(--f6, #ffe3f0));
+        -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 0 6px var(--sig-glow, rgba(164, 92, 255, 0.5))); }
+      @keyframes splash-load { from { width: 8%; } to { width: 100%; } }
       @keyframes splash-auto { to { opacity: 0; visibility: hidden; } }
+      @media (prefers-reduced-motion: reduce) { #splash .s-load i { animation: none; width: 100%; } }
+      @media (max-height: 560px) { #splash .s-ring.r2 { display: none; } #splash .s-name { margin-top: 44px; font-size: 38px; } #splash .s-foot { bottom: 20px; } }
     </style>
     <script type="module" src="js/app.js"></script>
   </head>
   <body>
     <div id="splash" aria-hidden="true">
-      <div class="s-name">Lumen<span>Read</span></div>
-      <img src="icons/icon.svg" alt="" />
-      <div class="s-dev">by <b>LinTendo</b></div>
+      <div class="s-sky"></div>
+      <div class="s-stars"></div>
+      <div class="s-box">
+        <div class="s-lw"><i class="s-ring"></i><i class="s-ring r2"></i><svg class="s-logo" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><linearGradient id="gs" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="var(--b)"/><stop offset="1" stop-color="var(--a)"/></linearGradient><radialGradient id="ks"><stop offset=".6" stop-color="var(--a)" stop-opacity="0"/><stop offset=".7" stop-color="var(--a)" stop-opacity=".95"/><stop offset=".8" stop-color="var(--a)" stop-opacity=".35"/><stop offset="1" stop-color="var(--a)" stop-opacity="0"/></radialGradient><radialGradient id="ds" cx=".72" cy=".28" r=".9"><stop offset="0" stop-color="var(--a)" stop-opacity=".22"/><stop offset=".5" stop-color="#05060b"/></radialGradient>
+    <linearGradient id="dks" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="var(--a)" stop-opacity="0"/><stop offset=".22" stop-color="var(--a)"/><stop offset=".5" stop-color="#fff"/><stop offset=".78" stop-color="var(--a)"/><stop offset="1" stop-color="var(--a)" stop-opacity="0"/></linearGradient>
+    <linearGradient id="wls" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".22" stop-color="#fff" stop-opacity=".9"/><stop offset=".78" stop-color="#fff" stop-opacity=".9"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+    <linearGradient id="mgs" gradientUnits="userSpaceOnUse" x1="0" y1="60" x2="0" y2="75"><stop offset=".4" stop-color="#000"/><stop offset="1" stop-color="#fff"/></linearGradient>
+    <linearGradient id="lfs" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff"/><stop offset=".55" stop-color="var(--b)"/><stop offset="1" stop-color="var(--a)"/></linearGradient>
+    <mask id="fms" maskUnits="userSpaceOnUse" x="-10" y="40" width="140" height="60"><rect x="-10" y="40" width="140" height="60" fill="url(#mgs)"/></mask>
+    <filter id="sbs" filterUnits="userSpaceOnUse" x="-10" y="45" width="140" height="50"><feGaussianBlur stdDeviation="1.6"/></filter>
+    <filter id="lbs" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2"/></filter>
+    <circle cx="60" cy="60" r="52" fill="url(#ks)"/>
+    <g transform="rotate(-12 60 69)"><ellipse cx="60" cy="69" rx="52" ry="10" fill="none" stroke="url(#dks)" stroke-width="4" opacity=".28" filter="url(#sbs)"/><ellipse cx="60" cy="69" rx="52" ry="10" fill="none" stroke="url(#wls)" stroke-width=".7" opacity=".45"/></g>
+    <circle cx="60" cy="60" r="32" fill="#05060b"/><circle cx="60" cy="60" r="32" fill="url(#ds)"/>
+    <circle cx="60" cy="60" r="32.5" fill="none" stroke="url(#gs)" stroke-width="2.4"/>
+    <path d="M44 33a32 32 0 0 1 42 6" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round" opacity=".85"/>
+    <circle cx="60" cy="60" r="27" fill="none" stroke="var(--b)" stroke-width=".5" opacity=".35"/>
+    <g transform="translate(60 58.5) scale(.92) translate(-61.85 -57)">
+      <path d="M47 40H63V41.4Q59 41.6 58.2 43.4V72.4H71.6Q74.6 72.2 75.4 65.6H76.7L76.1 74H47V72.6Q51 72.4 51.8 70.8V43.4Q51 41.6 47 41.4Z" fill="var(--a)" opacity=".55" filter="url(#lbs)"/><path d="M47 40H63V41.4Q59 41.6 58.2 43.4V72.4H71.6Q74.6 72.2 75.4 65.6H76.7L76.1 74H47V72.6Q51 72.4 51.8 70.8V43.4Q51 41.6 47 41.4Z" fill="url(#lfs)"/>
+      <path d="M55 44.2V71.2H73.2" fill="none" stroke="#04050c" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M47 40H63V41.4Q59 41.6 58.2 43.4V72.4H71.6Q74.6 72.2 75.4 65.6H76.7L76.1 74H47V72.6Q51 72.4 51.8 70.8V43.4Q51 41.6 47 41.4Z" fill="none" stroke="#fff" stroke-width=".4" opacity=".7"/>
+    </g>
+    <g transform="rotate(-12 60 69)" mask="url(#fms)">
+      <ellipse cx="60" cy="69" rx="52" ry="10" fill="none" stroke="url(#dks)" stroke-width="4.2" filter="url(#sbs)"/>
+      <ellipse cx="60" cy="69" rx="52" ry="10" fill="none" stroke="url(#wls)" stroke-width="1.1"/></g>
+    <circle cx="85" cy="36" r="5.5" fill="#fff"/><path d="M85 15C87.52 33.48 87.52 33.48 106 36C87.52 38.52 87.52 38.52 85 57C82.48 38.52 82.48 38.52 64 36C82.48 33.48 82.48 33.48 85 15z" fill="#fff"/></svg></div>
+        <div class="s-name">Lumen<em>Read</em></div>
+        <div class="s-orn"><i></i>✦<i></i></div>
+      </div>
+      <div class="s-foot"><div class="s-load"><i></i></div><div class="s-dev"><span class="sig"><span class="sig-by">by</span><b class="sig-name" aria-label="LinTendo"><svg class="sig-cap sig-L" viewBox="47 40 30 34" aria-hidden="true"><defs><linearGradient id="hsplashl" x1="0.000" y1="0" x2="7.564" y2="0"><stop offset="0" stop-color="var(--f0, #2be3ff)"/><stop offset="0.14" stop-color="var(--f1, #dcfbff)"/><stop offset="0.34" stop-color="var(--f2, #7f8cff)"/><stop offset="0.5" stop-color="var(--f3, #f1e9ff)"/><stop offset="0.68" stop-color="var(--f4, #b35cff)"/><stop offset="0.84" stop-color="var(--f5, #ff6fb5)"/><stop offset="1" stop-color="var(--f6, #ffe3f0)"/></linearGradient><linearGradient id="vsplashl" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="var(--sig-sheen, .4)"/><stop offset=".45" stop-color="#fff" stop-opacity="0"/></linearGradient></defs><path d="M47 40H63V41.4Q59 41.6 58.2 43.4V72.4H71.6Q74.6 72.2 75.4 65.6H76.7L76.1 74H47V72.6Q51 72.4 51.8 70.8V43.4Q51 41.6 47 41.4Z" fill="url(#hsplashl)"/><path d="M47 40H63V41.4Q59 41.6 58.2 43.4V72.4H71.6Q74.6 72.2 75.4 65.6H76.7L76.1 74H47V72.6Q51 72.4 51.8 70.8V43.4Q51 41.6 47 41.4Z" fill="url(#vsplashl)"/><path d="M55 44.2V71.2" fill="none" stroke="var(--sig-groove, #04050c)" stroke-width="1" stroke-linecap="round"/><path d="M47 40H63V41.4Q59 41.6 58.2 43.4V72.4H71.6Q74.6 72.2 75.4 65.6H76.7L76.1 74H47V72.6Q51 72.4 51.8 70.8V43.4Q51 41.6 47 41.4Z" fill="none" stroke="#fff" stroke-width=".4" opacity="var(--sig-edge, .55)"/></svg><span aria-hidden="true">in</span><svg class="sig-cap sig-T" viewBox="0 0 30 34" aria-hidden="true"><defs><linearGradient id="hsplasht" x1="-2.672" y1="0" x2="4.893" y2="0"><stop offset="0" stop-color="var(--f0, #2be3ff)"/><stop offset="0.14" stop-color="var(--f1, #dcfbff)"/><stop offset="0.34" stop-color="var(--f2, #7f8cff)"/><stop offset="0.5" stop-color="var(--f3, #f1e9ff)"/><stop offset="0.68" stop-color="var(--f4, #b35cff)"/><stop offset="0.84" stop-color="var(--f5, #ff6fb5)"/><stop offset="1" stop-color="var(--f6, #ffe3f0)"/></linearGradient><linearGradient id="vsplasht" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="var(--sig-sheen, .4)"/><stop offset=".45" stop-color="#fff" stop-opacity="0"/></linearGradient></defs><path d="M0 0H30L29.6 8.2H28.4Q27.6 1.8 24 1.6H18.2V30.6Q19 32.4 23 32.6V34H7V32.6Q11 32.4 11.8 30.6V1.6H6Q2.4 1.8 1.6 8.2H.4Z" fill="url(#hsplasht)"/><path d="M0 0H30L29.6 8.2H28.4Q27.6 1.8 24 1.6H18.2V30.6Q19 32.4 23 32.6V34H7V32.6Q11 32.4 11.8 30.6V1.6H6Q2.4 1.8 1.6 8.2H.4Z" fill="url(#vsplasht)"/><path d="M15 4V30.6" fill="none" stroke="var(--sig-groove, #04050c)" stroke-width="1" stroke-linecap="round"/><path d="M0 0H30L29.6 8.2H28.4Q27.6 1.8 24 1.6H18.2V30.6Q19 32.4 23 32.6V34H7V32.6Q11 32.4 11.8 30.6V1.6H6Q2.4 1.8 1.6 8.2H.4Z" fill="none" stroke="#fff" stroke-width=".4" opacity="var(--sig-edge, .55)"/></svg><span aria-hidden="true">endo</span></b><em class="sig-star" aria-hidden="true">✦</em></span></div></div>
     </div>
+    <script>
+      // Bintang di layar pembuka (posisi tetap, bukan acak tiap buka).
+      (function () {
+        var box = document.querySelector('#splash .s-stars'), seed = 5;
+        if (!box) return;
+        function r() { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; }
+        for (var i = 0; i < 46; i++) {
+          var e = document.createElement('i');
+          e.style.cssText = 'left:' + r() * 100 + '%;top:' + r() * 100 + '%;--s:' + (0.6 + r() * 1.8) + 'px;--o:' + (0.2 + r() * 0.7);
+          box.appendChild(e);
+        }
+      })();
+    </script>
     <div id="app"></div>
     <div id="toasts" aria-live="polite"></div>
     <noscript>Aplikasi ini butuh JavaScript.</noscript>
