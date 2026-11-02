@@ -1857,3 +1857,10 @@ button.pf-row:hover { background: color-mix(in srgb, var(--fg) 4%, transparent);
 .pf-edit { display: flex; align-items: center; gap: 16px; margin-bottom: 14px; }
 .pf-edit-btns { display: flex; flex-wrap: wrap; gap: 8px; }
 .pf-edit-ava .pf-ava { width: 72px; height: 72px; }
+/* Judul besar di bagian atas = judul novel; ukurannya menyesuaikan panjang judul. */
+.h-txt h2.h-title { margin: 12px 0 12px; font-weight: 400; font-size: clamp(2.5rem, 11.5vw, 4.4rem); line-height: 1.02; letter-spacing: -0.025em; cursor: pointer;
+  overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+  text-shadow: 0 2px 30px rgb(var(--veil) / 0.7), 0 0 40px color-mix(in srgb, var(--accent) 18%, transparent); }
+.h-txt h2.h-title.l { font-size: clamp(2.1rem, 9vw, 3.5rem); }
+.h-txt h2.h-title.xl { font-size: clamp(1.75rem, 7vw, 2.8rem); line-height: 1.08; }
+.h-txt small { letter-spacing: 0.2em; }

@@ -1148,9 +1148,20 @@ function homeHero(novels, covers) {
     el(
       'div',
       { class: 'h-txt' },
-      el('small', null, icon('spark'), greeting()),
-      el('h2', null, n.lastRead ? 'Kisahmu' : 'Kisah baru', el('br'), el('em', null, n.lastRead ? 'menunggu.' : 'menanti.')),
-      el('p', null, el('b', null, n.title), n.lastRead ? ` · Chapter ${n.lastRead.num} dari ${total}` : ` · ${fmtNum(n.toc.length)} chapter`, n.lastRead ? el('span', { class: 'h-pct' }, ` · ${Math.round(pct)}%`) : null),
+      el('small', null, icon('spark'), `${greeting()} · ${n.lastRead ? 'lanjut membaca' : 'mulai membaca'}`),
+      // Judul besar = judul novel (ukurannya menyesuaikan panjang judul).
+      el(
+        'h2',
+        { class: `h-title${n.title.length > 30 ? ' xl' : n.title.length > 16 ? ' l' : ''}`, onclick: () => openNovelInfo(n), title: 'Info novel' },
+        n.title,
+      ),
+      el(
+        'p',
+        null,
+        n.lastRead ? [el('b', null, `Chapter ${n.lastRead.num}`), ` dari ${total}`] : el('b', null, `${fmtNum(n.toc.length)} chapter`),
+        n.author ? ` · ${n.author}` : '',
+        n.lastRead ? el('span', { class: 'h-pct' }, ` · ${Math.round(pct)}%`) : null,
+      ),
       el(
         'div',
         { class: 'h-btns' },
@@ -1525,8 +1536,9 @@ function libraryList(novels, covers) {
       })
       .sort(SORTS[settings.libSort]?.fn || SORTS.recent.fn);
     const shelf = settings.libView === 'shelf';
-    // Halaman depan bergaya: novel di bagian atas tidak diulang di daftar (kecuali saat mencari).
-    if (styled && !q && hero) shown = shown.filter((n) => n !== hero);
+    // Halaman depan bergaya: novel di bagian atas tidak diulang di daftar (kecuali saat mencari, atau bila
+    // daftarnya jadi kosong, mis. baru punya satu novel).
+    if (styled && !q && hero && shown.length > 1 && shown.includes(hero)) shown = shown.filter((n) => n !== hero);
     cards.className = shelf ? 'shelf' : 'cards';
     viewBtns.list.setAttribute('aria-pressed', String(!shelf));
     viewBtns.shelf.setAttribute('aria-pressed', String(shelf));
