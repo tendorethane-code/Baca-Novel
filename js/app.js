@@ -58,6 +58,7 @@ const ICONS = {
   search: 'M11 18a7 7 0 1 1 0-14 7 7 0 0 1 0 14zM20 20l-4-4',
   sun: 'M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4',
   note: 'M6 3h8.5L19 7.5V21H6zM14 3v5h5M9 13h7M9 17h4.5',
+  upload: 'M12 15V4M7.5 8.5L12 4l4.5 4.5M4 15v3.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V15',
   sync: 'M20 11a8 8 0 0 0-14.3-4.9L4 8M4 4v4h4M4 13a8 8 0 0 0 14.3 4.9L20 16M20 20v-4h-4',
 };
 function icon(name) {
@@ -1921,20 +1922,97 @@ async function openImport(presetNovelId) {
     clearTimeout(draftTimer);
     draftTimer = setTimeout(() => saveImportDraft(text.value), 600);
   });
+  // ----- Pilih file: kotak ketuk/tarik-lepas (pengganti tombol bawaan browser) + daftar file terpilih -----
   const fileIn = el('input', {
     type: 'file',
     multiple: true,
+    class: 'drop-input',
     accept: '.txt,.zip,.epub,text/plain,application/zip,application/x-zip-compressed,application/epub+zip',
   });
-  const fileHelp = el(
-    'p',
-    { class: 'small muted' },
-    'Pilih file .epub, satu atau beberapa file .txt, atau .zip berisi .txt (diurutkan menurut nama file). File .txt tanpa baris "Chapter N: …" dianggap satu chapter, nomornya diambil dari nama file. Dari EPUB ikut diambil judul, pengarang, sinopsis, dan sampul.',
+  let picked = []; // file yang dipilih, urut nama; bisa ditambah & dihapus satu per satu
+  let autoTitle = '';
+  const kindOf = (f) => (isEpub(f) ? 'epub' : isZip(f) ? 'zip' : 'txt');
+  const okFile = (f) => isEpub(f) || isZip(f) || /\.txt$/i.test(f.name) || f.type === 'text/plain';
+  const typeTag = (k) => el('i', { class: `ftype ${k}` }, k.toUpperCase());
+  const drop = el(
+    'label',
+    { class: 'drop' },
+    fileIn,
+    el('span', { class: 'drop-icon' }, icon('upload')),
+    el(
+      'b',
+      { class: 'drop-title' },
+      el('span', { class: 'touch-only' }, 'Ketuk untuk memilih file'),
+      el('span', { class: 'mouse-only' }, 'Klik untuk memilih, atau tarik file ke sini'),
+    ),
+    el('span', { class: 'drop-types' }, typeTag('epub'), typeTag('txt'), typeTag('zip')),
+    el('span', { class: 'drop-sub' }, 'Bisa beberapa file .txt sekaligus'),
+    el('b', { class: 'drop-add' }, 'Tambah file'),
   );
-  fileIn.onchange = () => {
-    const f = fileIn.files[0];
-    if (f && !titleIn.value) titleIn.value = fileIn.files.length === 1 ? baseName(f.name) : '';
+  const fileList = el('div', { class: 'file-list' });
+  const renderFiles = () => {
+    drop.classList.toggle('compact', picked.length > 0);
+    // Judul novel baru diisi dari nama file (kalau satu file), selama belum diketik sendiri.
+    if (!titleIn.value || titleIn.value === autoTitle) titleIn.value = autoTitle = picked.length === 1 ? baseName(picked[0].name) : '';
+    const total = picked.reduce((n, f) => n + f.size, 0);
+    fileList.replaceChildren(
+      ...(picked.length
+        ? [
+            el(
+              'div',
+              { class: 'file-sum' },
+              el('span', null, `${fmtNum(picked.length)} file · ${fmtBytes(total)}`),
+              el('button', { type: 'button', class: 'link-btn', onclick: () => ((picked = []), showErr(''), renderFiles()) }, 'Hapus semua'),
+            ),
+            el(
+              'div',
+              { class: 'file-rows' },
+              picked.map((f, i) =>
+                el(
+                  'div',
+                  { class: 'file-row' },
+                  typeTag(kindOf(f)),
+                  el('span', { class: 'fname', title: f.name }, f.name),
+                  el('span', { class: 'fsize' }, fmtBytes(f.size)),
+                  iconBtn('close', `Hapus ${f.name}`, () => {
+                    picked.splice(i, 1);
+                    renderFiles();
+                  }),
+                ),
+              ),
+            ),
+          ]
+        : []),
+    );
   };
+  const addFiles = (list) => {
+    const all = [...list];
+    const bad = all.filter((f) => !okFile(f));
+    const seen = new Set(picked.map((f) => `${f.name}|${f.size}`));
+    for (const f of all) {
+      const key = `${f.name}|${f.size}`;
+      if (!okFile(f) || seen.has(key)) continue;
+      picked.push(f);
+      seen.add(key);
+    }
+    picked.sort((a, b) => naturalCompare(a.name, b.name));
+    showErr(bad.length ? `Dilewati (bukan .txt, .zip, atau .epub): ${bad.map((f) => f.name).join(', ')}` : '');
+    renderFiles();
+  };
+  fileIn.onchange = () => {
+    addFiles(fileIn.files);
+    fileIn.value = ''; // supaya file yang sama bisa dipilih lagi setelah dihapus
+  };
+  const fileHelp = el(
+    'details',
+    { class: 'drop-help' },
+    el('summary', null, 'Cara kerja impor file'),
+    el(
+      'p',
+      { class: 'small muted' },
+      'Pilih file .epub, satu atau beberapa file .txt, atau .zip berisi .txt (diurutkan menurut nama file). File .txt tanpa baris "Chapter N: …" dianggap satu chapter, nomornya diambil dari nama file. Dari EPUB ikut diambil judul, pengarang, sinopsis, dan sampul.',
+    ),
+  );
 
   const pastePane = el(
     'div',
@@ -1943,7 +2021,25 @@ async function openImport(presetNovelId) {
     text,
     el('p', { class: 'small muted' }, 'Tiap baris yang tidak kosong menjadi satu paragraf; baris kosong diabaikan.'),
   );
-  const filePane = el('div', { class: 'hidden' }, fileIn, fileHelp);
+  const filePane = el('div', { class: 'hidden' }, drop, fileList, fileHelp);
+  // Tarik-lepas (laptop/tablet): file boleh dilepas di mana saja di bagian file, kotaknya ikut menyala.
+  let dragDepth = 0;
+  filePane.addEventListener('dragenter', (e) => {
+    e.preventDefault();
+    if (++dragDepth === 1) drop.classList.add('over');
+  });
+  filePane.addEventListener('dragover', (e) => e.preventDefault());
+  filePane.addEventListener('dragleave', () => {
+    if (--dragDepth > 0) return;
+    dragDepth = 0;
+    drop.classList.remove('over');
+  });
+  filePane.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dragDepth = 0;
+    drop.classList.remove('over');
+    if (e.dataTransfer?.files.length) addFiles(e.dataTransfer.files);
+  });
   const tabBtn = (m, label) =>
     el(
       'button',
@@ -1968,7 +2064,7 @@ async function openImport(presetNovelId) {
     title: 'Impor',
     className: 'wide',
     body: [
-      el('div', { class: 'tabs', role: 'tablist' }, tabBtn('paste', 'Tempel teks'), tabBtn('file', 'File (txt, zip, epub)')),
+      el('div', { class: 'tabs', role: 'tablist' }, tabBtn('paste', 'Tempel teks'), tabBtn('file', 'Dari file')),
       pastePane,
       filePane,
       el('div', { class: 'row-2' }, el('label', { class: 'field' }, el('span', null, 'Simpan ke'), target), titleField),
@@ -1987,9 +2083,9 @@ async function openImport(presetNovelId) {
             if (!text.value.trim()) return (showErr('Teks masih kosong.'), false);
             sources = [{ name: null, text: text.value }];
           } else {
-            if (!fileIn.files.length) return (showErr('Pilih file dulu.'), false);
+            if (!picked.length) return (showErr('Pilih file dulu.'), false);
             try {
-              sources = await busy('Membaca file…', () => readSources([...fileIn.files]));
+              sources = await busy('Membaca file…', () => readSources(picked));
             } catch (e) {
               return (showErr(e.message), false);
             }
@@ -1999,8 +2095,8 @@ async function openImport(presetNovelId) {
           const epub = sources.find((s) => s.epub)?.epub || null;
           let title = titleIn.value.trim();
           // Judul file mengisi kolom judul otomatis; untuk EPUB judul dari metadata lebih tepat.
-          if (epub?.title && (!title || title === baseName(fileIn.files[0].name))) title = epub.title;
-          if (!target.value && !title && mode === 'file' && fileIn.files.length) title = baseName(fileIn.files[0].name);
+          if (mode === 'file' && epub?.title && (!title || title === baseName(picked[0].name))) title = epub.title;
+          if (!target.value && !title && mode === 'file' && picked.length) title = baseName(picked[0].name);
           // Teruskan ke pratinjau; dialog impor ditutup, pratinjau bisa kembali ke sini lewat tombol Batal.
           pending = { res, novelId: target.value || null, title: title || 'Tanpa judul', epub };
         },
