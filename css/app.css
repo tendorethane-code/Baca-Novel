@@ -222,51 +222,6 @@ label.field > span {
   max-width: 760px;
   margin: 0 auto;
 }
-.cards {
-  display: grid;
-  gap: 12px;
-}
-.card {
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  padding: 14px 14px 12px;
-  display: grid;
-  grid-template-columns: 64px minmax(0, 1fr) auto;
-  gap: 6px 12px;
-  align-items: start;
-}
-.card-cover { grid-row: 1 / span 3; padding: 0; border: 0; background: none; cursor: pointer; }
-.card h2 {
-  font-size: 1.08rem;
-  margin: 0;
-  cursor: pointer;
-  overflow-wrap: anywhere;
-}
-.card .meta {
-  grid-column: 2 / -1;
-  color: var(--muted);
-  font-size: 0.88rem;
-}
-.card .progress {
-  grid-column: 2 / -1;
-  height: 4px;
-  border-radius: 2px;
-  background: var(--line);
-  overflow: hidden;
-}
-.card .progress > div {
-  height: 100%;
-  background: var(--accent);
-}
-.card .actions {
-  grid-column: 1 / -1;
-  display: flex;
-  gap: 8px;
-  margin-top: 4px;
-}
-.card .actions .btn { flex: 1; min-width: 0; }
-.card .actions .btn.add { flex: none; width: 44px; padding: 0; }
 .empty {
   text-align: center;
   padding: 48px 12px;
@@ -838,22 +793,6 @@ textarea.editor {
   .bar .icon-btn { width: 36px; }
 }
 
-.lib-tools { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; margin-bottom: 10px; }
-.lib-tools select { width: auto; }
-/* Filter status: chip membungkus ke baris berikut, bukan digulir ke samping. Dengan gulir samping, cahaya
-   chip aktif (tema Neon) terpotong jadi kotak, chip terakhir terpotong di tepi, dan di Android batang
-   gulirnya menimpa bagian bawah chip. Membungkus aman untuk lebar layar & ukuran huruf apa pun. */
-.chips { display: flex; flex-wrap: wrap; gap: 8px 6px; margin-bottom: 14px; }
-.chips button {
-  flex: none; max-width: 100%; min-height: 36px; border: 1px solid var(--line); border-radius: 99px; background: transparent;
-  padding: 6px 12px; cursor: pointer; font-size: 0.88rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-@media (hover: hover) and (pointer: fine) {
-  .chips button:not([aria-selected='true']):hover { border-color: color-mix(in srgb, var(--accent) 50%, var(--line)); }
-}
-.chips button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.chips button[aria-selected='true'] { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
-.card h2 .author { display: block; font-size: 0.82rem; font-weight: normal; color: var(--muted); margin-top: 2px; }
 .badge.st-reading { color: var(--accent); }
 .badge.st-later { color: var(--muted); }
 .badge.st-done { color: #8a6bbf; }
@@ -1063,20 +1002,6 @@ textarea.plain { font-family: var(--ui-font); font-size: 1rem; line-height: 1.5;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
 }
 .cover.ph span { display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
-.card-cover .cover { box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25); }
-.shelf { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 18px 14px; }
-.book { display: grid; gap: 6px; min-width: 0; }
-.book-cover { position: relative; padding: 0; border: 0; background: none; cursor: pointer; border-radius: 6px; }
-.book-cover .cover { box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35); }
-.book-cover .cover.ph { font-size: 0.86rem; padding: 12% 8%; }
-.book-cover .pct {
-  position: absolute; right: 6px; bottom: 6px; min-width: 36px; padding: 3px 6px; border-radius: 99px;
-  background: rgba(0, 0, 0, 0.6); color: #fff; font-size: 0.72rem; font-variant-numeric: tabular-nums; text-align: center;
-}
-.book-foot { display: flex; align-items: flex-start; gap: 2px; min-width: 0; }
-.book-title { flex: 1; min-width: 0; font-size: 0.86rem; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.book-foot .icon-btn { width: 28px; height: 28px; margin: -4px -6px 0 0; color: var(--muted); }
-.lib-tools .icon-btn { flex: none; border: 1px solid var(--line); height: auto; min-height: 42px; width: 46px; }
 .fab {
   position: fixed; z-index: 15; right: max(18px, env(safe-area-inset-right)); bottom: calc(18px + env(safe-area-inset-bottom));
   width: 60px; height: 60px; border-radius: 50%; border: 0; cursor: pointer;
@@ -1100,9 +1025,6 @@ textarea.plain { font-family: var(--ui-font); font-size: 1rem; line-height: 1.5;
 }
 :root[data-glow] .fab { box-shadow: var(--glow), 0 6px 20px rgba(0, 0, 0, 0.5); }
 :root[data-glow] .bar h1 { text-shadow: 0 0 12px color-mix(in srgb, var(--accent) 45%, transparent); }
-:root[data-glow] .book-cover .cover,
-:root[data-glow] .card-cover .cover { box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6), 0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent); }
-:root[data-glow] .card,
 :root[data-glow] dialog { border-color: color-mix(in srgb, var(--accent) 16%, var(--line)); }
 :root[data-glow] .toc-row.current,
 :root[data-glow] .rp-progress i,
@@ -1118,11 +1040,6 @@ textarea.plain { font-family: var(--ui-font); font-size: 1rem; line-height: 1.5;
   background: linear-gradient(90deg, #2be3ff, #a45cff 55%, #ff3d9a); -webkit-background-clip: text; background-clip: text; color: transparent;
 }
 :root[data-glow] .credit b { filter: drop-shadow(0 0 6px rgba(164, 92, 255, 0.5)); }
-/* Layar lebar (tablet, laptop): sampul di rak lebih besar. */
-@media (min-width: 700px) {
-  .shelf { grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 24px 18px; }
-  .book-title { font-size: 0.92rem; }
-}
 
 /* Edit info novel: sampul di samping judul */
 .edit-head { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: 14px; align-items: start; margin-bottom: 4px; }
@@ -1375,3 +1292,235 @@ dialog.tl-pop { width: min(520px, calc(100vw - 32px)); }
 .nv-gaps .link-btn { color: inherit; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
 .nv-gaps.ok { padding: 0; margin: -4px 0 14px; text-align: center; color: var(--muted); font-size: 0.85rem; }
 dialog.nv-pop .nv-gaps.warn { margin-bottom: 12px; }
+
+/* ==========================================================================
+   Perpustakaan (tampilan baru)
+   Semua warna dari variabel tema, jadi cocok di 12 tema + kustom. --tint = warna khas sampul
+   (dihitung di app.js), dipakai untuk rona kartu & cahaya di bawah sampul.
+   Ukuran: HP (1 kolom), tablet ≥ 600px (alat satu baris, kartu lebih lega), laptop ≥ 1000px (kartu 2 kolom).
+   ========================================================================== */
+.card,
+.book { --tint: var(--accent); }
+
+/* ---------- Baris alat: cari, urutan, tampilan ---------- */
+/* HP: kolom cari satu baris penuh (supaya tidak terjepit), urutan + tampilan di baris kedua. */
+.lib-tools {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'search search' 'sort view';
+  gap: 8px; margin-bottom: 14px;
+}
+@media (min-width: 600px) {
+  .lib-tools { grid-template-columns: minmax(0, 1fr) auto auto; grid-template-areas: 'search sort view'; }
+}
+.lib-search { grid-area: search; }
+.lib-sort { grid-area: sort; }
+.view-seg { grid-area: view; }
+.lib-search,
+.lib-sort { position: relative; display: flex; align-items: center; min-width: 0; margin: 0; }
+.lib-search > svg,
+.lib-sort > svg {
+  position: absolute; left: 14px; width: 18px; height: 18px; color: var(--muted); pointer-events: none; transition: color 0.15s;
+}
+.lib-search input,
+.lib-sort select {
+  width: 100%; min-height: 46px; padding: 10px 14px 10px 42px; border-radius: 14px;
+  border: 1px solid var(--line); background: var(--panel); transition: border-color 0.15s, box-shadow 0.15s;
+}
+.lib-sort select {
+  appearance: none; -webkit-appearance: none; padding-right: 36px; cursor: pointer;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.lib-sort::after {
+  content: ''; position: absolute; right: 16px; top: 50%; width: 7px; height: 7px; margin-top: -6px; pointer-events: none;
+  border: solid var(--muted); border-width: 0 2px 2px 0; transform: rotate(45deg);
+}
+.lib-search input:focus,
+.lib-sort select:focus-visible {
+  outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+.lib-search:focus-within > svg { color: var(--accent); }
+.lib-search input::placeholder { color: var(--muted); opacity: 0.85; }
+@media (min-width: 600px) {
+  .lib-sort select { width: auto; max-width: 240px; }
+}
+
+/* Tombol tampilan: daftar | rak, yang aktif ditandai. */
+.view-seg {
+  display: inline-flex; gap: 2px; padding: 4px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel);
+}
+.view-seg button {
+  display: inline-flex; align-items: center; justify-content: center; width: 42px; height: 36px; padding: 0;
+  border: 0; border-radius: 10px; background: transparent; color: var(--muted); cursor: pointer; transition: background 0.15s, color 0.15s;
+}
+.view-seg button svg { width: 20px; height: 20px; }
+.view-seg button[aria-pressed='true'] { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); }
+.view-seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* ---------- Saringan status ---------- */
+/* Chip membungkus ke baris berikut, bukan digulir ke samping: dengan gulir samping, cahaya chip aktif
+   (tema Neon) terpotong jadi kotak, chip terakhir terpotong di tepi, dan di Android batang gulirnya
+   menimpa bagian bawah chip. Membungkus aman untuk lebar layar & ukuran huruf apa pun. */
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.chips button {
+  flex: none; max-width: 100%; display: inline-flex; align-items: center; gap: 8px; min-height: 38px;
+  padding: 4px 6px 4px 14px; border: 1px solid var(--line); border-radius: 99px; background: var(--panel);
+  cursor: pointer; font-size: 0.88rem; font-weight: 500; transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.chips .l { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chips .n {
+  flex: none; min-width: 24px; height: 24px; padding: 0 7px; border-radius: 99px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 0.74rem; font-weight: 700; font-variant-numeric: tabular-nums;
+  background: color-mix(in srgb, var(--fg) 9%, transparent); color: var(--muted);
+}
+.chips button[aria-selected='true'] { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); font-weight: 600; }
+.chips button[aria-selected='true'] .n { background: color-mix(in srgb, var(--accent-fg) 16%, transparent); color: inherit; }
+.chips button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ---------- Tampilan daftar: kartu ---------- */
+.cards { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+.card {
+  position: relative; display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: 12px 14px; padding: 14px;
+  border-radius: 20px; border: 1px solid color-mix(in srgb, var(--tint) 20%, var(--line));
+  background:
+    radial-gradient(120% 90% at 0% 0%, color-mix(in srgb, var(--tint) 22%, transparent), transparent 70%),
+    var(--panel);
+  transition: border-color 0.3s, background 0.3s;
+}
+.card-cover { grid-row: 1; align-self: start; padding: 0; border: 0; background: none; cursor: pointer; border-radius: 10px; }
+.card-cover .cover {
+  border-radius: 10px;
+  box-shadow: 0 10px 24px -8px color-mix(in srgb, var(--tint) 65%, transparent), 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+.card-main { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.card-head { display: flex; align-items: flex-start; gap: 2px; }
+.card h2 {
+  flex: 1; min-width: 0; margin: 2px 0 0; cursor: pointer; overflow-wrap: anywhere;
+  font-size: 1.14rem; line-height: 1.25; font-weight: 700; letter-spacing: -0.01em;
+}
+.card h2 .author { display: block; margin-top: 4px; font-size: 0.82rem; font-weight: 400; letter-spacing: 0; color: var(--muted); }
+.card-head .icon-btn { width: 36px; height: 36px; margin: -6px -8px 0 0; color: var(--muted); }
+.card .meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 0.82rem; color: var(--muted); }
+.card .badge { max-width: 100%; overflow: hidden; text-overflow: ellipsis; font-size: 0.72rem; font-weight: 600; padding: 2px 9px; border-color: color-mix(in srgb, currentColor 45%, transparent); background: color-mix(in srgb, currentColor 12%, transparent); }
+.card-prog { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; margin-top: auto; }
+.prog-label { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; font-size: 0.82rem; color: var(--muted); }
+.prog-label span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.prog-label b { flex: none; color: var(--fg); font-size: 0.9rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.card .progress { height: 6px; border-radius: 99px; overflow: hidden; background: color-mix(in srgb, var(--fg) 10%, transparent); }
+.card .progress > div { height: 100%; border-radius: inherit; background: var(--accent); }
+.card .actions { grid-column: 1 / -1; display: flex; gap: 8px; }
+.card .actions .btn { flex: 1; min-width: 0; min-height: 44px; border-radius: 12px; font-weight: 600; }
+.card .actions .btn:not(.primary) { background: color-mix(in srgb, var(--fg) 5%, transparent); }
+.card .actions .btn svg { width: 18px; height: 18px; flex: none; }
+.card .actions .btn.add { flex: none; width: 44px; padding: 0; }
+.card .actions .btn .t { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+/* Kartu sempit (HP kecil atau huruf sistem diperbesar): batas dalam em, jadi ikut membesar bersama huruf.
+   Mula-mula ikon tombol disembunyikan, lalu Daftar isi tinggal ikon saja. */
+.cards { container-type: inline-size; }
+@container (max-width: 21.5em) {
+  .prog-label .pre { display: none; }
+  .card .actions .btn.primary svg { display: none; }
+  .card .actions .btn { padding: 0 10px; }
+}
+@container (max-width: 19em) {
+  .card .actions .btn:not(.primary):not(.add) { flex: none; width: 52px; padding: 0; }
+  .card .actions .btn:not(.primary):not(.add) .t { display: none; }
+  .card { grid-template-columns: 64px minmax(0, 1fr); gap: 10px 12px; padding: 12px; }
+}
+/* Sangat sempit: sampul kecil di atas, teks selebar kartu. */
+@container (max-width: 14.5em) {
+  .card { grid-template-columns: minmax(0, 1fr); }
+  .card-cover { width: 64px; }
+  .card .meta { gap: 4px 6px; }
+  .card .actions { flex-wrap: wrap; }
+  .card .actions .btn.primary { flex-basis: 100%; }
+  .card .actions .btn:not(.primary):not(.add) { flex: 1; width: auto; padding: 0 10px; }
+  .card .actions .btn:not(.primary):not(.add) .t { display: inline; }
+}
+@media (min-width: 600px) {
+  .card { grid-template-columns: 104px minmax(0, 1fr); padding: 16px; gap: 12px 18px; }
+  .card-cover { grid-row: 1 / span 2; }
+  .card .actions { grid-column: 2; }
+}
+
+/* ---------- Tampilan rak ---------- */
+.shelf { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 22px 12px; }
+.book { display: grid; gap: 8px; min-width: 0; align-content: start; }
+.book-cover { position: relative; display: block; width: 100%; padding: 0; border: 0; background: none; cursor: pointer; border-radius: 10px; transition: transform 0.2s ease; }
+.book-cover .cover {
+  border-radius: 10px;
+  box-shadow: 0 14px 28px -12px color-mix(in srgb, var(--tint) 75%, transparent), 0 3px 8px rgba(0, 0, 0, 0.3);
+}
+/* Sampul otomatis: ukuran judul ikut lebar sampul, jadi tidak terpenggal di tengah kata saat sampul kecil. */
+.card-cover,
+.book-cover { container-type: inline-size; }
+.card-cover .cover.ph,
+.book-cover .cover.ph { font-size: clamp(8px, 13cqi, 17px); padding: 12% 8%; hyphens: manual; -webkit-hyphens: manual; overflow-wrap: normal; }
+.book-bar {
+  position: absolute; left: 8px; right: 8px; bottom: 8px; height: 5px; border-radius: 99px; overflow: hidden;
+  background: rgba(0, 0, 0, 0.5); box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+.book-bar i { display: block; height: 100%; border-radius: inherit; background: var(--accent); }
+.book-foot { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 2px; min-width: 0; }
+.book-title {
+  font-size: 0.88rem; font-weight: 600; line-height: 1.3;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.book-sub { grid-column: 1 / -1; font-size: 0.76rem; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.book-foot .icon-btn { width: 30px; height: 30px; margin: -5px -7px 0 0; color: var(--muted); }
+@media (min-width: 700px) {
+  .shelf { grid-template-columns: repeat(auto-fill, minmax(136px, 1fr)); gap: 28px 20px; }
+  .book-title { font-size: 0.94rem; }
+}
+
+/* ---------- Tidak ada hasil, kaki halaman ---------- */
+.lib-empty {
+  grid-column: 1 / -1; display: grid; justify-items: center; gap: 10px; padding: 36px 16px; text-align: center;
+  color: var(--muted); border: 1px dashed var(--line); border-radius: 18px;
+}
+.lib-empty svg { width: 30px; height: 30px; opacity: 0.6; }
+.lib-empty p { margin: 0; }
+.lib-foot { display: grid; gap: 8px; margin-top: 36px; padding-top: 20px; border-top: 1px solid var(--line); text-align: center; }
+.lib-foot .sync-line,
+.lib-foot .foot,
+.lib-foot .credit { margin: 0; }
+.lib-foot .sync-line.ok::before,
+.lib-foot .sync-line.err::before {
+  content: ''; display: inline-block; width: 7px; height: 7px; margin-right: 7px; border-radius: 50%; vertical-align: 1px;
+  background: #34c77b; box-shadow: 0 0 6px #34c77b;
+}
+.lib-foot .sync-line.err::before { background: var(--danger); box-shadow: none; }
+
+/* ---------- Layar lebar ---------- */
+@media (min-width: 1000px) {
+  .library { max-width: 1120px; }
+  .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+}
+
+/* ---------- Mouse: efek saat kursor di atas ---------- */
+@media (hover: hover) and (pointer: fine) {
+  .book-cover:hover { transform: translateY(-4px); }
+  .card:hover { border-color: color-mix(in srgb, var(--tint) 40%, var(--line)); }
+  .chips button:not([aria-selected='true']):hover,
+  .lib-search input:hover,
+  .lib-sort select:hover,
+  .view-seg:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+  .view-seg button:not([aria-pressed='true']):hover { color: var(--fg); }
+}
+.book-cover:active { transform: scale(0.98); }
+.book-cover:focus-visible,
+.card-cover:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+/* ---------- Tema Neon ---------- */
+:root[data-glow] .card {
+  border-color: color-mix(in srgb, var(--tint) 30%, var(--line));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 6%, transparent), 0 18px 40px -24px color-mix(in srgb, var(--tint) 60%, transparent);
+}
+:root[data-glow] .card .progress > div,
+:root[data-glow] .book-bar i { box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 70%, transparent); }
+:root[data-glow] .view-seg button[aria-pressed='true'] { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent); }
+:root[data-glow] .lib-search input:focus { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent), 0 0 18px color-mix(in srgb, var(--accent) 25%, transparent); }
+
+@media (prefers-reduced-motion: reduce) {
+  .book-cover,
+  .card { transition: none; }
+}

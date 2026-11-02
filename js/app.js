@@ -1000,7 +1000,7 @@ async function showLibrary() {
         icon('book'),
       )
     : null;
-  setView([bar, el('main', { class: 'page library' }, body, syncLine(), foot, credit), fab].filter(Boolean));
+  setView([bar, el('main', { class: 'page library' }, body, el('footer', { class: 'lib-foot' }, syncLine(), foot, credit)), fab].filter(Boolean));
 }
 
 const STATUSES = { reading: 'Sedang dibaca', later: 'Nanti', done: 'Selesai' };
@@ -1020,37 +1020,39 @@ let libQuery = '';
 /** Perpustakaan: cari judul/pengarang, urutkan, dan saring menurut status baca. */
 function libraryList(novels, covers) {
   const cards = el('div', { class: 'cards' });
-  const viewBtn = iconBtn('grid', 'Ganti tampilan', () => {
-    settings.libView = settings.libView === 'shelf' ? 'list' : 'shelf';
+  const pickView = (v) => {
+    if (settings.libView === v) return;
+    settings.libView = v;
     saveSettings();
     renderCards();
-  });
-  const search = el('input', { type: 'search', placeholder: 'Cari judul atau pengarang…', value: libQuery, 'aria-label': 'Cari novel' });
+  };
+  const viewBtns = {
+    list: el('button', { type: 'button', 'aria-label': 'Tampilan daftar', title: 'Tampilan daftar', onclick: () => pickView('list') }, icon('list')),
+    shelf: el('button', { type: 'button', 'aria-label': 'Tampilan rak', title: 'Tampilan rak', onclick: () => pickView('shelf') }, icon('grid')),
+  };
+  const search = el('input', { type: 'search', placeholder: 'Cari judul, pengarang, genre…', value: libQuery, 'aria-label': 'Cari novel' });
   const sort = el(
     'select',
     { 'aria-label': 'Urutkan' },
     Object.entries(SORTS).map(([k, v]) => el('option', { value: k, selected: settings.libSort === k }, v.label)),
   );
-  const chips = el('div', { class: 'chips', role: 'tablist' });
+  const chips = el('div', { class: 'chips', role: 'tablist', 'aria-label': 'Saring menurut status' });
   const counts = { all: novels.length };
   for (const n of novels) counts[statusOf(n)] = (counts[statusOf(n)] || 0) + 1;
+  const setFilter = (k) => {
+    settings.libFilter = k;
+    saveSettings();
+    renderChips();
+    renderCards();
+  };
   const renderChips = () =>
     chips.replaceChildren(
       ...Object.entries({ all: 'Semua', ...STATUSES }).map(([k, label]) =>
         el(
           'button',
-          {
-            type: 'button',
-            role: 'tab',
-            'aria-selected': String(settings.libFilter === k),
-            onclick: () => {
-              settings.libFilter = k;
-              saveSettings();
-              renderChips();
-              renderCards();
-            },
-          },
-          `${label} ${counts[k] || 0}`,
+          { type: 'button', role: 'tab', 'aria-selected': String(settings.libFilter === k), onclick: () => setFilter(k) },
+          el('span', { class: 'l' }, label),
+          el('span', { class: 'n' }, fmtNum(counts[k] || 0)),
         ),
       ),
     );
@@ -1065,11 +1067,30 @@ function libraryList(novels, covers) {
       .sort(SORTS[settings.libSort]?.fn || SORTS.recent.fn);
     const shelf = settings.libView === 'shelf';
     cards.className = shelf ? 'shelf' : 'cards';
-    viewBtn.replaceChildren(icon(shelf ? 'list' : 'grid'));
-    viewBtn.setAttribute('aria-label', shelf ? 'Tampilan daftar' : 'Tampilan rak');
-    viewBtn.title = viewBtn.getAttribute('aria-label');
+    viewBtns.list.setAttribute('aria-pressed', String(!shelf));
+    viewBtns.shelf.setAttribute('aria-pressed', String(shelf));
     const make = shelf ? (n) => shelfItem(n, covers.get(n.id)) : (n) => novelCard(n, covers.get(n.id));
-    cards.replaceChildren(...(shown.length ? shown.map(make) : [el('p', { class: 'empty small' }, 'Tidak ada novel yang cocok.')]));
+    if (shown.length) return cards.replaceChildren(...shown.map(make));
+    // Tidak ada yang cocok: tawarkan cara keluar dari pencarian/saringan.
+    const reset = el('button', {
+      type: 'button',
+      class: 'btn small-btn',
+      onclick: () => {
+        libQuery = search.value = '';
+        if (settings.libFilter !== 'all') setFilter('all');
+        else renderCards();
+      },
+    });
+    reset.textContent = q ? 'Hapus pencarian' : 'Tampilkan semua';
+    cards.replaceChildren(
+      el(
+        'div',
+        { class: 'lib-empty' },
+        icon('search'),
+        el('p', null, q ? `Tidak ada novel yang cocok dengan “${libQuery.trim()}”.` : `Belum ada novel berstatus ${STATUSES[settings.libFilter] || ''}.`),
+        reset,
+      ),
+    );
   };
   search.oninput = () => {
     libQuery = search.value;
@@ -1082,7 +1103,19 @@ function libraryList(novels, covers) {
   };
   renderChips();
   renderCards();
-  return el('div', null, el('div', { class: 'lib-tools' }, search, sort, viewBtn), chips, cards);
+  return el(
+    'div',
+    null,
+    el(
+      'div',
+      { class: 'lib-tools' },
+      el('label', { class: 'lib-search' }, icon('search'), search),
+      el('label', { class: 'lib-sort' }, icon('sort'), sort),
+      el('div', { class: 'view-seg', role: 'group', 'aria-label': 'Tampilan' }, viewBtns.list, viewBtns.shelf),
+    ),
+    chips,
+    cards,
+  );
 }
 
 /** Progres baca (persen, menurut urutan chapter terakhir dibaca). */
@@ -1091,26 +1124,30 @@ function readPct(n) {
   return n.toc.length && idx >= 0 ? ((idx + 1) / n.toc.length) * 100 : 0;
 }
 
-/** Tampilan rak: sampul + persen, judul di bawah; ⋯ membuka menu novel. */
+/** Tampilan rak: sampul + garis progres, judul & posisi baca di bawah; ⋯ membuka menu novel. */
 function shelfItem(n, cover) {
   const pct = readPct(n);
-  const open = () => openNovelInfo(n);
-  return el(
+  const st = statusOf(n);
+  const sub = n.lastRead && pct ? `Ch ${n.lastRead.num} · ${Math.round(pct)}%` : STATUSES[st];
+  const item = el(
     'div',
     { class: 'book' },
     el(
       'button',
-      { type: 'button', class: 'book-cover', 'aria-label': `Buka ${n.title}`, onclick: open },
+      { type: 'button', class: 'book-cover', 'aria-label': `Buka ${n.title}`, onclick: () => openNovelInfo(n) },
       coverEl(n, cover),
-      el('span', { class: 'pct' }, `${Math.round(pct)}%`),
+      pct ? el('span', { class: 'book-bar', 'aria-hidden': 'true' }, el('i', { style: `width:${pct}%` })) : null,
     ),
     el(
       'div',
       { class: 'book-foot' },
       el('span', { class: 'book-title', title: n.title }, n.title),
       iconBtn('more', 'Menu novel', () => novelMenu(n)),
+      el('span', { class: 'book-sub' }, sub),
     ),
   );
+  applyTint(item, n, cover);
+  return item;
 }
 
 function novelCard(n, cover) {
@@ -1118,31 +1155,49 @@ function novelCard(n, cover) {
   const idx = n.lastRead ? n.toc.findIndex((t) => t.num === n.lastRead.num) : -1;
   const pct = total && idx >= 0 ? ((idx + 1) / total) * 100 : 0;
   const read = () => (location.hash = `#/read/${encodeURIComponent(n.id)}`);
-  const meta = [`${fmtNum(total)} chapter`];
-  if (total) meta.push(`Ch ${n.toc[0].num}–${n.toc[total - 1].num}`);
-  if (idx >= 0) meta.push(`terakhir dibaca: Chapter ${n.lastRead.num}`);
-  const st = statusOf(n);
+  const info = () => openNovelInfo(n);
+  const facts = [`${fmtNum(total)} chapter`];
+  if (total) facts.push(`Ch ${n.toc[0].num}–${n.toc[total - 1].num}`);
   const marks = Object.keys(n.bookmarks || {}).length;
-  return el(
+  if (marks) facts.push(`${fmtNum(marks)} bookmark`);
+  const st = statusOf(n);
+  const card = el(
     'section',
     { class: 'card' },
-    el('button', { type: 'button', class: 'card-cover', 'aria-label': `Buka ${n.title}`, onclick: () => openNovelInfo(n) }, coverEl(n, cover)),
-    el('h2', { onclick: () => openNovelInfo(n) }, n.title, byline(n) ? el('small', { class: 'author' }, byline(n)) : null),
-    iconBtn('more', 'Menu novel', () => novelMenu(n)),
+    el('button', { type: 'button', class: 'card-cover', 'aria-label': `Buka ${n.title}`, onclick: info }, coverEl(n, cover)),
     el(
       'div',
-      { class: 'meta' },
-      el('span', { class: `badge st-${st}` }, STATUSES[st]),
-      ' ',
-      meta.join(' · '),
-      marks ? ` · ${fmtNum(marks)} bookmark` : '',
+      { class: 'card-main' },
+      el(
+        'div',
+        { class: 'card-head' },
+        el('h2', { onclick: info }, n.title, byline(n) ? el('small', { class: 'author' }, byline(n)) : null),
+        iconBtn('more', 'Menu novel', () => novelMenu(n)),
+      ),
+      el('div', { class: 'meta' }, el('span', { class: `badge st-${st}` }, STATUSES[st]), el('span', null, facts.join(' · '))),
+      total
+        ? el(
+            'div',
+            { class: 'card-prog' },
+            el(
+              'div',
+              { class: 'prog-label' },
+              el('span', null, idx >= 0 ? [el('span', { class: 'pre' }, 'Terakhir: '), `Chapter ${n.lastRead.num}`] : 'Belum dibaca'),
+              el('b', null, `${Math.round(pct)}%`),
+            ),
+            el(
+              'div',
+              { class: 'progress', role: 'progressbar', 'aria-label': 'Progres baca', 'aria-valuemin': '0', 'aria-valuemax': '100', 'aria-valuenow': String(Math.round(pct)) },
+              el('div', { style: `width:${pct}%` }),
+            ),
+          )
+        : null,
     ),
-    el('div', { class: 'progress', title: `${Math.round(pct)}%` }, el('div', { style: `width:${pct}%` })),
     el(
       'div',
       { class: 'actions' },
       total
-        ? el('button', { type: 'button', class: 'btn primary', onclick: read }, idx >= 0 ? 'Lanjut baca' : 'Mulai baca')
+        ? el('button', { type: 'button', class: 'btn primary', onclick: read }, icon('book'), el('span', { class: 't' }, idx >= 0 ? 'Lanjut baca' : 'Mulai baca'))
         : el('span', { class: 'muted small' }, 'Belum ada chapter.'),
       total
         ? el(
@@ -1150,6 +1205,7 @@ function novelCard(n, cover) {
             {
               type: 'button',
               class: 'btn',
+              title: 'Daftar isi',
               onclick: () =>
                 openTocDialog(
                   n,
@@ -1159,12 +1215,58 @@ function novelCard(n, cover) {
                 ),
             },
             icon('toc'),
-            'Daftar isi',
+            el('span', { class: 't' }, 'Daftar isi'),
           )
         : null,
       el('button', { type: 'button', class: 'btn add', 'aria-label': 'Tambah chapter', title: 'Tambah chapter', onclick: () => openImport(n.id) }, icon('plus')),
     ),
   );
+  applyTint(card, n, cover);
+  return card;
+}
+
+// ---------- Rona sampul ----------
+// Warna khas sampul dipakai untuk rona kartu & cahaya di bawah sampul, supaya tiap novel punya nuansanya sendiri.
+const tintCache = new Map();
+
+/** Warna khas gambar: rata-rata 12×12 piksel, piksel yang lebih berwarna diberi bobot lebih besar. */
+async function imageTint(src) {
+  const img = new Image();
+  img.src = src;
+  await img.decode();
+  const c = document.createElement('canvas');
+  c.width = c.height = 12;
+  const g = c.getContext('2d', { willReadFrequently: true });
+  g.drawImage(img, 0, 0, 12, 12);
+  const d = g.getImageData(0, 0, 12, 12).data;
+  let r = 0, gr = 0, b = 0, w = 0;
+  for (let i = 0; i < d.length; i += 4) {
+    const s = Math.max(d[i], d[i + 1], d[i + 2]) - Math.min(d[i], d[i + 1], d[i + 2]);
+    const k = s * s + 64;
+    r += d[i] * k;
+    gr += d[i + 1] * k;
+    b += d[i + 2] * k;
+    w += k;
+  }
+  return `rgb(${Math.round(r / w)} ${Math.round(gr / w)} ${Math.round(b / w)})`;
+}
+
+function applyTint(node, n, cover) {
+  const key = `${n.id}:${cover ? cover.length : `ph:${n.title}`}`;
+  const set = (t) => t && node.style.setProperty('--tint', t);
+  if (tintCache.has(key)) return set(tintCache.get(key));
+  if (!cover) {
+    const h = titleHue(n.title);
+    const t = `hsl(${THEMES[settings.theme]?.glow ? 185 + (h % 150) : h % 360} 70% 50%)`;
+    tintCache.set(key, t);
+    return set(t);
+  }
+  imageTint(cover)
+    .then((t) => {
+      tintCache.set(key, t);
+      set(t);
+    })
+    .catch(() => tintCache.set(key, null));
 }
 
 // ---------- Sampul ----------
@@ -1183,11 +1285,17 @@ async function coverData(blob) {
   return c.toDataURL('image/jpeg', 0.82);
 }
 
+/** Angka tetap per judul, dasar warna sampul otomatis. */
+function titleHue(title) {
+  let h = 0;
+  for (const ch of title) h = (h * 31 + ch.codePointAt(0)) >>> 0;
+  return h;
+}
+
 /** Sampul novel; tanpa gambar dibuat sampul berwarna berisi judul (warna tetap per judul). */
 function coverEl(n, data, cls = '') {
   if (data) return el('img', { class: `cover ${cls}`, src: data, alt: '', loading: 'lazy', decoding: 'async' });
-  let h = 0;
-  for (const ch of n.title) h = (h * 31 + ch.codePointAt(0)) >>> 0;
+  const h = titleHue(n.title);
   const ph = el('div', { class: `cover ph ${cls}`, 'aria-hidden': 'true' }, el('span', null, n.title));
   if (THEMES[settings.theme]?.glow) {
     // Tema Neon: warna di rentang cyan → ungu → merah muda, gelap di bawah, supaya senada.
@@ -3433,7 +3541,8 @@ function syncLine() {
       : syncState.last
         ? `Sinkron terakhir ${fmtTime(syncState.last)}`
         : 'Belum pernah sinkron';
-  return el('p', { class: `sync-line${syncState.error ? ' err' : ''}` }, text);
+  const ok = !syncState.running && !syncState.error && syncState.last;
+  return el('p', { class: `sync-line${syncState.error ? ' err' : ok ? ' ok' : ''}` }, text);
 }
 
 function refreshSyncUi() {
