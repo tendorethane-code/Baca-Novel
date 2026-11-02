@@ -62,7 +62,8 @@
       #splash .s-ring.r2 { width: 290px; height: 290px; margin: -145px; opacity: 0.14; }
       #splash .s-ring::before { content: '✦'; position: absolute; top: -9px; left: 50%; transform: translateX(-50%); color: var(--a); font-size: 14px; text-shadow: 0 0 10px var(--a); }
       /* Logo K2 (Kristal Ukir), warna dari --a/--b. */
-      #splash .s-logo { position: relative; width: 168px; height: 168px; overflow: visible; }
+      /* Logo 168px di wadah 150px: margin -9px supaya tetap tepat di tengah cincin (tanpa ini kelebihan 18px tumpah ke kanan). */
+      #splash .s-logo { position: relative; width: 168px; height: 168px; margin: -9px; overflow: visible; }
       #splash .s-name { margin: 64px 0 0; font: 400 46px/1 'Source Serif 4', 'Noto Serif', Georgia, serif; letter-spacing: -0.01em; }
       #splash .s-name em { font-style: italic; padding-right: 0.08em; color: var(--a); text-shadow: 0 0 24px var(--glow); }
       .splash-aurora #splash .s-name em { background: linear-gradient(95deg, #2be3ff, #a45cff); -webkit-background-clip: text; background-clip: text; color: transparent; text-shadow: none; }

@@ -68,6 +68,12 @@ const ICONS = {
   user: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4.5 20a7.5 7.5 0 0 1 15 0',
   spark: 'M12 2c.6 5.3 4.7 9.4 10 10-5.3.6-9.4 4.7-10 10-.6-5.3-4.7-9.4-10-10 5.3-.6 9.4-4.7 10-10z',
   sync: 'M20 11a8 8 0 0 0-14.3-4.9L4 8M4 4v4h4M4 13a8 8 0 0 0 14.3 4.9L20 16M20 20v-4h-4',
+  check: 'M5 12.5l4.5 4.5L19 7.5',
+  clock: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7.5V12l3 2',
+  download: 'M12 4v11M7.5 10.5L12 15l4.5-4.5M4 15v3.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V15',
+  pen: 'M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4',
+  cut: 'M6 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM8.2 7.8L20 19M8.2 16.2L20 5',
+  trash: 'M4 7h16M9 7V4.5h6V7M6.5 7l1 13h9l1-13M10 11v5M14 11v5',
 };
 function icon(name) {
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -1039,6 +1045,8 @@ async function showLibrary() {
     ),
     syncButton(),
     iconBtn('type', 'Pengaturan', openSettings),
+    // Gaya Klasik tidak punya navigasi bawah: Profil (tempat memilih gaya halaman depan) lewat tombol ini.
+    homeStyle() ? null : iconBtn('user', 'Profil', openProfile),
     el('button', { type: 'button', class: 'btn primary', onclick: () => openImport() }, icon('plus'), 'Impor'),
   );
 
@@ -1369,7 +1377,13 @@ async function showProfile() {
   const storage = row('book', 'Penyimpanan', 'Menghitung…');
   const storageText = storage.querySelector('.pf-txt span');
   showStorageInfo(storageText).then(() => (storageText.textContent = storageText.textContent.replace(/^Versi [^·]+·\s*/, '')));
-  const bar = el('header', { class: 'bar' }, el('h1', { class: 'brand' }, 'Profil'));
+  // Klasik tidak punya navigasi bawah, jadi Profil perlu tombol kembali ke perpustakaan.
+  const bar = el(
+    'header',
+    { class: 'bar' },
+    homeStyle() ? null : iconBtn('back', 'Kembali ke perpustakaan', () => (location.hash = '#/')),
+    el('h1', { class: 'brand' }, 'Profil'),
+  );
   const main = el(
     'main',
     { class: 'page profile' },
@@ -2195,34 +2209,45 @@ async function tidyTlNotes(n) {
   route();
 }
 
-function novelMenu(n) {
+/**
+ * Menu novel (⋯): kepala bersampul (judul serif, penulis, progres), status baca berupa kapsul,
+ * lalu aksi berkelompok (Baca · Kelola · Hapus) dengan ikon. Teks aksi sama seperti sebelumnya.
+ */
+async function novelMenu(n) {
   const has = n.toc.length > 0;
   const locked = settings.changeLock;
-  const act = (label, fn, opts = {}) =>
-    el(
+  const cover = await db.getCover(n.id).catch(() => null);
+  let d;
+  const act = (ic, label, fn, opts = {}) => {
+    const off = opts.disabled || (opts.change && locked);
+    return el(
       'button',
       {
         type: 'button',
-        class: `btn${opts.danger ? ' danger' : ''}`,
-        disabled: opts.disabled || (opts.change && locked),
+        class: `nm-row${opts.danger ? ' danger' : ''}`,
+        disabled: off,
         title: opts.change && locked ? 'Perubahan sedang dikunci' : null,
         onclick: () => {
           d.close();
           fn();
         },
       },
-      label,
+      el('span', { class: 'nm-ic' }, icon(ic)),
+      el('span', { class: 'nm-txt' }, label, opts.sub ? el('small', null, opts.sub) : null),
+      icon('chevron'),
     );
-  let d;
+  };
+  const statusIcons = { reading: 'book', later: 'clock', done: 'check' };
   const statusSeg = el(
     'div',
-    { class: 'seg', role: 'radiogroup', 'aria-label': 'Status baca' },
+    { class: 'nm-seg', role: 'radiogroup', 'aria-label': 'Status baca' },
     Object.entries(STATUSES).map(([k, label]) =>
       el(
         'button',
         {
           type: 'button',
-          'aria-pressed': String(statusOf(n) === k),
+          role: 'radio',
+          'aria-checked': String(statusOf(n) === k),
           onclick: async () => {
             await db.setStatus(n.id, k);
             changed();
@@ -2230,45 +2255,80 @@ function novelMenu(n) {
             route();
           },
         },
-        label,
+        icon(statusIcons[k]),
+        el('span', null, label),
       ),
     ),
   );
+  const pct = Math.round(readPct(n));
+  const pos = n.lastRead && pct ? `Chapter ${n.lastRead.num} dari ${fmtNum(n.toc.length)} · ${pct}%` : `${fmtNum(n.toc.length)} chapter`;
+  const head = el(
+    'div',
+    { class: 'nm-head' },
+    cover ? el('div', { class: 'nm-glow', style: `background-image:url("${cover}")`, 'aria-hidden': 'true' }) : null,
+    el('div', { class: 'nm-cover' }, coverEl(n, cover)),
+    el(
+      'div',
+      { class: 'nm-meta' },
+      el('small', null, icon('spark'), 'Menu novel'),
+      el('h3', null, n.title),
+      n.author ? el('p', { class: 'nm-by' }, n.author) : null,
+      el('div', { class: 'nm-prog', 'aria-hidden': 'true' }, el('i', { style: `width:${pct}%` })),
+      el('p', { class: 'nm-pos' }, pos),
+    ),
+  );
+  const group = (label, cls, ...rows) => [
+    label ? el('div', { class: 'nm-label' }, label) : null,
+    el('div', { class: `nm-group${cls ? ' ' + cls : ''}` }, rows),
+  ];
   const body = el(
     'div',
-    { class: 'menu-list' },
-    el('div', { class: 'section-label' }, 'Status baca'),
+    { class: 'nm' },
+    head,
+    el('div', { class: 'nm-label' }, 'Status baca'),
     statusSeg,
-    el('div', { class: 'section-label' }, 'Aksi'),
-    act('Daftar isi', () => openToc(n), { disabled: !has }),
-    act('Info novel', () => openNovelInfo(n)),
-    act('Impor / tambah chapter', () => openImport(n.id)),
-    act('Rapikan TL note semua chapter', () => tidyTlNotes(n), { disabled: !has, change: true }),
-    act('Ekspor & compile…', () => openExport(n), { disabled: !has }),
-    act('Edit judul & info novel', () => editNovelInfo(n), { change: true }),
-    act('Hapus rentang chapter', () => openDeleteRange(n), { disabled: !has, danger: true, change: true }),
-    act(
-      'Hapus novel',
-      async () => {
-        if (
-          await confirmDialog(
-            'Hapus novel',
-            `Hapus "${n.title}" beserta ${fmtNum(n.toc.length)} chapter dari perangkat ini?`,
-            'Hapus',
-            true,
-          )
-        ) {
-          await db.deleteNovel(n.id);
-          toast('Novel dihapus.');
-          changed();
-          route();
-        }
-      },
-      { danger: true, change: true },
+    group(
+      'Baca',
+      '',
+      act('toc', 'Daftar isi', () => openToc(n), { disabled: !has, sub: has ? `${fmtNum(n.toc.length)} chapter` : 'Belum ada chapter' }),
+      act('info', 'Info novel', () => openNovelInfo(n)),
     ),
-    locked ? el('p', { class: 'small muted' }, 'Perubahan sedang dikunci. Buka kunci di Pengaturan.') : null,
+    group(
+      'Kelola',
+      '',
+      act('upload', 'Impor / tambah chapter', () => openImport(n.id)),
+      act('note', 'Rapikan TL note semua chapter', () => tidyTlNotes(n), { disabled: !has, change: true }),
+      act('download', 'Ekspor & compile…', () => openExport(n), { disabled: !has, sub: 'EPUB atau .zip berisi .txt' }),
+      act('pen', 'Edit judul & info novel', () => editNovelInfo(n), { change: true }),
+    ),
+    group(
+      null,
+      'danger',
+      act('cut', 'Hapus rentang chapter', () => openDeleteRange(n), { disabled: !has, danger: true, change: true }),
+      act(
+        'trash',
+        'Hapus novel',
+        async () => {
+          if (
+            await confirmDialog(
+              'Hapus novel',
+              `Hapus "${n.title}" beserta ${fmtNum(n.toc.length)} chapter dari perangkat ini?`,
+              'Hapus',
+              true,
+            )
+          ) {
+            await db.deleteNovel(n.id);
+            toast('Novel dihapus.');
+            changed();
+            route();
+          }
+        },
+        { danger: true, change: true },
+      ),
+    ),
+    locked ? el('p', { class: 'nm-lock' }, icon('lock'), 'Perubahan sedang dikunci. Buka kunci di Pengaturan.') : null,
   );
-  dialog({ title: n.title, body, onOpen: (x) => (d = x) });
+  dialog({ title: n.title, body, className: 'nm-dlg', onOpen: (x) => (d = x) });
 }
 
 /**
