@@ -1818,3 +1818,42 @@ body[data-home] .library { padding-bottom: calc(110px + env(safe-area-inset-bott
 .sd-foot b { background: linear-gradient(90deg, #2be3ff, #a45cff 55%, #ff3d9a); -webkit-background-clip: text; background-clip: text; color: transparent; }
 body[data-home='aurora'] .sd-brand b { font-family: var(--ui-font); font-weight: 800; font-size: 1.25rem; letter-spacing: -0.02em; }
 body[data-home='aurora'] .sd-brand em { font-style: normal; background: linear-gradient(95deg, var(--accent), var(--x2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+/* ---------- Profil ---------- */
+.profile { max-width: 640px; margin: 0 auto; }
+body[data-home] .profile { padding-bottom: calc(110px + env(safe-area-inset-bottom)); }
+.pf-head { display: flex; align-items: center; gap: 18px; padding: 22px 18px; margin: 4px 0 14px; border-radius: 26px;
+  background: radial-gradient(90% 120% at 0% 0%, color-mix(in srgb, var(--accent) 20%, transparent), transparent 60%), var(--glass, var(--panel)); border: 1px solid var(--glass-line, var(--line)); }
+.pf-ava { flex: none; width: 82px; height: 82px; border-radius: 50%; padding: 3px; display: grid;
+  background: conic-gradient(from 200deg, var(--accent), var(--accent-3, var(--accent)), var(--accent)); box-shadow: 0 0 26px -4px color-mix(in srgb, var(--accent) 60%, transparent); }
+.pf-ava > img, .pf-ava > span { width: 100%; height: 100%; border-radius: 50%; border: 3px solid var(--bg); object-fit: cover; }
+.pf-ava > span { display: grid; place-items: center; background: var(--panel); font: 500 2rem var(--serif, Georgia, serif); color: var(--accent); }
+.pf-who { min-width: 0; }
+.pf-who h2 { margin: 0; font-family: var(--serif, Georgia, serif); font-weight: 500; font-size: 1.7rem; overflow-wrap: anywhere; }
+.pf-who p { margin: 2px 0 6px; color: var(--muted); font-size: 0.84rem; }
+.pf-edit-btn { padding: 2px 0; font-size: 0.82rem; color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
+.pf-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-bottom: 26px; }
+.pf-stats div { display: grid; justify-items: center; align-content: center; gap: 2px; padding: 14px 4px; border-radius: 18px; text-align: center;
+  background: var(--glass, var(--panel)); border: 1px solid var(--glass-line, var(--line)); }
+.pf-stats b { font-size: 1.3rem; font-variant-numeric: tabular-nums; }
+.pf-stats span { font-size: 0.68rem; color: var(--muted); line-height: 1.2; }
+@media (max-width: 359px) { .pf-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.pf-sec { margin: 0 4px 10px; font-family: var(--serif, Georgia, serif); font-weight: 500; font-size: 1.15rem; }
+.profile .style-pick { margin-bottom: 26px; }
+.pf-list { border-radius: 22px; background: var(--glass, var(--panel)); border: 1px solid var(--glass-line, var(--line)); margin-bottom: 24px; overflow: hidden; }
+.pf-row { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 12px; align-items: center; width: 100%; padding: 13px 14px; border: 0; border-top: 1px solid var(--glass-line, var(--line));
+  background: none; color: var(--fg); text-align: left; font: inherit; }
+button.pf-row { cursor: pointer; }
+button.pf-row:hover { background: color-mix(in srgb, var(--fg) 4%, transparent); }
+.pf-row:first-child { border-top: 0; }
+.pf-txt { min-width: 0; }
+.pf-txt b { display: block; font-size: 0.95rem; font-weight: 600; }
+.pf-txt span { display: block; font-size: 0.76rem; color: var(--muted); overflow-wrap: anywhere; }
+.pf-row > svg { width: 18px; height: 18px; color: var(--muted); }
+.pf-ic { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
+.pf-ic svg { width: 20px; height: 20px; }
+.pf-ok { font-style: normal; font-size: 0.72rem; color: #4ade80; white-space: nowrap; }
+.profile .credit { margin-top: 10px; }
+.pf-edit { display: flex; align-items: center; gap: 16px; margin-bottom: 14px; }
+.pf-edit-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+.pf-edit-ava .pf-ava { width: 72px; height: 72px; }
