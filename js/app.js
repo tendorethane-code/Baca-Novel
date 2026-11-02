@@ -731,6 +731,12 @@ function dotSlider({ label, min, max, value, labels = [], unit = '', onInput }) 
     show(v);
     onInput(v);
   };
+  // Angka di bawah titik juga bisa diketuk/diklik langsung.
+  for (const [v, , lab] of dots)
+    lab.onclick = () => {
+      range.value = v;
+      range.oninput();
+    };
   cur = Number(range.value);
   show(cur);
   return el('div', { class: 'dot-slider' }, head, el('div', { class: 'size-track' }, range, ticks));
