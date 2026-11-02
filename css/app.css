@@ -95,8 +95,12 @@ a {
   cursor: pointer;
   white-space: nowrap;
 }
-.btn:hover {
-  border-color: var(--muted);
+/* Hanya untuk mouse: di HP, :hover "menempel" di titik terakhir jari mengetuk, jadi tombol yang kebetulan
+   muncul di posisi itu (mis. di menu yang baru dibuka) tampak berbingkai terang. */
+@media (hover: hover) {
+  .btn:hover {
+    border-color: var(--muted);
+  }
 }
 .btn.primary {
   background: var(--accent);
@@ -127,8 +131,10 @@ a {
   cursor: pointer;
   flex: none;
 }
-.icon-btn:hover {
-  background: color-mix(in srgb, var(--fg) 8%, transparent);
+@media (hover: hover) {
+  .icon-btn:hover {
+    background: color-mix(in srgb, var(--fg) 8%, transparent);
+  }
 }
 .icon-btn svg {
   width: 22px;
@@ -1528,8 +1534,13 @@ body[data-home='neon'] {
   --glass: rgb(14 22 30 / 0.55); --glass-line: rgb(43 227 255 / 0.13); --sky: 8 32 42;
   --danger: #f2827a; --warn-bg: #3a3017; --warn-fg: #f1d68b;
 }
-body[data-home] { --serif: 'Source Serif 4', 'Noto Serif', Georgia, serif; color-scheme: dark;
-  background: radial-gradient(120% 50% at 50% 100%, rgb(var(--sky)) 0%, var(--bg) 60%) fixed, var(--bg); }
+/* Latar gradasi di lapisan diam terpisah (::after), BUKAN `background-attachment: fixed`: latar fixed memaksa
+   browser melukis ulang seluruh layar di setiap frame saat scroll (terukur: ±350 kali lukis ulang per 3 detik
+   scroll vs 0). Lapisan position: fixed cukup dilukis sekali lalu digeser oleh GPU. isolation membuat lapisan
+   z-index negatif (::after, dan ::before Aurora) tampil di atas warna latar body, di bawah isi halaman. */
+body[data-home] { --serif: 'Source Serif 4', 'Noto Serif', Georgia, serif; color-scheme: dark; background: var(--bg); isolation: isolate; }
+body[data-home]::after { content: ''; position: fixed; inset: 0; z-index: -2; pointer-events: none;
+  background: radial-gradient(120% 50% at 50% 100%, rgb(var(--sky)) 0%, var(--bg) 60%); }
 .l-short { display: none; }
 body[data-home] .l-short { display: inline; }
 body[data-home] .l-full:not(:only-child) { display: none; }
@@ -1895,3 +1906,91 @@ button.pf-row:hover { background: color-mix(in srgb, var(--fg) 4%, transparent);
   --f0: #0596b3; --f1: #2a7fa8; --f2: #4b4fd6; --f3: #6a46c9; --f4: #8a2fd0; --f5: #cf2f7e; --f6: #b02868;
   --sig-sheen: 0; --sig-edge: 0; --sig-glow: transparent; --sig-groove: var(--bg);
 }
+
+/* ==========================================================================
+   Menu novel (⋯): kepala bersampul, status kapsul, aksi berkelompok. Warna dari variabel tema/gaya,
+   jadi ikut Eclipse Neon, Royal Eclipse, Aurora, maupun Klasik (termasuk tema terang). Tanpa blur
+   latar (backdrop-filter) supaya ringan di HP; cahaya sampul cukup gambar diam yang diburamkan sekali.
+   ========================================================================== */
+dialog.nm-dlg {
+  --nm-gold: color-mix(in srgb, var(--accent) 55%, var(--fg));
+  width: min(440px, calc(100vw - 24px)); max-height: calc(100dvh - 32px); border-radius: 28px; overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--line));
+  background:
+    radial-gradient(120% 60% at 100% 0%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 60%),
+    linear-gradient(180deg, color-mix(in srgb, var(--panel) 92%, var(--fg)) 0%, var(--panel) 38%, color-mix(in srgb, var(--panel) 80%, var(--bg)) 100%);
+  box-shadow: 0 40px 90px -30px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(255, 255, 255, 0.03), inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    0 0 60px -30px var(--accent);
+}
+dialog.nm-dlg::backdrop { background: radial-gradient(80% 60% at 50% 40%, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.72)); }
+dialog.nm-dlg .dlg-head { position: absolute; top: 0; right: 0; z-index: 3; border: 0; padding: 10px; }
+dialog.nm-dlg .dlg-head h2 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+dialog.nm-dlg .dlg-head .icon-btn { width: 36px; height: 36px; border-radius: 50%; color: var(--fg);
+  background: color-mix(in srgb, var(--bg) 55%, transparent); border: 1px solid color-mix(in srgb, var(--fg) 12%, transparent); }
+dialog.nm-dlg .dlg-head .icon-btn svg { width: 18px; height: 18px; }
+dialog.nm-dlg .dlg-body { padding: 0 18px calc(18px + env(safe-area-inset-bottom)); }
+.nm { display: grid; }
+
+/* Kepala: sampul + judul serif + progres */
+.nm-head { position: relative; isolation: isolate; display: grid; grid-template-columns: 68px minmax(0, 1fr); gap: 16px; align-items: center;
+  margin: 0 -18px; padding: 20px 56px 18px 20px; border-bottom: 1px solid color-mix(in srgb, var(--accent) 14%, var(--line)); overflow: hidden; }
+.nm-head::after { content: ''; position: absolute; left: 20%; right: 20%; bottom: -1px; height: 1px; z-index: 1;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent); opacity: 0.7; }
+.nm-glow { position: absolute; inset: -40%; z-index: -1; background-size: cover; background-position: center; filter: blur(36px) saturate(1.4); opacity: 0.38;
+  -webkit-mask-image: linear-gradient(180deg, #000 35%, transparent 85%); mask-image: linear-gradient(180deg, #000 35%, transparent 85%); }
+.nm-cover .cover { border-radius: 10px; box-shadow: 0 14px 26px -10px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.14); }
+.nm-cover .cover.ph { font-size: 0.55rem; padding: 6px; }
+.nm-meta { min-width: 0; display: grid; gap: 4px; }
+.nm-meta small { display: inline-flex; align-items: center; gap: 6px; font-size: 0.64rem; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: var(--accent); }
+.nm-meta small svg { width: 10px; height: 10px; }
+.nm-meta h3 { margin: 0; font-family: 'Source Serif 4', 'Noto Serif', Georgia, serif; font-weight: 500; font-size: 1.32rem; line-height: 1.18; letter-spacing: -0.005em;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.nm-by { margin: 0; font-size: 0.8rem; font-style: italic; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nm-prog { height: 3px; margin-top: 6px; border-radius: 3px; background: color-mix(in srgb, var(--fg) 10%, transparent); overflow: hidden; }
+.nm-prog i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--accent-3, var(--accent)), var(--accent)); box-shadow: 0 0 8px var(--accent); }
+.nm-pos { margin: 0; font-size: 0.74rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* Label bagian: huruf kecil berjarak, garis tipis memudar di kanan */
+.nm-label { display: flex; align-items: center; gap: 10px; margin: 16px 4px 8px; font-size: 0.66rem; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); }
+.nm-label::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 30%, var(--line)), transparent); }
+
+/* Status: tiga kapsul dalam satu rel; teks tidak patah (bila huruf sistem sangat besar, kapsul turun ke baris berikut) */
+.nm-seg { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px; border-radius: 18px; background: color-mix(in srgb, var(--fg) 4%, transparent);
+  border: 1px solid color-mix(in srgb, var(--fg) 8%, transparent); }
+.nm-seg button { flex: 1 1 0; min-width: max-content; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  min-height: 58px; padding: 6px 8px; white-space: nowrap;
+  border: 1px solid transparent; border-radius: 14px; background: transparent; color: var(--muted); font-size: 0.8rem; font-weight: 600; cursor: pointer;
+  transition: background 0.15s, color 0.15s; }
+.nm-seg button svg { width: 18px; height: 18px; flex: none; }
+.nm-seg button[aria-checked='true'] { color: var(--fg); border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 22%, transparent), color-mix(in srgb, var(--accent) 8%, transparent));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 6px 18px -8px var(--accent); }
+.nm-seg button[aria-checked='true'] svg { color: var(--accent); }
+
+/* Kelompok aksi: satu kartu, baris dipisah garis tipis */
+.nm-group { display: grid; border-radius: 18px; overflow: hidden; background: color-mix(in srgb, var(--fg) 3.5%, transparent);
+  border: 1px solid color-mix(in srgb, var(--fg) 8%, transparent); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04); }
+.nm-group.danger { margin-top: 12px; border-color: color-mix(in srgb, var(--danger) 22%, transparent); background: color-mix(in srgb, var(--danger) 4%, transparent); }
+.nm-row { position: relative; display: grid; grid-template-columns: 34px minmax(0, 1fr) 16px; align-items: center; gap: 14px; width: 100%; min-height: 52px;
+  padding: 7px 14px; border: 0; background: transparent; color: var(--fg); text-align: left; font-size: 0.94rem; font-weight: 500; cursor: pointer; }
+.nm-row + .nm-row::before { content: ''; position: absolute; top: 0; left: 62px; right: 0; height: 1px; background: color-mix(in srgb, var(--fg) 8%, transparent); }
+.nm-row > svg { width: 16px; height: 16px; color: var(--muted); opacity: 0.7; }
+.nm-ic { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 11px; color: var(--accent);
+  background: linear-gradient(145deg, color-mix(in srgb, var(--accent) 22%, transparent), color-mix(in srgb, var(--accent) 6%, transparent));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 25%, transparent); }
+.nm-ic svg { width: 18px; height: 18px; }
+.nm-txt { min-width: 0; display: grid; gap: 1px; line-height: 1.25; }
+.nm-txt small { font-size: 0.74rem; font-weight: 400; color: var(--muted); }
+.nm-row.danger { color: var(--danger); }
+.nm-row.danger .nm-ic { color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--danger) 25%, transparent); }
+.nm-row:active:not(:disabled) { background: color-mix(in srgb, var(--fg) 7%, transparent); }
+.nm-row:disabled { opacity: 0.4; cursor: default; }
+.nm-row:focus-visible, .nm-seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+@media (hover: hover) and (pointer: fine) {
+  .nm-row:hover:not(:disabled) { background: color-mix(in srgb, var(--fg) 5%, transparent); }
+  .nm-seg button:not([aria-checked='true']):hover { color: var(--fg); }
+}
+.nm-lock { display: flex; align-items: center; gap: 8px; margin: 14px 4px 0; font-size: 0.8rem; color: var(--muted); }
+.nm-lock svg { width: 15px; height: 15px; flex: none; }
+:root:not([data-dark]) body:not([data-home]) dialog.nm-dlg { box-shadow: 0 30px 70px -30px rgba(0, 0, 0, 0.45); }
+@media (prefers-reduced-motion: reduce) { .nm-seg button { transition: none; } }
