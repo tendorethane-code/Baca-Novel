@@ -1673,3 +1673,80 @@ body[data-home] .credit { font-family: var(--serif); font-style: italic; font-si
   .h-btns .p-ring { display: none; }
   .h-pct { display: inline; }
 }
+
+/* ---------- Royal Eclipse: ungu royal ---------- */
+body[data-home='royal'] {
+  --bg: #0b0716; --fg: #f4effc; --muted: #a99ec2; --panel: #171028; --line: #2a2140;
+  --accent: #a77bff; --accent-fg: #ffffff; --accent-2: #e7d9ff; --accent-3: #7d4dff; --veil: 11 7 22;
+  --glass: rgb(30 20 52 / 0.5); --glass-line: rgb(190 160 255 / 0.14); --sky: 26 15 51;
+  --danger: #f2827a; --warn-bg: #3a3017; --warn-fg: #f1d68b;
+}
+body[data-home='royal'] .hc-st.st-reading { color: #c4a6ff; }
+
+/* ---------- Aurora: kaca buram + cahaya aurora cyan-ungu ---------- */
+body[data-home='aurora'] {
+  --bg: #07070d; --fg: #f4f6fa; --muted: #8a90a0; --panel: #12121c; --line: #1f2230;
+  --accent: #2be3ff; --accent-fg: #06121a; --accent-2: #9ff3ff; --accent-3: #8a63ff; --x2: #a45cff; --veil: 7 7 13;
+  --glass: rgb(18 18 28 / 0.46); --glass-line: rgb(255 255 255 / 0.09); --sky: 20 12 40;
+  --danger: #f2827a; --warn-bg: #3a3017; --warn-fg: #f1d68b;
+}
+body[data-home='aurora']::before {
+  content: ''; position: fixed; inset: -10% -30%; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(34% 22% at 14% 4%, rgb(43 227 255 / 0.22), transparent 70%),
+    radial-gradient(30% 22% at 92% 14%, rgb(164 92 255 / 0.22), transparent 70%),
+    radial-gradient(40% 26% at 50% 70%, rgb(164 92 255 / 0.08), transparent 70%);
+}
+body[data-home='aurora'] .bar h1.brand { font-family: var(--ui-font); font-weight: 800; font-size: 1.22rem; letter-spacing: -0.02em; }
+body[data-home='aurora'] .bar h1.brand .brand-accent { font-style: normal; background: linear-gradient(95deg, var(--accent), var(--x2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+body[data-home='aurora'] .h-sec h3 { font-family: var(--ui-font); font-weight: 800; font-size: 1.22rem; letter-spacing: -0.02em; }
+body[data-home='aurora'] .h-sec h3 svg { display: none; }
+body[data-home='aurora'] .credit { font-family: var(--ui-font); font-style: normal; font-size: 0.8rem; }
+body[data-home='aurora'] .hc-prog > i > i, body[data-home='aurora'] .book-bar i { background: linear-gradient(90deg, var(--accent), var(--x2)); }
+.g-hello { margin: 4px 2px 16px; }
+.g-hello small { font-size: 0.72rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.g-hello h2 { margin: 6px 0 0; font-size: clamp(1.75rem, 7vw, 2.5rem); line-height: 1.1; font-weight: 800; letter-spacing: -0.035em; }
+.g-hello h2 span { background: linear-gradient(95deg, var(--accent), var(--x2) 80%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.g-hero { --tint: var(--accent); position: relative; overflow: hidden; isolation: isolate; display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 18px; align-items: center;
+  padding: 18px; margin-bottom: 28px; border-radius: 30px; border: 1px solid var(--glass-line); background: var(--glass);
+  backdrop-filter: blur(26px) saturate(1.4); -webkit-backdrop-filter: blur(26px) saturate(1.4);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 40px 70px -40px color-mix(in srgb, var(--tint) 80%, transparent); }
+.g-bg { position: absolute; inset: -30%; z-index: -1; background-size: cover; background-position: center; filter: blur(44px) saturate(1.5); opacity: 0.5; }
+.g-cover { padding: 0; border: 0; background: none; cursor: pointer; border-radius: 14px; }
+.g-cover .cover { border-radius: 14px; box-shadow: 0 22px 36px -14px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.12); }
+.g-wrap { container-type: inline-size; }
+.g-hero { grid-template-rows: auto auto; align-content: center; }
+.g-cover { grid-row: 1 / span 2; align-self: center; }
+.g-body { min-width: 0; display: grid; gap: 4px; align-self: end; }
+.g-body small { display: inline-flex; align-items: center; gap: 6px; font-size: 0.68rem; letter-spacing: 0.14em; text-transform: uppercase; font-weight: 700; color: var(--accent); white-space: nowrap; }
+.g-body small svg { width: 11px; height: 11px; }
+.g-body h3 { margin: 0; padding-right: 50px; font-size: 1.4rem; line-height: 1.15; font-weight: 800; letter-spacing: -0.025em; overflow-wrap: anywhere; }
+.g-body p { margin: 0; color: var(--muted); font-size: 0.82rem; font-variant-numeric: tabular-nums; }
+.g-btns { grid-column: 2; align-self: start; margin-top: 4px; gap: 8px; flex-wrap: nowrap; }
+.g-btns .h-cta { height: 46px; padding: 0 20px 0 16px; }
+.g-btns .h-round { width: 46px; height: 46px; background: color-mix(in srgb, var(--fg) 8%, transparent); border-color: var(--glass-line); }
+.g-hero > .p-ring { position: absolute; top: 14px; right: 14px; margin: 0; }
+@media (min-width: 700px) {
+  .g-hero { grid-template-columns: 160px minmax(0, 1fr); padding: 24px; gap: 30px; }
+  .g-body h3 { font-size: 2.1rem; }
+}
+/* Pratinjau gaya */
+.sp-royal .sp-prev { background: radial-gradient(60% 70% at 85% 25%, rgba(167, 123, 255, 0.45), transparent 70%), linear-gradient(160deg, #1d1236, #0b0716); }
+.sp-royal .sp-prev i { background: rgba(240, 230, 255, 0.85); }
+.sp-royal .sp-prev i:nth-child(3) { background: #a77bff; box-shadow: 0 0 8px #a77bff; }
+.sp-aurora .sp-prev { background: radial-gradient(60% 50% at 15% 10%, rgba(43, 227, 255, 0.4), transparent), radial-gradient(60% 50% at 90% 25%, rgba(164, 92, 255, 0.45), transparent), #0b0b14; }
+.sp-aurora .sp-prev i { background: rgba(255, 255, 255, 0.78); }
+.sp-aurora .sp-prev i:nth-child(3) { background: linear-gradient(90deg, #2be3ff, #a45cff); }
+/* Kartu kaca sempit: sampul mengecil, tombol selebar kartu di baris sendiri. */
+@container (max-width: 25em) {
+  .g-hero { grid-template-columns: 84px minmax(0, 1fr); gap: 14px 16px; padding: 16px; }
+  .g-cover { grid-row: 1; }
+  .g-body { align-self: center; }
+  .g-btns { grid-column: 1 / -1; }
+  .g-btns .h-cta { flex: 1; justify-content: center; }
+  .g-body h3 { font-size: 1.25rem; }
+}
+@container (max-width: 15em) {
+  .g-btns .h-cta { padding: 0 12px; min-width: 0; }
+  .g-btns .h-cta svg { display: none; }
+}

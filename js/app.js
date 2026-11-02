@@ -349,6 +349,8 @@ function themeColors() {
 // (untuk warna bar status HP). "Klasik" = tampilan lama yang mengikuti tema warna baca.
 const HOME_STYLES = {
   neon: { label: 'Eclipse Neon', hint: 'Hitam pekat, cyan menyala', bg: '#07070d', hero: 'paint' },
+  royal: { label: 'Royal Eclipse', hint: 'Ungu royal, lukisan sampul', bg: '#0b0716', hero: 'paint' },
+  aurora: { label: 'Aurora', hint: 'Kaca & cahaya aurora', bg: '#07070d', hero: 'glass' },
   classic: { label: 'Klasik', hint: 'Ikut tema warna baca', bg: null, hero: null },
 };
 const homeStyle = () => (HOME_STYLES[settings.homeStyle]?.bg ? settings.homeStyle : null);
@@ -1064,9 +1066,16 @@ async function showLibrary() {
       )
     : null;
   const styled = homeStyle() && novels.length;
-  const hero = styled ? homeHero(novels, covers) : null;
-  const main = el('main', { class: `page library${hero ? ' has-hero' : ''}` }, body, el('footer', { class: 'lib-foot' }, syncLine(), foot, credit));
-  setView([bar, hero, main, styled ? null : fab].filter(Boolean));
+  const glass = styled && HOME_STYLES[homeStyle()].hero === 'glass';
+  const hero = styled ? (glass ? glassHero(novels, covers) : homeHero(novels, covers)) : null;
+  const main = el(
+    'main',
+    { class: `page library${hero && !glass ? ' has-hero' : ''}` },
+    glass ? hero : null,
+    body,
+    el('footer', { class: 'lib-foot' }, syncLine(), foot, credit),
+  );
+  setView([bar, glass ? null : hero, main, styled ? null : fab].filter(Boolean));
 }
 
 // ---------- Halaman depan bergaya (Eclipse Neon, dst.) ----------
@@ -1142,6 +1151,42 @@ function homeHero(novels, covers) {
     ),
   );
 }
+/** Bagian atas gaya Aurora: sapaan + kartu kaca berisi sampul, tombol lanjut, daftar isi, progres. */
+function glassHero(novels, covers) {
+  const n = heroNovel(novels);
+  if (!n) return null;
+  const cover = covers.get(n.id);
+  const total = n.toc[n.toc.length - 1].num;
+  const part = greeting().replace('Selamat ', '');
+  const card = el(
+    'section',
+    { class: 'g-hero' },
+    cover ? el('div', { class: 'g-bg', style: `background-image:url("${cover}")` }) : null,
+    el('button', { type: 'button', class: 'g-cover', 'aria-label': `Info ${n.title}`, onclick: () => openNovelInfo(n) }, coverEl(n, cover)),
+    el(
+      'div',
+      { class: 'g-body' },
+      el('small', null, icon('spark'), n.lastRead ? 'Lanjut membaca' : 'Mulai membaca'),
+      el('h3', null, n.title),
+      el('p', null, [n.author, n.lastRead ? `Ch ${n.lastRead.num} dari ${total}` : `${fmtNum(n.toc.length)} chapter`].filter(Boolean).join(' · ')),
+    ),
+    el(
+      'div',
+      { class: 'h-btns g-btns' },
+      el('a', { class: 'h-cta', href: `#/read/${encodeURIComponent(n.id)}` }, icon('play'), n.lastRead ? 'Lanjut baca' : 'Mulai baca'),
+      el('button', { type: 'button', class: 'h-round', 'aria-label': 'Daftar isi', title: 'Daftar isi', onclick: () => openToc(n) }, icon('toc')),
+    ),
+    n.lastRead ? progressRing(readPct(n), 50, 4) : null,
+  );
+  applyTint(card, n, cover);
+  return el(
+    'div',
+    { class: 'g-wrap' },
+    el('header', { class: 'g-hello' }, el('small', null, greeting()), el('h2', null, 'Mau baca ', el('span', null, 'apa'), ` ${part} ini?`)),
+    card,
+  );
+}
+
 /** Kartu ringkas untuk halaman depan bergaya: satu tombol baca; daftar isi & lainnya di menu ⋯. */
 function compactCard(n, cover) {
   const total = n.toc.length;
