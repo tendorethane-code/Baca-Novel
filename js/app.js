@@ -292,7 +292,7 @@ const TEXT_LEVELS = {
 };
 const SIZE_MIN = 14;
 const SIZE_MAX = 34;
-const RECAP_MAX = 15; // jumlah paragraf terbanyak di pengingat chapter sebelumnya
+const RECAP_MAX = 10; // jumlah paragraf terbanyak di pengingat chapter sebelumnya
 // Tema latar: cukup warna latar (bg) dan teks (fg); warna lain diturunkan otomatis.
 const THEMES = {
   light: { label: 'Terang', bg: '#fbfaf7', fg: '#1f1f1c' },
@@ -395,6 +395,7 @@ delete settings.paraSpace;
 if (!FONTS[settings.font]) settings.font = DEFAULTS.font;
 if (!TEXT_LEVELS[settings.textLevel]) settings.textLevel = DEFAULTS.textLevel;
 settings.size = Math.min(SIZE_MAX, Math.max(SIZE_MIN, settings.size));
+settings.recapCount = Math.min(RECAP_MAX, Math.max(0, settings.recapCount)); // batas lama 15
 if (!THEMES[settings.theme]) settings.theme = DEFAULTS.theme;
 // Tombol bar baru (dari versi aplikasi yang lebih baru) ikut muncul di urutan.
 settings.barOrder = [
@@ -2749,13 +2750,13 @@ async function showReader(id, wantNum, wantPara = 0) {
       summary.textContent = `Akhir ${label} · ${tail.length} paragraf terakhir${notes.length ? ' · ada TL note' : ''}`;
       body.replaceChildren(tail.length < story.length ? el('p', { class: 'gap' }, '…') : null, ...tail.map((p) => el('p', null, p)));
     };
-    // Jumlah paragraf bisa diatur langsung di sini (1–15; mematikan pengingat tetap lewat Pengaturan).
+    // Jumlah paragraf bisa diatur langsung di sini (1–10; mematikan pengingat tetap lewat Pengaturan).
     const count = dotSlider({
       label: 'Jumlah paragraf terakhir',
       min: 1,
       max: RECAP_MAX,
-      value: Math.min(RECAP_MAX, settings.recapCount),
-      labels: [1, 5, 10, 15],
+      value: settings.recapCount,
+      labels: [1, 5, 10],
       fmt: (v) => `${v} paragraf`,
       onInput: (v) => {
         settings.recapCount = v;
@@ -2786,10 +2787,11 @@ async function showReader(id, wantNum, wantPara = 0) {
       'Tutup',
       el('span', { class: 'rc-up', 'aria-hidden': 'true' }),
     );
+    // Tombol TL note hanya ada kalau chapter sebelumnya punya TL note.
     const noteBtn = notes.length
       ? el('button', { type: 'button', class: 'rc-btn rc-tl', onclick: () => showTlNotes(prev, notes) }, `TL note Ch. ${prev.num}`)
       : null;
-    d.append(summary, el('div', { class: 'rc-ctl' }, count), body, el('div', { class: 'rc-foot rc-ctl' }, noteBtn, closeBtn));
+    d.append(summary, el('div', { class: 'rc-ctl' }, count), body, el('div', { class: 'rc-foot rc-ctl' }, closeBtn, noteBtn));
     show();
     d.addEventListener('toggle', () => {
       settings.recapOpen = d.open;

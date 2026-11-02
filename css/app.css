@@ -1220,14 +1220,17 @@ dialog.nv-pop .nv-box { margin-bottom: 0; }
 .recap .dot-slider { margin-bottom: 0.4em; }
 .recap .size-ticks b { font-size: 11px; }
 .rc-foot {
-  display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap;
+  /* Tutup di tengah, TL note (kalau ada) di kanan */
+  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px;
   border-top: 1px dashed var(--line); margin: 0 -14px; padding: 8px 10px;
 }
+.rc-foot > .rc-btn { grid-column: 2; }
+.rc-foot > .rc-btn.rc-tl { grid-column: 3; justify-self: end; }
 .rc-btn {
   display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 14px; border-radius: 999px;
   border: 1px solid var(--line); background: none; color: var(--fg); cursor: pointer; font: 500 0.85rem var(--ui-font);
 }
-.rc-btn.rc-tl { margin-right: auto; color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+.rc-btn.rc-tl { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
 /* Panah ke atas: lipat kembali */
 .rc-up { width: 7px; height: 7px; margin-top: 4px; border: solid currentColor; border-width: 2px 0 0 2px; transform: rotate(45deg); }
 /* Saat kunci sentuhan, slider & tombol di kotak pengingat tetap bisa dipakai. */

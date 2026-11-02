@@ -50,9 +50,9 @@ Repo ini hanya berisi kode. Jangan commit teks novel; `.gitignore` sudah menolak
 - **Kunci perubahan** (Pengaturan): mode baca-saja. Edit, hapus, ganti judul, dan impor yang menimpa chapter dimatikan sampai kunci dibuka.
 - **Sinkronisasi** antarperangkat lewat repo GitHub **privat** milik sendiri (lihat di bawah).
 - **Pengingat chapter sebelumnya**: di awal chapter tampil N paragraf terakhir chapter sebelumnya, bisa dilipat (jumlah diatur di Pengaturan; 0 = mati). Pilihan *Langsung terbuka* hanya tampil kalau pengingat menyala.
-  - **Slider bertitik** di dalam kotak (di bawah judulnya) untuk mengubah jumlah paragraf langsung (1–15) tanpa membuka Pengaturan; mematikan pengingat (0) tetap lewat Pengaturan.
-  - Tombol **Tutup** di bawah kotak untuk melipatnya tanpa menggulir ke atas; judul chapter yang sedang dibaca tetap di posisinya di layar.
-  - Kalau chapter sebelumnya punya TL note, judul kotak diberi tanda *ada TL note* dan di bawah kotak ada tombol **TL note Ch. N** yang membuka isinya sebagai popup.
+  - **Slider bertitik** di dalam kotak (di bawah judulnya) untuk mengubah jumlah paragraf langsung (1–10) tanpa membuka Pengaturan; mematikan pengingat (0) tetap lewat Pengaturan.
+  - Tombol **Tutup** di tengah bawah kotak untuk melipatnya tanpa menggulir ke atas; judul chapter yang sedang dibaca tetap di posisinya di layar.
+  - Hanya kalau chapter sebelumnya punya TL note, judul kotak diberi tanda *ada TL note* dan di kanan bawah kotak ada tombol **TL note Ch. N** yang membuka isinya sebagai popup.
 - **Posisi baca** disimpan otomatis (chapter + paragraf), tombol/panah ←/→ untuk pindah chapter.
 - **Daftar isi**: tab *Chapter* dan *Bookmark*. Cari nomor/judul, balik urutan, tombol 📍 ke chapter yang sedang dibaca, 100 chapter per halaman dengan pilihan rentang (« ‹ 201–300 › »). Judul seperti `Water and Fire (Air dan Api)` tampil dua baris: bagian dalam kurung di baris kedua yang lebih kecil.
 - **Bar pindah chapter** di awal dan akhir tiap chapter (ikut tergulir bersama teks): ‹ sebelumnya, daftar pilihan semua chapter, berikutnya ›.
