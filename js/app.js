@@ -12,6 +12,9 @@ import {
   isSeparator,
   autoTlNote,
   tidyParagraphs,
+  missingNumbers,
+  toRanges,
+  fmtRanges,
 } from './parse.js';
 import { readZip, writeZip } from './zip.js';
 import { buildEpub } from './epub.js';
@@ -1302,6 +1305,56 @@ function novelParts(n, cover, { onBeforeNav = () => {} } = {}) {
     tile(`${Math.round(readPct(n))}%`, idx >= 0 ? `Terbaca · Ch ${n.lastRead.num}` : 'Terbaca'),
   );
 
+  // Chapter bolong: nomor bulat di antara chapter pertama & terakhir yang belum ada, diringkas jadi rentang.
+  const GAP_SHOWN = 12;
+  const missing = missingNumbers(n.toc.map((t) => t.num));
+  let gapBox = null;
+  if (missing.length) {
+    const ranges = toRanges(missing);
+    const list = el('p', { class: 'nv-gap-list' }, fmtRanges(ranges.slice(0, GAP_SHOWN)) + (ranges.length > GAP_SHOWN ? ', …' : ''));
+    const all =
+      ranges.length > GAP_SHOWN
+        ? el(
+            'button',
+            {
+              type: 'button',
+              class: 'link-btn',
+              onclick: () => {
+                list.textContent = fmtRanges(ranges);
+                all.remove();
+              },
+            },
+            `Lihat semua (${fmtNum(ranges.length)} rentang)`,
+          )
+        : null;
+    const add = locked
+      ? null
+      : el(
+          'button',
+          {
+            type: 'button',
+            class: 'link-btn',
+            onclick: () => {
+              onBeforeNav();
+              openImport(n.id);
+            },
+          },
+          'Impor chapter',
+        );
+    gapBox = el(
+      'section',
+      { class: 'nv-gaps warn' },
+      el(
+        'div',
+        { class: 'nv-gaps-head' },
+        el('b', null, `${fmtNum(missing.length)} chapter belum ada`),
+        el('span', null, `di antara Ch ${n.toc[0].num}–${n.toc[total - 1].num}`),
+      ),
+      list,
+      all || add ? el('div', { class: 'nv-gaps-foot' }, all, add) : null,
+    );
+  } else if (total > 1) gapBox = el('p', { class: 'nv-gaps ok' }, `✓ Tidak ada chapter bolong (Ch ${n.toc[0].num}–${n.toc[total - 1].num})`);
+
   let source = null;
   if (i.source) {
     let host = i.source;
@@ -1324,7 +1377,7 @@ function novelParts(n, cover, { onBeforeNav = () => {} } = {}) {
     el('p', { class: 'nv-src muted' }, `Ditambahkan ${new Date(n.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`),
     empty && !locked ? el('p', { class: 'muted small' }, 'Belum ada info. Ketuk Edit info untuk menambahkan penulis, penerjemah, genre, sinopsis, dan sampul.') : null,
   );
-  return { hero, readBtn, editBtn, tiles, infoBox, idx, total };
+  return { hero, readBtn, editBtn, tiles, gapBox, infoBox, idx, total };
 }
 
 /** Popup info novel: dari bawah di HP, di tengah layar di tablet/laptop. */
@@ -1377,6 +1430,7 @@ async function openNovelPopup(n) {
       el('div', { class: 'nv-actions' }, parts.readBtn, parts.editBtn),
       el('div', { class: 'nv-pop-links' }, listBtn, pageBtn),
       parts.tiles,
+      parts.gapBox,
       parts.infoBox,
     ],
     onOpen: (x) => (d = x),
@@ -1414,7 +1468,7 @@ async function showNovel(id) {
     el(
       'main',
       { class: 'page novel-page' },
-      el('div', { class: 'nv-side' }, parts.hero, el('div', { class: 'nv-actions' }, parts.readBtn, parts.editBtn), parts.tiles, parts.infoBox),
+      el('div', { class: 'nv-side' }, parts.hero, el('div', { class: 'nv-actions' }, parts.readBtn, parts.editBtn), parts.tiles, parts.gapBox, parts.infoBox),
       el('div', { class: 'nv-main' }, tocBox),
     ),
   ]);

@@ -271,9 +271,13 @@ export function buildImport(sources, existing = []) {
   // Ke novel yang sudah berisi chapter: nomor yang sudah ada di novel tidak dianggap hilang.
   const missing = existing.length ? missingAfterImport([...seen], existing) : missingNumbers([...seen]);
   if (missing.length) {
-    const shown = missing.slice(0, 15).join(', ') + (missing.length > 15 ? `, … (+${missing.length - 15})` : '');
+    // Diringkas jadi rentang (245–254) supaya daftar panjang tetap terbaca.
+    const ranges = toRanges(missing);
+    const shown = fmtRanges(ranges.slice(0, 15)) + (ranges.length > 15 ? `, … (+${ranges.length - 15} rentang lagi)` : '');
     warnings.push(
-      existing.length ? `Nomor yang belum ada, di novel maupun di impor ini: ${shown}.` : `Nomor yang tidak ada di impor ini: ${shown}.`,
+      existing.length
+        ? `Nomor yang belum ada, di novel maupun di impor ini (${missing.length}): ${shown}.`
+        : `Nomor yang tidak ada di impor ini (${missing.length}): ${shown}.`,
     );
   }
 
@@ -300,6 +304,19 @@ export function missingAfterImport(importNums, existingNums) {
   for (let n = start; n <= end; n++) if (!have.has(n)) out.push(n);
   return out;
 }
+
+/** Angka bulat urut → rentang: [3, 4, 5, 9] → [[3, 5], [9, 9]]. */
+export function toRanges(nums) {
+  const out = [];
+  for (const n of nums) {
+    const last = out[out.length - 1];
+    if (last && n === last[1] + 1) last[1] = n;
+    else out.push([n, n]);
+  }
+  return out;
+}
+/** [[3, 5], [9, 9]] → "3–5, 9" */
+export const fmtRanges = (ranges) => ranges.map(([a, b]) => (a === b ? String(a) : `${a}–${b}`)).join(', ');
 
 export function missingNumbers(nums) {
   const ints = nums.filter(Number.isInteger).sort((a, b) => a - b);

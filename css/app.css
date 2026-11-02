@@ -1355,3 +1355,15 @@ dialog.tl-pop { width: min(520px, calc(100vw - 32px)); }
 .drop-help p { margin: 6px 0 0; }
 :root[data-glow] .drop-icon { box-shadow: 0 0 18px color-mix(in srgb, var(--accent) 35%, transparent); }
 :root[data-glow] .drop.over { box-shadow: var(--glow); }
+
+/* ---------- Info novel: chapter bolong ---------- */
+.nv-gaps { margin: 0 0 14px; padding: 12px 14px; border-radius: 12px; font-size: 0.9rem; }
+.nv-gaps.warn { background: var(--warn-bg); color: var(--warn-fg); }
+.nv-gaps-head { display: flex; align-items: baseline; justify-content: space-between; gap: 4px 10px; flex-wrap: wrap; }
+.nv-gaps-head b { font-size: 0.95rem; }
+.nv-gaps-head span { font-size: 0.8rem; opacity: 0.8; }
+.nv-gap-list { margin: 6px 0 0; line-height: 1.6; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.nv-gaps-foot { display: flex; flex-wrap: wrap; gap: 4px 18px; }
+.nv-gaps .link-btn { color: inherit; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+.nv-gaps.ok { padding: 0; margin: -4px 0 14px; text-align: center; color: var(--muted); font-size: 0.85rem; }
+dialog.nv-pop .nv-gaps.warn { margin-bottom: 12px; }

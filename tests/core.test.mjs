@@ -2,7 +2,7 @@
 // Data uji di sini sintetis; jangan menaruh teks novel asli di repo.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseHeading, splitChapters, buildImport, decodeText, numberFromName, missingNumbers, missingAfterImport, formatTlNote, headingBefore, isTlHead, isSeparator, autoTlNote, tidyParagraphs, stripEmphasis } from '../js/parse.js';
+import { parseHeading, splitChapters, buildImport, decodeText, numberFromName, missingNumbers, missingAfterImport, toRanges, fmtRanges, formatTlNote, headingBefore, isTlHead, isSeparator, autoTlNote, tidyParagraphs, stripEmphasis } from '../js/parse.js';
 import { readZip, writeZip, crc32 } from '../js/zip.js';
 import { buildEpub } from '../js/epub.js';
 
@@ -44,7 +44,7 @@ test('buildImport: nomor kembar, nomor hilang, file tanpa judul', () => {
   );
   assert.equal(r.items[3].title, 'Lima');
   assert.equal(r.items[4].autoNum, true);
-  assert.ok(r.warnings.some((w) => w.includes('2, 4')));
+  assert.ok(r.warnings.includes('Nomor yang tidak ada di impor ini (2): 2, 4.'));
 });
 
 test('missingAfterImport: nomor yang sudah ada di novel tidak dianggap hilang', () => {
@@ -60,9 +60,9 @@ test('missingAfterImport: nomor yang sudah ada di novel tidak dianggap hilang', 
   // Lewat buildImport: dengan novel tujuan, teksnya menyebut novel; tanpa novel tujuan, perilaku lama.
   const src = [{ name: null, text: 'Chapter 259: A\nx\nChapter 279: B\ny\nChapter 281: C\nz' }];
   assert.ok(!buildImport(src, novel).warnings.some((w) => w.startsWith('Nomor')));
-  assert.ok(buildImport(src).warnings.some((w) => w.startsWith('Nomor yang tidak ada di impor ini: 260')));
+  assert.ok(buildImport(src).warnings.includes('Nomor yang tidak ada di impor ini (20): 260–278, 280.'));
   const r = buildImport([{ name: null, text: 'Chapter 250: A\nx\nChapter 252: B\ny' }], old);
-  assert.ok(r.warnings.includes('Nomor yang belum ada, di novel maupun di impor ini: 245, 246, 247, 248, 249, 251.'));
+  assert.ok(r.warnings.includes('Nomor yang belum ada, di novel maupun di impor ini (6): 245–249, 251.'));
 });
 
 test('buildImport: daftar TL note urut nomor walau dari beberapa file', () => {
@@ -71,6 +71,15 @@ test('buildImport: daftar TL note urut nomor walau dari beberapa file', () => {
     { name: 'a.txt', text: 'Chapter 2: A\ny\n---\nTL note Chapter 2\ncatatan' },
   ]);
   assert.ok(r.warnings.some((w) => w.startsWith('TL note ada di 2 chapter (2, 5)')));
+});
+
+test('toRanges & fmtRanges: nomor bolong diringkas jadi rentang', () => {
+  assert.deepEqual(toRanges([3, 4, 5, 9, 11, 12]), [[3, 5], [9, 9], [11, 12]]);
+  assert.deepEqual(toRanges([]), []);
+  assert.equal(fmtRanges(toRanges([100, 245, 246, 247, 280])), '100, 245–247, 280');
+  // Banyak rentang: peringatan impor hanya menampilkan 15 rentang pertama.
+  const src = [{ name: null, text: Array.from({ length: 20 }, (_, i) => `Chapter ${i * 2 + 1}: X\nisi`).join('\n') }];
+  assert.ok(buildImport(src).warnings.some((w) => w.startsWith('Nomor yang tidak ada di impor ini (19): 2, 4,') && w.endsWith(', 30, … (+4 rentang lagi).')));
 });
 
 test('numberFromName dan missingNumbers', () => {
