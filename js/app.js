@@ -2090,7 +2090,9 @@ async function openImport(presetNovelId) {
               return (showErr(e.message), false);
             }
           }
-          const res = buildImport(sources);
+          // Nomor yang sudah ada di novel tujuan tidak ikut dilaporkan sebagai nomor hilang.
+          const existingNums = target.value ? ((await db.getNovel(target.value))?.toc || []).map((t) => t.num) : [];
+          const res = buildImport(sources, existingNums);
           if (res.error) return (showErr(res.error), false);
           const epub = sources.find((s) => s.epub)?.epub || null;
           let title = titleIn.value.trim();
