@@ -193,7 +193,7 @@ const snippet = (s, n = 60) => (s.length > n ? s.slice(0, n) + '…' : s);
  * sources: [{ name: string|null, text: string }]  (name null = teks tempelan)
  * Hasil: { items: [{num, title, paragraphs, source, dup, autoNum}], warnings: string[], error?: string }
  */
-export function buildImport(sources) {
+export function buildImport(sources, existing = []) {
   const items = [];
   const warnings = [];
   const unnumbered = [];
@@ -246,7 +246,7 @@ export function buildImport(sources) {
     if (fixed) it.paragraphs = fixed;
     if (it.paragraphs.some(isTlHead)) it.tl = fixed ? 'fixed' : 'ok';
   }
-  const withTl = items.filter((i) => i.tl);
+  const withTl = items.filter((i) => i.tl).sort((a, b) => a.num - b.num); // urut nomor walau dari beberapa file
   if (withTl.length) {
     const list = (arr) => arr.slice(0, 20).map((i) => i.num).join(', ') + (arr.length > 20 ? `, … (+${arr.length - 20})` : '');
     const fixedTl = withTl.filter((i) => i.tl === 'fixed');
@@ -268,14 +268,55 @@ export function buildImport(sources) {
   const empty = items.filter((i) => !i.paragraphs.length).length;
   if (empty) warnings.push(`${empty} chapter tidak punya isi (hanya judul).`);
 
-  const missing = missingNumbers([...seen]);
+  // Ke novel yang sudah berisi chapter: nomor yang sudah ada di novel tidak dianggap hilang.
+  const missing = existing.length ? missingAfterImport([...seen], existing) : missingNumbers([...seen]);
   if (missing.length) {
-    const shown = missing.slice(0, 15).join(', ') + (missing.length > 15 ? `, … (+${missing.length - 15})` : '');
-    warnings.push(`Nomor yang tidak ada di impor ini: ${shown}.`);
+    // Diringkas jadi rentang (245–254) supaya daftar panjang tetap terbaca.
+    const ranges = toRanges(missing);
+    const shown = fmtRanges(ranges.slice(0, 15)) + (ranges.length > 15 ? `, … (+${ranges.length - 15} rentang lagi)` : '');
+    warnings.push(
+      existing.length
+        ? `Nomor yang belum ada, di novel maupun di impor ini (${missing.length}): ${shown}.`
+        : `Nomor yang tidak ada di impor ini (${missing.length}): ${shown}.`,
+    );
   }
 
   return { items, warnings };
 }
+
+/**
+ * Nomor yang masih kosong setelah impor ke novel yang sudah berisi `existingNums`: celah di antara nomor impor,
+ * ditambah celah antara impor dan chapter novel terdekat sebelum & sesudahnya. Celah lama di bagian novel yang
+ * jauh dari nomor impor tidak dihitung.
+ */
+export function missingAfterImport(importNums, existingNums) {
+  const ints = importNums.filter(Number.isInteger);
+  if (!ints.length) return [];
+  const old = existingNums.filter(Number.isInteger);
+  const have = new Set([...ints, ...old]);
+  const lo = Math.min(...ints);
+  const hi = Math.max(...ints);
+  const before = old.filter((n) => n < lo);
+  const after = old.filter((n) => n > hi);
+  const start = before.length ? Math.max(...before) + 1 : lo;
+  const end = after.length ? Math.min(...after) - 1 : hi;
+  const out = [];
+  for (let n = start; n <= end; n++) if (!have.has(n)) out.push(n);
+  return out;
+}
+
+/** Angka bulat urut → rentang: [3, 4, 5, 9] → [[3, 5], [9, 9]]. */
+export function toRanges(nums) {
+  const out = [];
+  for (const n of nums) {
+    const last = out[out.length - 1];
+    if (last && n === last[1] + 1) last[1] = n;
+    else out.push([n, n]);
+  }
+  return out;
+}
+/** [[3, 5], [9, 9]] → "3–5, 9" */
+export const fmtRanges = (ranges) => ranges.map(([a, b]) => (a === b ? String(a) : `${a}–${b}`)).join(', ');
 
 export function missingNumbers(nums) {
   const ints = nums.filter(Number.isInteger).sort((a, b) => a - b);

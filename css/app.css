@@ -1287,3 +1287,83 @@ dialog.tl-pop { width: min(520px, calc(100vw - 32px)); }
 .tl-pop-body p.small { font-family: var(--ui-font); }
 .tl-pop-body p.tl-item { position: relative; padding-left: 1.1em; }
 .tl-pop-body p.tl-item::before { content: '•'; position: absolute; left: 0.1em; color: var(--accent); }
+
+/* ---------- Impor: kotak pilih file (ketuk / tarik-lepas) & daftar file ---------- */
+.drop-input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.drop {
+  position: relative; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center;
+  padding: 22px 16px; margin-bottom: 12px; border-radius: 16px; cursor: pointer;
+  border: 2px dashed color-mix(in srgb, var(--accent) 45%, var(--line));
+  background: color-mix(in srgb, var(--accent) 5%, transparent);
+  transition: border-color 0.15s, background 0.15s, transform 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.drop > * { pointer-events: none; }
+.drop:active,
+.drop.over { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.drop.over { border-style: solid; transform: scale(1.01); }
+.drop:has(.drop-input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+.drop-icon {
+  display: grid; place-items: center; width: 54px; height: 54px; border-radius: 50%;
+  background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent);
+}
+.drop-icon svg { width: 26px; height: 26px; }
+.drop.over .drop-icon { animation: drop-bob 0.8s ease-in-out infinite alternate; }
+@keyframes drop-bob { to { transform: translateY(-4px); } }
+.drop-title { font-size: 1rem; font-weight: 600; color: var(--fg); }
+.drop-sub { font-size: 0.8rem; color: var(--muted); }
+.drop-types { display: flex; gap: 6px; }
+.drop-add { display: none; font-size: 0.95rem; color: var(--accent); }
+/* Sudah ada file: kotak mengecil jadi satu baris "Tambah file" */
+.drop.compact { flex-direction: row; justify-content: center; padding: 10px 14px; gap: 10px; }
+.drop.compact .drop-icon { width: 32px; height: 32px; }
+.drop.compact .drop-icon svg { width: 18px; height: 18px; }
+.drop.compact .drop-title,
+.drop.compact .drop-types,
+.drop.compact .drop-sub { display: none; }
+.drop.compact .drop-add { display: inline; }
+.mouse-only { display: none; }
+@media (hover: hover) and (pointer: fine) {
+  .mouse-only { display: inline; }
+  .touch-only { display: none; }
+  .drop:hover { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
+}
+/* Label jenis file: warna ungu/kuning diturunkan dari warna teks supaya terbaca di tema terang & gelap */
+.ftype {
+  flex: none; font: 700 0.66rem/1 var(--ui-font); font-style: normal; letter-spacing: 0.06em;
+  padding: 4px 7px; border-radius: 6px; min-width: 40px; text-align: center;
+}
+.ftype.txt { color: var(--accent); background: color-mix(in srgb, var(--accent) 15%, transparent); }
+.ftype.epub { color: color-mix(in srgb, #9d6bff 75%, var(--fg)); background: color-mix(in srgb, #9d6bff 16%, transparent); }
+.ftype.zip { color: color-mix(in srgb, #e3a008 75%, var(--fg)); background: color-mix(in srgb, #e3a008 16%, transparent); }
+.file-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; margin-bottom: 10px; }
+.file-list:empty { display: none; }
+.file-sum { display: flex; align-items: center; justify-content: space-between; font-size: 0.82rem; color: var(--muted); }
+.file-sum .link-btn { padding: 4px 0; }
+.file-rows { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; max-height: 240px; overflow-y: auto; overscroll-behavior: contain; }
+.file-row {
+  display: flex; align-items: center; gap: 10px; padding: 6px 4px 6px 10px; border-radius: 12px;
+  border: 1px solid var(--line); background: color-mix(in srgb, var(--fg) 3%, transparent);
+  animation: file-in 0.18s ease-out;
+}
+@keyframes file-in { from { opacity: 0; transform: translateY(4px); } }
+.fname { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.92rem; }
+.fsize { flex: none; color: var(--muted); font-size: 0.8rem; font-variant-numeric: tabular-nums; }
+.file-row .icon-btn { flex: none; width: 34px; height: 34px; color: var(--muted); }
+.drop-help { margin-bottom: 4px; }
+.drop-help summary { cursor: pointer; font-size: 0.85rem; color: var(--muted); padding: 4px 0; }
+.drop-help p { margin: 6px 0 0; }
+:root[data-glow] .drop-icon { box-shadow: 0 0 18px color-mix(in srgb, var(--accent) 35%, transparent); }
+:root[data-glow] .drop.over { box-shadow: var(--glow); }
+
+/* ---------- Info novel: chapter bolong ---------- */
+.nv-gaps { margin: 0 0 14px; padding: 12px 14px; border-radius: 12px; font-size: 0.9rem; }
+.nv-gaps.warn { background: var(--warn-bg); color: var(--warn-fg); }
+.nv-gaps-head { display: flex; align-items: baseline; justify-content: space-between; gap: 4px 10px; flex-wrap: wrap; }
+.nv-gaps-head b { font-size: 0.95rem; }
+.nv-gaps-head span { font-size: 0.8rem; opacity: 0.8; }
+.nv-gap-list { margin: 6px 0 0; line-height: 1.6; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.nv-gaps-foot { display: flex; flex-wrap: wrap; gap: 4px 18px; }
+.nv-gaps .link-btn { color: inherit; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+.nv-gaps.ok { padding: 0; margin: -4px 0 14px; text-align: center; color: var(--muted); font-size: 0.85rem; }
+dialog.nv-pop .nv-gaps.warn { margin-bottom: 12px; }
