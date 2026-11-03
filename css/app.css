@@ -31,7 +31,7 @@
   --muted: #6d6a63;
   --line: #e4e1d9;
   --panel: #ffffff;
-  --accent: #3a6aa8;
+  --accent: #1d66d6;
   --accent-fg: #ffffff;
   --danger: #b3261e;
   --warn-bg: #fff4d6;
@@ -1000,13 +1000,6 @@ textarea.plain { font-family: var(--ui-font); font-size: 1rem; line-height: 1.5;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
 }
 .cover.ph span { display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
-.fab {
-  position: fixed; z-index: 15; right: max(18px, env(safe-area-inset-right)); bottom: calc(18px + env(safe-area-inset-bottom));
-  width: 60px; height: 60px; border-radius: 50%; border: 0; cursor: pointer;
-  display: inline-flex; align-items: center; justify-content: center;
-  background: var(--accent); color: var(--accent-fg); box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
-}
-.fab svg { width: 28px; height: 28px; }
 .library { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
 
 /* ---------- Tema Neon: cahaya cyan pada tombol utama & elemen penting ---------- */
@@ -1014,14 +1007,12 @@ textarea.plain { font-family: var(--ui-font); font-size: 1rem; line-height: 1.5;
   --glow: 0 0 14px color-mix(in srgb, var(--accent) 55%, transparent), 0 0 2px color-mix(in srgb, var(--accent) 80%, transparent);
 }
 :root[data-glow] .btn.primary,
-:root[data-glow] .fab,
 :root[data-glow] .ch-step:not(:disabled),
 :root[data-glow] .ch-pick button,
 :root[data-glow] .chips button[aria-selected='true'],
 :root[data-glow] .tabs button[aria-selected='true'] {
   box-shadow: var(--glow);
 }
-:root[data-glow] .fab { box-shadow: var(--glow), 0 6px 20px rgba(0, 0, 0, 0.5); }
 :root[data-glow] dialog { border-color: color-mix(in srgb, var(--accent) 16%, var(--line)); }
 :root[data-glow] .toc-row.current,
 :root[data-glow] .rp-progress i,
@@ -1659,7 +1650,7 @@ body[data-home] .credit { font-family: var(--serif); font-style: italic; font-si
 .sp-neon .sp-prev i:nth-child(3) { background: #2be3ff; box-shadow: 0 0 8px #2be3ff; }
 .sp-classic .sp-prev { background: linear-gradient(160deg, #f4efe4, #d9d3c6); }
 .sp-classic .sp-prev i { background: rgba(40, 40, 36, 0.55); }
-.sp-classic .sp-prev i:nth-child(3) { background: #3a6aa8; }
+.sp-classic .sp-prev i:nth-child(3) { background: #1d66d6; }
 @media (prefers-reduced-motion: reduce) { .h-stars i { animation: none; } }
 .h-sec { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px 10px; margin: 6px 2px 14px; }
 .h-sec h3 { white-space: nowrap; display: flex; align-items: center; gap: 9px; margin: 0; font-family: var(--serif); font-weight: 500; font-size: 1.4rem; }
@@ -1753,7 +1744,7 @@ body[data-home='aurora'] .hc-prog > i > i, body[data-home='aurora'] .book-bar i 
 
 /* ---------- Navigasi bawah (HP & iPad) ---------- */
 .n-bar, .sd { display: none; }
-body[data-home] .n-bar {
+body[data-nav] .n-bar {
   position: fixed; z-index: 20; left: max(12px, env(safe-area-inset-left)); right: max(12px, env(safe-area-inset-right)); bottom: calc(10px + env(safe-area-inset-bottom));
   height: 68px; display: grid; grid-template-columns: 1fr 1fr 84px 1fr 1fr; align-items: center; padding: 0 6px; border-radius: 26px;
   background: rgb(var(--veil) / 0.78); border: 1px solid var(--glass-line); backdrop-filter: blur(24px) saturate(1.5); -webkit-backdrop-filter: blur(24px) saturate(1.5);
@@ -1769,18 +1760,18 @@ body[data-home] .n-bar {
 .n-star svg { width: 28px; height: 28px; }
 .n-star i { position: absolute; inset: -9px; border-radius: 50%; border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); }
 .n-it:focus-visible, .n-star:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 14px; }
-body[data-home] .library { padding-bottom: calc(110px + env(safe-area-inset-bottom)); }
+body[data-nav] .library { padding-bottom: calc(110px + env(safe-area-inset-bottom)); }
 @media (hover: hover) and (pointer: fine) { .n-it:hover { color: var(--fg); } .n-star:hover { filter: brightness(1.08); } }
 
 /* ---------- Laptop (≥ 1100px): sidebar menggantikan bar atas & navigasi bawah ---------- */
 @media (min-width: 1100px) {
-  body[data-home]:has(.sd) { --sd-w: 272px; padding-left: var(--sd-w); }
-  body[data-home]:has(.sd) .bar, body[data-home] .n-bar { display: none; }
-  body[data-home]:has(.sd) .page.library:not(.has-hero) { padding-top: 34px; }
-  body[data-home]:has(.sd) .h-hero { padding-top: 60px; }
-  body[data-home]:has(.sd) .h-moon { top: 60px; }
-  body[data-home]:has(.sd) .library { max-width: 1180px; padding-bottom: 48px; }
-  body[data-home] .sd {
+  body[data-nav]:has(.sd) { --sd-w: 272px; padding-left: var(--sd-w); }
+  body[data-nav]:has(.sd) .bar, body[data-nav] .n-bar { display: none; }
+  body[data-nav]:has(.sd) .page.library:not(.has-hero) { padding-top: 34px; }
+  body[data-nav]:has(.sd) .h-hero { padding-top: 60px; }
+  body[data-nav]:has(.sd) .h-moon { top: 60px; }
+  body[data-nav]:has(.sd) .library { max-width: 1180px; padding-bottom: 48px; }
+  body[data-nav] .sd {
     display: flex; flex-direction: column; gap: 6px; position: fixed; z-index: 30; left: 0; top: 0; bottom: 0; width: var(--sd-w); padding: 26px 16px 20px;
     background: rgb(var(--veil) / 0.82); border-right: 1px solid var(--glass-line); backdrop-filter: blur(26px) saturate(1.4); -webkit-backdrop-filter: blur(26px) saturate(1.4);
   }
@@ -2042,7 +2033,7 @@ dialog.nm-dlg .dlg-body { padding: 0 18px calc(18px + env(safe-area-inset-bottom
   .e-eclipse { right: 6%; top: calc(var(--bar-h) + 40px); width: 240px; height: 240px; }
 }
 @media (min-width: 1100px) {
-  body[data-home]:has(.sd) .e-eclipse { top: 70px; right: 9%; width: 280px; height: 280px; }
+  body[data-nav]:has(.sd) .e-eclipse { top: 70px; right: 9%; width: 280px; height: 280px; }
 }
 @media (max-width: 420px) {
   .e-long, .is-empty .h-sec span { display: none; }
@@ -2078,8 +2069,8 @@ dialog.nm-dlg .dlg-body { padding: 0 18px calc(18px + env(safe-area-inset-bottom
 body[data-home] .toast { background: rgb(var(--veil) / 0.88); color: var(--fg); border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
   backdrop-filter: blur(20px) saturate(1.4); -webkit-backdrop-filter: blur(20px) saturate(1.4); box-shadow: 0 16px 40px -14px rgba(0, 0, 0, 0.7); }
 body[data-home] .toast button { color: var(--accent-2); border-color: color-mix(in srgb, var(--accent) 45%, transparent); font-weight: 600; }
-body[data-home]:has(.n-bar) #toasts { bottom: calc(100px + env(safe-area-inset-bottom)); }
-@media (min-width: 1100px) { body[data-home]:has(.sd) #toasts { bottom: calc(18px + env(safe-area-inset-bottom)); left: calc(50% + var(--sd-w) / 2); } }
+body[data-nav]:has(.n-bar) #toasts { bottom: calc(100px + env(safe-area-inset-bottom)); }
+@media (min-width: 1100px) { body[data-nav]:has(.sd) #toasts { bottom: calc(18px + env(safe-area-inset-bottom)); left: calc(50% + var(--sd-w) / 2); } }
 
 /* ---------- Klasik: judul bar & rak kosong ikut tema warna baca ---------- */
 :root { --serif: 'Source Serif 4', 'Noto Serif', Georgia, serif; }
@@ -2100,31 +2091,6 @@ body:not([data-home]) .e-hero .h-cta { box-shadow: 0 10px 24px -12px color-mix(i
 body[data-page='rak'] .bar, body[data-page='profil'] .bar { position: absolute; background: transparent; border-bottom-color: transparent;
   backdrop-filter: none; -webkit-backdrop-filter: none; }
 
-/* Klasik: ikon bar dalam satu kapsul, Impor berupa pil. */
-.bar-tools { display: flex; align-items: center; gap: 2px; padding: 3px; border-radius: 99px;
-  background: color-mix(in srgb, var(--fg) 5%, transparent); border: 1px solid color-mix(in srgb, var(--fg) 10%, transparent); }
-.bar-tools .icon-btn { width: 36px; height: 36px; border-radius: 50%; color: color-mix(in srgb, var(--fg) 80%, transparent); }
-.bar-tools .icon-btn svg { width: 19px; height: 19px; stroke-width: 1.7; }
-.bar-tools .sync-btn.off { color: var(--muted); }
-.bar-tools .sync-btn.err { color: var(--danger); }
-.bar .bar-add { height: 40px; min-height: 40px; margin-left: 8px; padding: 0 16px 0 13px; border-radius: 99px; border: 0; font-weight: 600; gap: 6px;
-  box-shadow: 0 6px 16px -10px color-mix(in srgb, var(--accent) 90%, transparent); }
-.bar .bar-add svg { width: 16px; height: 16px; }
-:root[data-glow] .bar .bar-add { box-shadow: 0 0 18px -6px color-mix(in srgb, var(--accent) 70%, transparent); }
-@media (hover: hover) and (pointer: fine) { .bar-tools .icon-btn:hover { background: color-mix(in srgb, var(--fg) 9%, transparent); color: var(--fg); } }
-@media (max-width: 400px) {
-  .bar .bar-add { width: 40px; padding: 0; margin-left: 6px; }
-  .bar .bar-add span { display: none; }
-  .bar-tools .icon-btn { width: 34px; height: 34px; }
-}
 
-/* Klasik tema terang: lebih tenang (logo tanpa cahaya biru tebal, tombol utama datar, latar tanpa sorot warna). */
-:root:not([data-dark]) body:not([data-home]) .e-hero::before { background: linear-gradient(to bottom, transparent 55%, var(--bg) 100%); }
-:root:not([data-dark]) body:not([data-home]) .e-eclipse .brand-logo { filter: drop-shadow(0 10px 22px rgb(0 0 0 / 0.16)); }
-:root:not([data-dark]) body:not([data-home]) .e-hero .h-cta { background: var(--accent); box-shadow: 0 8px 18px -12px var(--accent); }
-:root:not([data-dark]) body:not([data-home]) .e-hero .h-title em { background: none; color: var(--accent); }
-:root:not([data-dark]) body:not([data-home]) .e-plus { background: var(--accent); }
-/* Logo gerhana di tema terang: korona (cincin cahaya luar) diredam supaya tidak "mentereng". */
-:root:not([data-dark]) body:not([data-home]) .e-eclipse svg > circle:first-of-type { opacity: 0.4; }
 /* "bukumu": tanpa drop-shadow (filter pada teks bergradasi menggambar kotak samar di belakang kata). */
 .e-hero .h-title em, .e-glass h3 em { filter: none; }

@@ -364,7 +364,7 @@ function themeColors() {
   const bg = settings.theme === 'custom' ? settings.customBg : t.bg;
   const fg = settings.theme === 'custom' ? settings.customFg || autoFg(bg) : t.fg;
   const dark = luminance(bg) < 0.25;
-  return { bg, fg, dark, glow: !!t.glow, accent: t.accent || (dark ? '#93b6e4' : '#3a6aa8') };
+  return { bg, fg, dark, glow: !!t.glow, accent: t.accent || (dark ? '#7cb4ff' : '#1d66d6') };
 }
 
 // Gaya halaman depan. Palet & susunannya di css/app.css (body[data-home=…]); di sini nama & warna latarnya
@@ -382,6 +382,8 @@ let currentView = 'home';
 function applyHome() {
   const st = currentView === 'read' ? null : homeStyle();
   const b = document.body;
+  if (currentView === 'read') delete b.dataset.nav;
+  else b.dataset.nav = '';
   if (st) b.dataset.home = st;
   else delete b.dataset.home;
   const bg = st ? HOME_STYLES[st].bg : themeColors().bg;
@@ -1050,44 +1052,18 @@ async function showLibrary() {
       el('span', { class: 'brand-accent' }, 'Read'),
       settings.changeLock ? el('span', { class: 'lock-badge', title: 'Perubahan dikunci' }, icon('lock')) : null,
     ),
-    // Klasik: ikon dikumpulkan dalam satu kapsul (sinkron · pengaturan · profil), Impor berupa pil di sebelahnya.
-    el(
-      'div',
-      { class: 'bar-tools' },
-      syncButton(),
-      iconBtn('type', 'Pengaturan', openSettings),
-      // Gaya Klasik tidak punya navigasi bawah: Profil (tempat memilih gaya halaman depan) lewat tombol ini.
-      homeStyle() ? null : iconBtn('user', 'Profil', openProfile),
-    ),
-    el('button', { type: 'button', class: 'btn primary bar-add', 'aria-label': 'Impor novel', onclick: () => openImport() }, icon('plus'), el('span', null, 'Impor')),
   );
+  // Semua gaya (termasuk Klasik): bar atas hanya judul; navigasi di bawah (HP/iPad) atau sidebar (laptop).
+  // Sinkron & Pengaturan ada di Profil.
 
   const body = novels.length ? libraryList(novels, covers) : null;
 
   const foot = el('p', { class: 'foot' });
   showStorageInfo(foot);
   const credit = el('p', { class: 'credit' }, brandLogo('credit-logo'), 'Lumen', el('span', null, 'Read'), ' · ', signature());
-  // Tombol bulat kanan bawah: lanjut ke novel yang terakhir dibaca.
-  const last = novels.filter((n) => n.lastRead && n.toc.length).sort((a, b) => b.lastRead.at - a.lastRead.at)[0];
-  const fab = last
-    ? el(
-        'button',
-        {
-          type: 'button',
-          class: 'fab',
-          'aria-label': `Lanjut baca ${last.title}, Chapter ${last.lastRead.num}`,
-          title: `Lanjut: ${last.title} · Chapter ${last.lastRead.num}`,
-          onclick: () => (location.hash = `#/read/${encodeURIComponent(last.id)}`),
-        },
-        icon('book'),
-      )
-    : null;
   // Gaya halaman depan dipakai juga saat rak kosong (dulu jatuh ke tampilan Klasik: tanpa navigasi & tanpa hero).
   const styled = !!homeStyle();
   const empty = !novels.length;
-  if (styled) bar.replaceChildren(bar.querySelector('h1'));
-  // Klasik: tombol Impor di bar tidak perlu saat rak kosong (sudah ada tombol besar di bagian atas).
-  else if (empty) bar.querySelector('.btn.primary')?.remove();
   const glass = styled && HOME_STYLES[homeStyle()].hero === 'glass';
   const [emptyHero, emptyBody] = empty ? emptyHome(glass) : [];
   const hero = empty ? emptyHero : styled ? (glass ? glassHero(novels, covers) : homeHero(novels, covers)) : null;
@@ -1098,12 +1074,12 @@ async function showLibrary() {
     empty ? emptyBody : body,
     el('footer', { class: 'lib-foot' }, syncLine(), foot, credit),
   );
-  const nav = styled ? homeNav(novels, covers) : [];
+  const nav = homeNav(novels, covers);
   if (pendingSearch) {
     pendingSearch = false;
     requestAnimationFrame(focusSearch);
   }
-  setView([bar, glass ? null : hero, main, styled ? null : fab, ...nav].filter(Boolean));
+  setView([bar, glass ? null : hero, main, ...nav].filter(Boolean));
 }
 
 // ---------- Halaman depan bergaya (Eclipse Neon, dst.) ----------
@@ -1484,13 +1460,7 @@ async function showProfile() {
   const storage = row('book', 'Penyimpanan', 'Menghitung…');
   const storageText = storage.querySelector('.pf-txt span');
   showStorageInfo(storageText).then(() => (storageText.textContent = storageText.textContent.replace(/^Versi [^·]+·\s*/, '')));
-  // Klasik tidak punya navigasi bawah, jadi Profil perlu tombol kembali ke perpustakaan.
-  const bar = el(
-    'header',
-    { class: 'bar' },
-    homeStyle() ? null : iconBtn('back', 'Kembali ke perpustakaan', () => (location.hash = '#/')),
-    el('h1', { class: 'brand' }, 'Profil'),
-  );
+  const bar = el('header', { class: 'bar' }, el('h1', { class: 'brand' }, 'Profil'));
   const main = el(
     'main',
     { class: 'page profile' },
@@ -1530,7 +1500,7 @@ async function showProfile() {
     ),
     el('div', { class: 'pf-brand' }, brandLogo(), el('p', { class: 'credit' }, 'Lumen', el('span', null, 'Read'), ' · ', signature())),
   );
-  setView([bar, main, ...(homeStyle() ? homeNav(novels, covers, 'profil') : [])]);
+  setView([bar, main, ...homeNav(novels, covers, 'profil')]);
 }
 
 /** Bagian atas gaya Aurora: sapaan + kartu kaca berisi sampul, tombol lanjut, daftar isi, progres. */
