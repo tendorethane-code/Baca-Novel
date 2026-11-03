@@ -1292,7 +1292,11 @@ function emptyHome(glass) {
 
 function focusSearch() {
   const input = document.querySelector('.lib-search input');
-  if (!input) return;
+  // Rak kosong belum punya kolom cari: beri tahu, jangan diam saja.
+  if (!input) {
+    if (document.querySelector('.is-empty')) toast('Rak masih kosong, belum ada novel untuk dicari.', { label: 'Impor', run: () => openImport() });
+    return;
+  }
   input.scrollIntoView({ block: 'center', behavior: 'smooth' });
   input.focus({ preventScroll: true });
 }
@@ -1303,19 +1307,25 @@ function homeNav(novels, covers, active = 'rak') {
   const n = heroNovel(novels);
   const go = () => (n ? (location.hash = `#/read/${encodeURIComponent(n.id)}`) : openImport());
   const onLib = active === 'rak';
+  const none = !novels.length; // rak kosong: Cari diredupkan (tetap bisa diketuk, muncul penjelasan)
   const toTop = () => (onLib ? window.scrollTo({ top: 0, behavior: 'smooth' }) : (location.hash = '#/'));
   const search = () => {
     if (onLib) return focusSearch();
     pendingSearch = true;
     location.hash = '#/';
   };
-  const item = (ic, label, onclick, on) =>
-    el('button', { type: 'button', class: `n-it${on ? ' on' : ''}`, 'aria-current': on ? 'page' : null, onclick }, icon(ic), el('span', null, label));
+  const item = (ic, label, onclick, on, dim) =>
+    el(
+      'button',
+      { type: 'button', class: `n-it${on ? ' on' : ''}${dim ? ' dim' : ''}`, 'aria-current': on ? 'page' : null, 'aria-label': dim ? `${label} (rak masih kosong)` : null, onclick },
+      icon(ic),
+      el('span', null, label),
+    );
   const bottom = el(
     'nav',
     { class: 'n-bar', 'aria-label': 'Navigasi' },
     item('shelf', 'Rak', toTop, onLib),
-    item('search', 'Cari', search),
+    item('search', 'Cari', search, false, none),
     el(
       'button',
       { type: 'button', class: 'n-star', 'aria-label': n ? `Lanjut baca ${n.title}` : 'Impor novel', title: n ? `Lanjut: ${n.title}` : 'Impor novel', onclick: go },
@@ -1325,8 +1335,14 @@ function homeNav(novels, covers, active = 'rak') {
     item('upload', 'Impor', () => openImport()),
     item('user', 'Profil', openProfile, active === 'profil'),
   );
-  const sItem = (ic, label, onclick, extra, on) =>
-    el('button', { type: 'button', class: `sd-it${on ? ' on' : ''}`, 'aria-current': on ? 'page' : null, onclick }, icon(ic), el('span', null, label), extra || null);
+  const sItem = (ic, label, onclick, extra, on, dim) =>
+    el(
+      'button',
+      { type: 'button', class: `sd-it${on ? ' on' : ''}${dim ? ' dim' : ''}`, 'aria-current': on ? 'page' : null, 'aria-label': dim ? `${label} (rak masih kosong)` : null, onclick },
+      icon(ic),
+      el('span', null, label),
+      extra || null,
+    );
   let now = null;
   if (n) {
     const pct = Math.round(readPct(n));
@@ -1353,7 +1369,7 @@ function homeNav(novels, covers, active = 'rak') {
       'nav',
       { class: 'sd-nav' },
       sItem('shelf', 'Rak buku', toTop, el('em', null, fmtNum(novels.length)), onLib),
-      sItem('search', 'Cari', search, el('kbd', null, '/')),
+      sItem('search', 'Cari', search, none ? null : el('kbd', null, '/'), false, none),
       sItem('upload', 'Impor novel', () => openImport()),
       sItem('user', 'Profil & pengaturan', openProfile, null, active === 'profil'),
     ),
@@ -1368,7 +1384,7 @@ document.addEventListener('keydown', (e) => {
   if (e.key !== '/' || e.ctrlKey || e.metaKey || e.altKey || currentView === 'read') return;
   if (e.target.closest?.('input, textarea, select, [contenteditable], dialog')) return;
   e.preventDefault();
-  if (document.querySelector('.lib-search input')) focusSearch();
+  if (document.querySelector('.lib-search input, .is-empty')) focusSearch();
   else if (document.querySelector('.sd')) {
     pendingSearch = true;
     location.hash = '#/';
