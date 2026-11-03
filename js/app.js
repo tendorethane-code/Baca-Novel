@@ -324,20 +324,22 @@ const SIZE_MIN = 14;
 const SIZE_MAX = 34;
 const RECAP_MAX = 10; // jumlah paragraf terbanyak di pengingat chapter sebelumnya
 // Tema latar: cukup warna latar (bg) dan teks (fg); warna lain diturunkan otomatis.
+// Aksen tiap tema: keluarga biru safir, disetel per latar (kontras ±7:1 terhadap latar & teks tombol).
+// Tema terang: biru tua yang tegas; tema gelap: biru lembut supaya tidak menyilaukan saat membaca malam.
 const THEMES = {
-  light: { label: 'Terang', bg: '#fbfaf7', fg: '#1f1f1c' },
-  paper: { label: 'Kertas', bg: '#f1ece1', fg: '#2d2a25' },
-  sepia: { label: 'Sepia', bg: '#f4ecd8', fg: '#4a3a28', accent: '#8a5a2b' },
-  mint: { label: 'Hijau', bg: '#e2ede3', fg: '#1e3325' },
-  sky: { label: 'Biru muda', bg: '#e4ecf4', fg: '#1d2b3a', accent: '#2f5f8a' },
-  gray: { label: 'Abu', bg: '#d6d6d2', fg: '#22221f' },
+  light: { label: 'Terang', bg: '#fbfaf7', fg: '#1f1f1c', accent: '#1e4fae' },
+  paper: { label: 'Kertas', bg: '#f1ece1', fg: '#2d2a25', accent: '#234a94' },
+  sepia: { label: 'Sepia', bg: '#f4ecd8', fg: '#4a3a28', accent: '#2b4a80' },
+  mint: { label: 'Hijau', bg: '#e2ede3', fg: '#1e3325', accent: '#204f8e' },
+  sky: { label: 'Biru muda', bg: '#e4ecf4', fg: '#1d2b3a', accent: '#1d4a8c' },
+  gray: { label: 'Abu', bg: '#d6d6d2', fg: '#22221f', accent: '#1c4386' },
   // Senada dengan ikon aplikasi: hitam pekat, aksen cyan menyala (tombol utama diberi cahaya).
   neon: { label: 'Neon', bg: '#07070d', fg: '#f4f6fa', accent: '#2be3ff', glow: true },
-  claude: { label: 'CL', bg: '#151515', fg: '#f9f9f7' },
-  dusk: { label: 'Senja', bg: '#2b2530', fg: '#ddd4e1', accent: '#c9a6e0' },
-  navy: { label: 'Biru malam', bg: '#141d2b', fg: '#cdd7e3', accent: '#8cb8e8' },
-  dark: { label: 'Gelap', bg: '#141414', fg: '#d5d3ce' },
-  black: { label: 'Hitam', bg: '#000000', fg: '#b8b8b8' },
+  claude: { label: 'CL', bg: '#151515', fg: '#f9f9f7', accent: '#7aa5f2' },
+  dusk: { label: 'Senja', bg: '#2b2530', fg: '#ddd4e1', accent: '#a9b8f4' },
+  navy: { label: 'Biru malam', bg: '#141d2b', fg: '#cdd7e3', accent: '#86aef0' },
+  dark: { label: 'Gelap', bg: '#141414', fg: '#d5d3ce', accent: '#76a2ee' },
+  black: { label: 'Hitam', bg: '#000000', fg: '#b8b8b8', accent: '#6a95e2' },
   custom: { label: 'Kustom' },
 };
 
@@ -364,7 +366,7 @@ function themeColors() {
   const bg = settings.theme === 'custom' ? settings.customBg : t.bg;
   const fg = settings.theme === 'custom' ? settings.customFg || autoFg(bg) : t.fg;
   const dark = luminance(bg) < 0.25;
-  return { bg, fg, dark, glow: !!t.glow, accent: t.accent || (dark ? '#7cb4ff' : '#1d66d6') };
+  return { bg, fg, dark, glow: !!t.glow, accent: t.accent || (dark ? '#76a2ee' : '#1e4fae') };
 }
 
 // Gaya halaman depan. Palet & susunannya di css/app.css (body[data-home=…]); di sini nama & warna latarnya
