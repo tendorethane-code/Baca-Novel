@@ -1090,15 +1090,18 @@ async function showLibrary() {
         icon('book'),
       )
     : null;
-  const styled = homeStyle() && novels.length;
+  // Gaya halaman depan dipakai juga saat rak kosong (dulu jatuh ke tampilan Klasik: tanpa navigasi & tanpa hero).
+  const styled = !!homeStyle();
+  const empty = styled && !novels.length;
   if (styled) bar.replaceChildren(bar.querySelector('h1'));
-  const glass = styled && HOME_STYLES[homeStyle()].hero === 'glass';
-  const hero = styled ? (glass ? glassHero(novels, covers) : homeHero(novels, covers)) : null;
+  const glass = styled && !empty && HOME_STYLES[homeStyle()].hero === 'glass';
+  const [emptyHero, emptyBody] = empty ? emptyHome() : [];
+  const hero = empty ? emptyHero : styled ? (glass ? glassHero(novels, covers) : homeHero(novels, covers)) : null;
   const main = el(
     'main',
-    { class: `page library${hero && !glass ? ' has-hero' : ''}` },
+    { class: `page library${hero && !glass ? ' has-hero' : ''}${empty ? ` is-empty e-${EMPTY_VARIANT}` : ''}` },
     glass ? hero : null,
-    body,
+    empty ? emptyBody : body,
     el('footer', { class: 'lib-foot' }, syncLine(), foot, credit),
   );
   const nav = styled ? homeNav(novels, covers) : [];
@@ -1193,6 +1196,106 @@ function homeHero(novels, covers) {
     ),
   );
 }
+// ---------- Rak kosong (gaya halaman depan) ----------
+// Siapa yang melihat layar ini: pengguna baru, ATAU pengguna lama di perangkat baru (novelnya ada di HP lain).
+// Jadi selain Impor, ambil-dari-sinkronisasi juga ditawarkan setara, dan statusnya ikut berubah saat sinkron jalan.
+const EMPTY_VARIANT = new URLSearchParams(location.search).get('kosong') || 'a'; // SEMENTARA: pembanding opsi
+function emptySync(cls = 'e-sync') {
+  const cfg = sync.loadConfig();
+  const [ic, title, sub, state] = !cfg
+    ? ['sync', 'Ambil dari perangkat lain', 'Sinkron lewat GitHub', 'off']
+    : syncState.running
+      ? ['sync', 'Mengambil dari sinkronisasi…', 'Novel muncul di sini begitu selesai', 'run']
+      : syncState.error
+        ? ['sync', 'Sinkron gagal', syncState.error, 'err']
+        : ['check', 'Sinkronisasi aktif', 'Belum ada novel di perangkat lain', 'ok'];
+  return el(
+    'button',
+    { type: 'button', class: `${cls} s-${state}`, onclick: openSync },
+    el('span', { class: 'e-ic' }, icon(ic)),
+    el('span', { class: 'e-tx' }, el('b', null, title), el('span', null, sub)),
+    cls.includes('e-opt') ? icon('chevron') : null,
+  );
+}
+const EMPTY_FORMATS = '.epub · .zip berisi .txt · .txt · tempel teks';
+const emptyHint = () =>
+  el('p', { class: 'e-hint' }, 'Untuk teks, tiap chapter diawali baris seperti ', el('code', null, 'Chapter 1: Judul'), '.');
+/** Rak bayangan: slot sampul kosong, yang pertama tombol Impor. */
+function ghostShelf(withSync) {
+  const tiles = [
+    el('button', { type: 'button', class: 'e-slot e-add', onclick: () => openImport() }, el('span', { class: 'e-plus' }, icon('plus')), el('b', null, 'Impor novel'), el('span', null, '.epub · .zip · .txt')),
+  ];
+  if (withSync) tiles.push(emptySync('e-slot e-sync-slot'));
+  while (tiles.length < 16) tiles.push(el('div', { class: 'e-slot e-ghost', 'aria-hidden': 'true' }));
+  return el('div', { class: 'e-shelf' }, ...tiles);
+}
+function emptyHome() {
+  const v = EMPTY_VARIANT;
+  const cta = el('button', { type: 'button', class: 'h-cta', onclick: () => openImport() }, icon('plus'), 'Impor novel');
+  if (v === 'b') {
+    return [
+      null,
+      el(
+        'section',
+        { class: 'e-stage' },
+        el('div', { class: 'e-orb', 'aria-hidden': 'true' }, brandLogo()),
+        el('small', { class: 'e-kick' }, icon('spark'), greeting()),
+        el('h2', null, 'Rak bukumu masih kosong'),
+        el('p', { class: 'e-sub' }, 'Tambahkan novel pertama, atau ambil rak yang sudah ada di perangkat lain.'),
+        el(
+          'div',
+          { class: 'e-opts' },
+          el(
+            'button',
+            { type: 'button', class: 'e-opt e-main', onclick: () => openImport() },
+            el('span', { class: 'e-ic' }, icon('upload')),
+            el('span', { class: 'e-tx' }, el('b', null, 'Impor dari file'), el('span', null, EMPTY_FORMATS)),
+            icon('chevron'),
+          ),
+          emptySync('e-opt e-sync'),
+        ),
+        emptyHint(),
+      ),
+    ];
+  }
+  if (v === 'c') {
+    return [
+      null,
+      el(
+        'section',
+        { class: 'e-ghostwrap' },
+        el('header', { class: 'e-hello' }, el('small', null, icon('spark'), greeting()), el('h2', null, 'Rakmu siap ', el('em', null, 'diisi'), '.')),
+        el('div', { class: 'h-sec' }, el('h3', null, icon('spark'), 'Rak buku'), el('span', null, '0 novel')),
+        ghostShelf(true),
+        emptyHint(),
+      ),
+    ];
+  }
+  // A · lukisan sambutan: susunan sama dengan halaman depan berisi (hero → Rak buku), tanpa sampul.
+  const hero = el(
+    'section',
+    { class: 'h-hero e-hero' },
+    el('div', { class: 'e-eclipse', 'aria-hidden': 'true' }, brandLogo()),
+    starField(),
+    el(
+      'div',
+      { class: 'h-txt' },
+      el('small', null, icon('spark'), greeting(), el('span', { class: 'e-long' }, ' · rak masih kosong')),
+      el('h2', { class: 'h-title' }, 'Mulai rak ', el('em', null, 'bukumu')),
+      el('p', null, 'Impor novel dari file, atau ambil yang sudah ada di perangkat lain.'),
+      el('div', { class: 'h-btns e-btns' }, cta, emptySync('e-pill')),
+    ),
+  );
+  const body = el(
+    'div',
+    null,
+    el('div', { class: 'h-sec' }, el('h3', null, icon('spark'), 'Rak buku'), el('span', null, EMPTY_FORMATS)),
+    ghostShelf(false),
+    emptyHint(),
+  );
+  return [hero, body];
+}
+
 function focusSearch() {
   const input = document.querySelector('.lib-search input');
   if (!input) return;
@@ -4099,6 +4202,11 @@ function syncLine() {
 
 function refreshSyncUi() {
   document.querySelectorAll('.sync-btn').forEach((b) => b.replaceWith(syncButton()));
+  // Rak kosong: kartu/tombol sinkron ikut berubah (mengambil… → gagal/aktif).
+  document.querySelectorAll('.is-empty .s-off, .is-empty .s-run, .is-empty .s-err, .is-empty .s-ok').forEach((b) => {
+    const cls = [...b.classList].filter((c) => !c.startsWith('s-')).join(' ');
+    b.replaceWith(emptySync(cls));
+  });
   const line = document.querySelector('.sync-line');
   const next = syncLine();
   if (line && next) line.replaceWith(next);
