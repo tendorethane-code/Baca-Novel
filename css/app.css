@@ -2100,9 +2100,11 @@ body[data-nav].scrolled .bar { background: rgb(var(--veil) / 0.92); border-botto
    iPadOS 26 mengaburkan sendiri ±50pt teratas layar (di bawah status bar) untuk aplikasi web, terlepas dari CSS
    kita. Terbukti di iPad: judul buram saat diam, tajam begitu halaman ditarik ke bawah (bar kita ikut bergeser, zona
    buram tidak). Judul sidebar landscape (±50–74pt) tidak kena. HP tidak bermasalah (dicek di HP asli). Jadi isi
-   halaman depan digeser turun 24px hanya di iPad: layar sentuh ≥700px yang punya status bar (safe-area-inset-top > 0). */
+   halaman depan digeser turun 24px hanya di iPad (layar sentuh ≥700px). */
 :root { --top-gap: 0px; }
-@media (min-width: 700px) and (pointer: coarse) { :root { --top-gap: min(24px, calc(env(safe-area-inset-top) * 100)); } }
+/* Tanpa syarat safe-area: di iPad (PWA, status bar gaya "default") halaman mulai di bawah status bar sehingga
+   safe-area-inset-top = 0, padahal zona buramnya tetap ada. */
+@media (min-width: 700px) and (pointer: coarse) { :root { --top-gap: 24px; } }
 body[data-nav] .bar { padding-top: calc(env(safe-area-inset-top) + var(--top-gap)); height: calc(var(--bar-h) + env(safe-area-inset-top) + var(--top-gap)); }
 body[data-nav] .page { padding-top: calc(var(--bar-h) + env(safe-area-inset-top) + var(--top-gap) + 16px); }
 body[data-nav] .h-hero { padding-top: calc(var(--bar-h) + env(safe-area-inset-top) + var(--top-gap) + 40px); }
@@ -2119,3 +2121,7 @@ body[data-nav] .e-eclipse { top: calc(var(--bar-h) + env(safe-area-inset-top) + 
   body[data-nav]:has(.sd) .e-eclipse { top: 70px; }
   body[data-nav]:has(.sd) .page.library:not(.has-hero) { padding-top: 34px; }
 }
+
+/* Kredit di bawah Rak & Profil tidak tertutup tombol ✦ (menonjol ±28px di atas navigasi bawah). */
+body[data-nav] .library, body[data-nav] .profile { padding-bottom: calc(140px + env(safe-area-inset-bottom)); }
+@media (min-width: 1100px) { body[data-nav]:has(.sd) .library, body[data-nav]:has(.sd) .profile { padding-bottom: 48px; } }
