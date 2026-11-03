@@ -1090,15 +1090,18 @@ async function showLibrary() {
         icon('book'),
       )
     : null;
-  const styled = homeStyle() && novels.length;
+  // Gaya halaman depan dipakai juga saat rak kosong (dulu jatuh ke tampilan Klasik: tanpa navigasi & tanpa hero).
+  const styled = !!homeStyle();
+  const empty = styled && !novels.length;
   if (styled) bar.replaceChildren(bar.querySelector('h1'));
   const glass = styled && HOME_STYLES[homeStyle()].hero === 'glass';
-  const hero = styled ? (glass ? glassHero(novels, covers) : homeHero(novels, covers)) : null;
+  const [emptyHero, emptyBody] = empty ? emptyHome(glass) : [];
+  const hero = empty ? emptyHero : styled ? (glass ? glassHero(novels, covers) : homeHero(novels, covers)) : null;
   const main = el(
     'main',
-    { class: `page library${hero && !glass ? ' has-hero' : ''}` },
+    { class: `page library${hero && !glass ? ' has-hero' : ''}${empty ? ' is-empty' : ''}` },
     glass ? hero : null,
-    body,
+    empty ? emptyBody : body,
     el('footer', { class: 'lib-foot' }, syncLine(), foot, credit),
   );
   const nav = styled ? homeNav(novels, covers) : [];
@@ -1193,6 +1196,100 @@ function homeHero(novels, covers) {
     ),
   );
 }
+// ---------- Rak kosong (gaya halaman depan) ----------
+// Siapa yang melihat layar ini: pengguna baru, ATAU pengguna lama di perangkat baru (novelnya ada di HP lain).
+// Jadi selain Impor, ambil-dari-sinkronisasi juga ditawarkan, dan tulisannya ikut berubah saat sinkron jalan.
+function emptySync() {
+  const cfg = sync.loadConfig();
+  const [ic, title, state] = !cfg
+    ? ['sync', 'Ambil dari perangkat lain', 'off']
+    : syncState.running
+      ? ['sync', 'Mengambil dari sinkronisasi…', 'run']
+      : syncState.error
+        ? ['sync', 'Sinkron gagal · coba lagi', 'err']
+        : ['check', 'Sinkronisasi aktif', 'ok'];
+  return el(
+    'button',
+    { type: 'button', class: `e-pill s-${state}`, onclick: openSync, title: state === 'err' ? syncState.error : null },
+    el('span', { class: 'e-ic' }, icon(ic)),
+    el('b', null, title),
+  );
+}
+/** Rak bayangan: slot sampul kosong (memudar ke kanan), yang pertama tombol Impor. */
+function ghostShelf() {
+  const tiles = [
+    el(
+      'button',
+      { type: 'button', class: 'e-slot e-add', onclick: () => openImport() },
+      el('span', { class: 'e-plus' }, icon('plus')),
+      el('b', null, 'Impor novel'),
+      el('span', null, '.epub · .zip · .txt'),
+    ),
+  ];
+  while (tiles.length < 12) tiles.push(el('div', { class: 'e-slot e-ghost', 'aria-hidden': 'true' }));
+  return el('div', { class: 'e-shelf' }, ...tiles);
+}
+/** Halaman depan saat rak kosong. Susunannya sama dengan rak berisi (bagian atas → Rak buku), tanpa sampul.
+ *  Eclipse Neon & Royal: lukisan dengan logo gerhana besar. Aurora: kartu kaca seperti novel yang sedang dibaca. */
+function emptyHome(glass) {
+  const title = el('span', null, 'Mulai rak ', el('em', null, 'bukumu'));
+  const sub = 'Impor novel dari file, atau ambil yang sudah ada di perangkat lain.';
+  const btns = el(
+    'div',
+    { class: `h-btns e-btns${glass ? ' g-btns' : ''}` },
+    el('button', { type: 'button', class: 'h-cta', onclick: () => openImport() }, icon('plus'), 'Impor novel'),
+    emptySync(),
+  );
+  const body = el(
+    'div',
+    null,
+    el(
+      'div',
+      { class: 'h-sec' },
+      el('h3', null, icon('spark'), 'Rak buku'),
+      el('span', null, '.epub · .zip berisi .txt · .txt · tempel teks'),
+    ),
+    ghostShelf(),
+    el('p', { class: 'e-hint' }, 'Untuk teks, tiap chapter diawali baris seperti ', el('code', null, 'Chapter 1: Judul'), '.'),
+  );
+  if (glass) {
+    const part = greeting().replace('Selamat ', '');
+    const hero = el(
+      'div',
+      { class: 'g-wrap' },
+      el(
+        'header',
+        { class: 'g-hello' },
+        el('small', null, greeting()),
+        el('h2', null, 'Mau baca ', el('span', null, 'apa'), ` ${part} ini?`),
+      ),
+      el(
+        'section',
+        { class: 'g-hero e-glass' },
+        el('div', { class: 'e-glass-logo', 'aria-hidden': 'true' }, brandLogo()),
+        el('div', { class: 'g-body' }, el('small', null, icon('spark'), 'Rak masih kosong'), el('h3', null, title), el('p', null, sub)),
+        btns,
+      ),
+    );
+    return [hero, body];
+  }
+  const hero = el(
+    'section',
+    { class: 'h-hero e-hero' },
+    el('div', { class: 'e-eclipse', 'aria-hidden': 'true' }, brandLogo()),
+    starField(),
+    el(
+      'div',
+      { class: 'h-txt' },
+      el('small', null, icon('spark'), greeting(), el('span', { class: 'e-long' }, ' · rak masih kosong')),
+      el('h2', { class: 'h-title' }, title),
+      el('p', null, sub),
+      btns,
+    ),
+  );
+  return [hero, body];
+}
+
 function focusSearch() {
   const input = document.querySelector('.lib-search input');
   if (!input) return;
@@ -4099,6 +4196,8 @@ function syncLine() {
 
 function refreshSyncUi() {
   document.querySelectorAll('.sync-btn').forEach((b) => b.replaceWith(syncButton()));
+  // Rak kosong: kartu/tombol sinkron ikut berubah (mengambil… → gagal/aktif).
+  document.querySelectorAll('.e-pill').forEach((b) => b.replaceWith(emptySync()));
   const line = document.querySelector('.sync-line');
   const next = syncLine();
   if (line && next) line.replaceWith(next);
