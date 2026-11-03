@@ -1013,6 +1013,7 @@ textarea.plain { font-family: var(--ui-font); font-size: 1rem; line-height: 1.5;
 :root[data-glow] .tabs button[aria-selected='true'] {
   box-shadow: var(--glow);
 }
+:root[data-glow] body:not([data-nav]) .bar h1 { text-shadow: 0 0 12px color-mix(in srgb, var(--accent) 45%, transparent); }
 :root[data-glow] dialog { border-color: color-mix(in srgb, var(--accent) 16%, var(--line)); }
 :root[data-glow] .toc-row.current,
 :root[data-glow] .rp-progress i,
@@ -2083,24 +2084,25 @@ body:not([data-home]) .e-hero .h-cta { box-shadow: 0 10px 24px -12px color-mix(i
 :root:not([data-dark]) body:not([data-home]) .e-hero .h-stars { display: none; }
 :root:not([data-dark]) body:not([data-home]) .e-eclipse .brand-logo { filter: drop-shadow(0 12px 28px color-mix(in srgb, var(--accent) 30%, transparent)); }
 :root:not([data-dark]) body:not([data-home]) .e-ghost { border-color: color-mix(in srgb, var(--fg) 18%, transparent); }
-/* ---------- Bar atas rak & profil (semua gaya) ----------
-   Ikut tergulir bersama halaman (position: absolute), tidak menempel di atas layar. Safari (iOS/iPadOS 26) memberi
-   efek buram otomatis di tepi atas layar untuk header yang menempel (position: fixed); itu yang tetap terasa "blur"
-   walaupun backdrop-filter kita sudah dimatikan. Di laptop/iPad landscape gaya baru memakai sidebar (tanpa bar atas),
-   makanya buram itu dulu hanya terasa saat potret. Halaman novel & layar baca tetap memakai bar yang menempel. */
-body[data-page='rak'] .bar, body[data-page='profil'] .bar { position: absolute; background: transparent; border-bottom-color: transparent;
-  backdrop-filter: none; -webkit-backdrop-filter: none; }
+/* ---------- Bar atas halaman depan (semua gaya) ----------
+   Menempel di atas; bening di posisi paling atas (lukisan & bintang tetap tajam), latar kaca hampir pekat begitu
+   halaman digulir (body.scrolled). */
+body[data-nav] .bar { background: transparent; border-bottom-color: transparent; backdrop-filter: none; -webkit-backdrop-filter: none;
+  transition: transform 0.2s ease, background-color 0.2s ease, border-color 0.2s ease; }
+body[data-nav].scrolled .bar { background: rgb(var(--veil) / 0.92); border-bottom-color: color-mix(in srgb, var(--accent) 10%, transparent);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
 
 
 /* "bukumu": tanpa drop-shadow (filter pada teks bergradasi menggambar kotak samar di belakang kata). */
 .e-hero .h-title em, .e-glass h3 em { filter: none; }
 
 /* ---------- Jarak dari tepi atas di iPad/iPhone ----------
-   iPadOS/iOS 26 mengaburkan sendiri ±50pt teratas layar (di bawah status bar) untuk aplikasi web, terlepas dari CSS
+   iPadOS 26 mengaburkan sendiri ±50pt teratas layar (di bawah status bar) untuk aplikasi web, terlepas dari CSS
    kita. Terbukti di iPad: judul buram saat diam, tajam begitu halaman ditarik ke bawah (bar kita ikut bergeser, zona
-   buram tidak). Judul sidebar landscape (±50–74pt) tidak kena. Jadi isi halaman depan digeser turun 24px, hanya bila
-   ada status bar di area layar (safe-area-inset-top > 0); di laptop/Android biasa nilainya 0. */
-:root { --top-gap: min(24px, calc(env(safe-area-inset-top) * 100)); }
+   buram tidak). Judul sidebar landscape (±50–74pt) tidak kena. HP tidak bermasalah (dicek di HP asli). Jadi isi
+   halaman depan digeser turun 24px hanya di iPad: layar sentuh ≥700px yang punya status bar (safe-area-inset-top > 0). */
+:root { --top-gap: 0px; }
+@media (min-width: 700px) and (pointer: coarse) { :root { --top-gap: min(24px, calc(env(safe-area-inset-top) * 100)); } }
 body[data-nav] .bar { padding-top: calc(env(safe-area-inset-top) + var(--top-gap)); height: calc(var(--bar-h) + env(safe-area-inset-top) + var(--top-gap)); }
 body[data-nav] .page { padding-top: calc(var(--bar-h) + env(safe-area-inset-top) + var(--top-gap) + 16px); }
 body[data-nav] .h-hero { padding-top: calc(var(--bar-h) + env(safe-area-inset-top) + var(--top-gap) + 40px); }

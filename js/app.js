@@ -1017,7 +1017,11 @@ function setView(nodes, teardown) {
   cleanup = teardown || null;
   readerHooks = null;
   app.replaceChildren(...nodes);
+  requestAnimationFrame(markScrolled);
 }
+/** body.scrolled = halaman sudah digulir; bar atas halaman depan bening di posisi paling atas, berlatar saat digulir. */
+const markScrolled = () => document.body.classList.toggle('scrolled', window.scrollY > 6);
+window.addEventListener('scroll', markScrolled, { passive: true });
 
 async function route() {
   const [view, id, num, para] = location.hash.replace(/^#\/?/, '').split('/');
