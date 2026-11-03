@@ -31,7 +31,7 @@
   --muted: #6d6a63;
   --line: #e4e1d9;
   --panel: #ffffff;
-  --accent: #1d66d6;
+  --accent: #3a6aa8;
   --accent-fg: #ffffff;
   --danger: #b3261e;
   --warn-bg: #fff4d6;
@@ -1537,11 +1537,8 @@ body[data-home] .l-short { display: inline; }
 body[data-home] .l-full:not(:only-child) { display: none; }
 
 /* Bar atas di atas lukisan */
-/* Bening di posisi paling atas (tanpa blur, lukisan & bintang tetap tajam); berlatar hampir pekat begitu halaman digulir. */
-body[data-home] .bar { background: transparent; border-bottom-color: transparent; backdrop-filter: none; -webkit-backdrop-filter: none;
-  transition: transform 0.2s ease, background-color 0.2s ease, border-color 0.2s ease; }
-body[data-home].scrolled .bar { background: rgb(var(--veil) / 0.92); border-bottom-color: color-mix(in srgb, var(--accent) 8%, transparent);
-  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+/* Bar atas bening tanpa blur (lihat juga bagian "Bar atas rak & profil" di bawah). */
+body[data-home] .bar { background: transparent; border-bottom-color: transparent; backdrop-filter: none; -webkit-backdrop-filter: none; }
 body[data-home] .bar h1.brand { font-family: var(--serif); font-weight: 500; font-size: 1.36rem; letter-spacing: 0; text-shadow: none; }
 body[data-home] .bar h1.brand .brand-accent { font-style: italic; }
 body[data-home] .bar .btn.primary { border-radius: 99px; background: var(--glass); border: 1px solid var(--glass-line); color: var(--fg); box-shadow: none; }
@@ -1662,7 +1659,7 @@ body[data-home] .credit { font-family: var(--serif); font-style: italic; font-si
 .sp-neon .sp-prev i:nth-child(3) { background: #2be3ff; box-shadow: 0 0 8px #2be3ff; }
 .sp-classic .sp-prev { background: linear-gradient(160deg, #f4efe4, #d9d3c6); }
 .sp-classic .sp-prev i { background: rgba(40, 40, 36, 0.55); }
-.sp-classic .sp-prev i:nth-child(3) { background: #1d66d6; }
+.sp-classic .sp-prev i:nth-child(3) { background: #3a6aa8; }
 @media (prefers-reduced-motion: reduce) { .h-stars i { animation: none; } }
 .h-sec { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px 10px; margin: 6px 2px 14px; }
 .h-sec h3 { white-space: nowrap; display: flex; align-items: center; gap: 9px; margin: 0; font-family: var(--serif); font-weight: 500; font-size: 1.4rem; }
@@ -2095,6 +2092,39 @@ body:not([data-home]) .e-hero .h-cta { box-shadow: 0 10px 24px -12px color-mix(i
 :root:not([data-dark]) body:not([data-home]) .e-hero .h-stars { display: none; }
 :root:not([data-dark]) body:not([data-home]) .e-eclipse .brand-logo { filter: drop-shadow(0 12px 28px color-mix(in srgb, var(--accent) 30%, transparent)); }
 :root:not([data-dark]) body:not([data-home]) .e-ghost { border-color: color-mix(in srgb, var(--fg) 18%, transparent); }
-/* Klasik (halaman depan, bukan layar baca): bar bening di posisi paling atas, berlatar saat digulir — sama seperti gaya lain. */
-body[data-view='home']:not([data-home]) .bar { transition: transform 0.2s ease, background-color 0.2s ease, border-color 0.2s ease; }
-body[data-view='home']:not([data-home]):not(.scrolled) .bar { background: transparent; border-bottom-color: transparent; backdrop-filter: none; -webkit-backdrop-filter: none; }
+/* ---------- Bar atas rak & profil (semua gaya) ----------
+   Ikut tergulir bersama halaman (position: absolute), tidak menempel di atas layar. Safari (iOS/iPadOS 26) memberi
+   efek buram otomatis di tepi atas layar untuk header yang menempel (position: fixed); itu yang tetap terasa "blur"
+   walaupun backdrop-filter kita sudah dimatikan. Di laptop/iPad landscape gaya baru memakai sidebar (tanpa bar atas),
+   makanya buram itu dulu hanya terasa saat potret. Halaman novel & layar baca tetap memakai bar yang menempel. */
+body[data-page='rak'] .bar, body[data-page='profil'] .bar { position: absolute; background: transparent; border-bottom-color: transparent;
+  backdrop-filter: none; -webkit-backdrop-filter: none; }
+
+/* Klasik: ikon bar dalam satu kapsul, Impor berupa pil. */
+.bar-tools { display: flex; align-items: center; gap: 2px; padding: 3px; border-radius: 99px;
+  background: color-mix(in srgb, var(--fg) 5%, transparent); border: 1px solid color-mix(in srgb, var(--fg) 10%, transparent); }
+.bar-tools .icon-btn { width: 36px; height: 36px; border-radius: 50%; color: color-mix(in srgb, var(--fg) 80%, transparent); }
+.bar-tools .icon-btn svg { width: 19px; height: 19px; stroke-width: 1.7; }
+.bar-tools .sync-btn.off { color: var(--muted); }
+.bar-tools .sync-btn.err { color: var(--danger); }
+.bar .bar-add { height: 40px; min-height: 40px; margin-left: 8px; padding: 0 16px 0 13px; border-radius: 99px; border: 0; font-weight: 600; gap: 6px;
+  box-shadow: 0 6px 16px -10px color-mix(in srgb, var(--accent) 90%, transparent); }
+.bar .bar-add svg { width: 16px; height: 16px; }
+:root[data-glow] .bar .bar-add { box-shadow: 0 0 18px -6px color-mix(in srgb, var(--accent) 70%, transparent); }
+@media (hover: hover) and (pointer: fine) { .bar-tools .icon-btn:hover { background: color-mix(in srgb, var(--fg) 9%, transparent); color: var(--fg); } }
+@media (max-width: 400px) {
+  .bar .bar-add { width: 40px; padding: 0; margin-left: 6px; }
+  .bar .bar-add span { display: none; }
+  .bar-tools .icon-btn { width: 34px; height: 34px; }
+}
+
+/* Klasik tema terang: lebih tenang (logo tanpa cahaya biru tebal, tombol utama datar, latar tanpa sorot warna). */
+:root:not([data-dark]) body:not([data-home]) .e-hero::before { background: linear-gradient(to bottom, transparent 55%, var(--bg) 100%); }
+:root:not([data-dark]) body:not([data-home]) .e-eclipse .brand-logo { filter: drop-shadow(0 10px 22px rgb(0 0 0 / 0.16)); }
+:root:not([data-dark]) body:not([data-home]) .e-hero .h-cta { background: var(--accent); box-shadow: 0 8px 18px -12px var(--accent); }
+:root:not([data-dark]) body:not([data-home]) .e-hero .h-title em { background: none; color: var(--accent); }
+:root:not([data-dark]) body:not([data-home]) .e-plus { background: var(--accent); }
+/* Logo gerhana di tema terang: korona (cincin cahaya luar) diredam supaya tidak "mentereng". */
+:root:not([data-dark]) body:not([data-home]) .e-eclipse svg > circle:first-of-type { opacity: 0.4; }
+/* "bukumu": tanpa drop-shadow (filter pada teks bergradasi menggambar kotak samar di belakang kata). */
+.e-hero .h-title em, .e-glass h3 em { filter: none; }
