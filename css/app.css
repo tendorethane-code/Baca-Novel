@@ -2094,3 +2094,26 @@ body[data-page='rak'] .bar, body[data-page='profil'] .bar { position: absolute; 
 
 /* "bukumu": tanpa drop-shadow (filter pada teks bergradasi menggambar kotak samar di belakang kata). */
 .e-hero .h-title em, .e-glass h3 em { filter: none; }
+
+/* ---------- Jarak dari tepi atas di iPad/iPhone ----------
+   iPadOS/iOS 26 mengaburkan sendiri ±50pt teratas layar (di bawah status bar) untuk aplikasi web, terlepas dari CSS
+   kita. Terbukti di iPad: judul buram saat diam, tajam begitu halaman ditarik ke bawah (bar kita ikut bergeser, zona
+   buram tidak). Judul sidebar landscape (±50–74pt) tidak kena. Jadi isi halaman depan digeser turun 24px, hanya bila
+   ada status bar di area layar (safe-area-inset-top > 0); di laptop/Android biasa nilainya 0. */
+:root { --top-gap: min(24px, calc(env(safe-area-inset-top) * 100)); }
+body[data-nav] .bar { padding-top: calc(env(safe-area-inset-top) + var(--top-gap)); height: calc(var(--bar-h) + env(safe-area-inset-top) + var(--top-gap)); }
+body[data-nav] .page { padding-top: calc(var(--bar-h) + env(safe-area-inset-top) + var(--top-gap) + 16px); }
+body[data-nav] .h-hero { padding-top: calc(var(--bar-h) + env(safe-area-inset-top) + var(--top-gap) + 40px); }
+body[data-nav] .h-moon { top: calc(var(--bar-h) + env(safe-area-inset-top) + var(--top-gap) + 34px); }
+body[data-nav] .e-eclipse { top: calc(var(--bar-h) + env(safe-area-inset-top) + var(--top-gap) + 26px); }
+@media (max-width: 420px) { body[data-nav] .e-eclipse { top: calc(var(--bar-h) + env(safe-area-inset-top) + var(--top-gap) + 14px); } }
+@media (min-width: 760px) {
+  body[data-nav] .h-moon { top: calc(var(--bar-h) + var(--top-gap) + 60px); }
+  body[data-nav] .e-eclipse { top: calc(var(--bar-h) + var(--top-gap) + 40px); }
+}
+@media (min-width: 1100px) {
+  body[data-nav]:has(.sd) .h-hero { padding-top: 60px; }
+  body[data-nav]:has(.sd) .h-moon { top: 60px; }
+  body[data-nav]:has(.sd) .e-eclipse { top: 70px; }
+  body[data-nav]:has(.sd) .page.library:not(.has-hero) { padding-top: 34px; }
+}
