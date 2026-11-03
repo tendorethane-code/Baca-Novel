@@ -364,7 +364,7 @@ function themeColors() {
   const bg = settings.theme === 'custom' ? settings.customBg : t.bg;
   const fg = settings.theme === 'custom' ? settings.customFg || autoFg(bg) : t.fg;
   const dark = luminance(bg) < 0.25;
-  return { bg, fg, dark, glow: !!t.glow, accent: t.accent || (dark ? '#7cb4ff' : '#1d66d6') };
+  return { bg, fg, dark, glow: !!t.glow, accent: t.accent || (dark ? '#93b6e4' : '#3a6aa8') };
 }
 
 // Gaya halaman depan. Palet & susunannya di css/app.css (body[data-home=…]); di sini nama & warna latarnya
@@ -382,7 +382,6 @@ let currentView = 'home';
 function applyHome() {
   const st = currentView === 'read' ? null : homeStyle();
   const b = document.body;
-  b.dataset.view = currentView; // 'home' atau 'read'
   if (st) b.dataset.home = st;
   else delete b.dataset.home;
   const bg = st ? HOME_STYLES[st].bg : themeColors().bg;
@@ -1016,15 +1015,12 @@ function setView(nodes, teardown) {
   cleanup = teardown || null;
   readerHooks = null;
   app.replaceChildren(...nodes);
-  requestAnimationFrame(markScrolled);
 }
-/** body.scrolled = halaman sudah digulir. Bar atas halaman depan bergaya bening (tanpa blur) di posisi paling atas. */
-const markScrolled = () => document.body.classList.toggle('scrolled', window.scrollY > 6);
-window.addEventListener('scroll', markScrolled, { passive: true });
 
 async function route() {
   const [view, id, num, para] = location.hash.replace(/^#\/?/, '').split('/');
   currentView = view === 'read' && id ? 'read' : 'home';
+  document.body.dataset.page = currentView === 'read' ? 'read' : view === 'novel' && id ? 'novel' : view === 'profil' ? 'profil' : 'rak';
   applyHome();
   try {
     if (view === 'read' && id)
@@ -1054,11 +1050,16 @@ async function showLibrary() {
       el('span', { class: 'brand-accent' }, 'Read'),
       settings.changeLock ? el('span', { class: 'lock-badge', title: 'Perubahan dikunci' }, icon('lock')) : null,
     ),
-    syncButton(),
-    iconBtn('type', 'Pengaturan', openSettings),
-    // Gaya Klasik tidak punya navigasi bawah: Profil (tempat memilih gaya halaman depan) lewat tombol ini.
-    homeStyle() ? null : iconBtn('user', 'Profil', openProfile),
-    el('button', { type: 'button', class: 'btn primary', onclick: () => openImport() }, icon('plus'), 'Impor'),
+    // Klasik: ikon dikumpulkan dalam satu kapsul (sinkron · pengaturan · profil), Impor berupa pil di sebelahnya.
+    el(
+      'div',
+      { class: 'bar-tools' },
+      syncButton(),
+      iconBtn('type', 'Pengaturan', openSettings),
+      // Gaya Klasik tidak punya navigasi bawah: Profil (tempat memilih gaya halaman depan) lewat tombol ini.
+      homeStyle() ? null : iconBtn('user', 'Profil', openProfile),
+    ),
+    el('button', { type: 'button', class: 'btn primary bar-add', 'aria-label': 'Impor novel', onclick: () => openImport() }, icon('plus'), el('span', null, 'Impor')),
   );
 
   const body = novels.length ? libraryList(novels, covers) : null;
@@ -1880,11 +1881,12 @@ function applyTint(node, n, cover) {
 }
 
 // ---------- Sampul ----------
-// Cukup tajam untuk lukisan sampul selebar laptop (bagian atas halaman depan), ±150–300 KB.
-const COVER_W = 800;
-const COVER_H = 1200;
+// Tajam untuk lukisan sampul di layar retina: di iPad potret lukisan selebar layar (±1670 piksel fisik), di laptop
+// ±60% lebar layar. 800 piksel (batas lama) terlihat lembek di sana. ±300–600 KB per sampul.
+const COVER_W = 1200;
+const COVER_H = 1800;
 
-/** Gambar (Blob/File) → data URL JPEG maks 800×1200, supaya tetap ringan disimpan & disinkron. */
+/** Gambar (Blob/File) → data URL JPEG maks 1200×1800, supaya tetap ringan disimpan & disinkron. */
 async function coverData(blob) {
   const img = await createImageBitmap(blob);
   const scale = Math.min(1, COVER_W / img.width, COVER_H / img.height);
@@ -1893,7 +1895,7 @@ async function coverData(blob) {
   c.height = Math.max(1, Math.round(img.height * scale));
   c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
   img.close?.();
-  return c.toDataURL('image/jpeg', 0.82);
+  return c.toDataURL('image/jpeg', 0.86);
 }
 
 /** Angka tetap per judul, dasar warna sampul otomatis. */
