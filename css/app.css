@@ -31,7 +31,7 @@
   --muted: #6d6a63;
   --line: #e4e1d9;
   --panel: #ffffff;
-  --accent: #2f6f5e;
+  --accent: #1d66d6;
   --accent-fg: #ffffff;
   --danger: #b3261e;
   --warn-bg: #fff4d6;
@@ -227,14 +227,6 @@ label.field > span {
 .library {
   max-width: 760px;
   margin: 0 auto;
-}
-.empty {
-  text-align: center;
-  padding: 48px 12px;
-  color: var(--muted);
-}
-.empty h2 {
-  color: var(--fg);
 }
 .foot {
   margin-top: 28px;
@@ -1030,7 +1022,6 @@ textarea.plain { font-family: var(--ui-font); font-size: 1rem; line-height: 1.5;
   box-shadow: var(--glow);
 }
 :root[data-glow] .fab { box-shadow: var(--glow), 0 6px 20px rgba(0, 0, 0, 0.5); }
-:root[data-glow] .bar h1 { text-shadow: 0 0 12px color-mix(in srgb, var(--accent) 45%, transparent); }
 :root[data-glow] dialog { border-color: color-mix(in srgb, var(--accent) 16%, var(--line)); }
 :root[data-glow] .toc-row.current,
 :root[data-glow] .rp-progress i,
@@ -1546,8 +1537,11 @@ body[data-home] .l-short { display: inline; }
 body[data-home] .l-full:not(:only-child) { display: none; }
 
 /* Bar atas di atas lukisan */
-body[data-home] .bar { background: rgb(var(--veil) / 0.5); border-bottom-color: color-mix(in srgb, var(--accent) 8%, transparent);
-  backdrop-filter: blur(18px) saturate(1.4); -webkit-backdrop-filter: blur(18px) saturate(1.4); }
+/* Bening di posisi paling atas (tanpa blur, lukisan & bintang tetap tajam); berlatar hampir pekat begitu halaman digulir. */
+body[data-home] .bar { background: transparent; border-bottom-color: transparent; backdrop-filter: none; -webkit-backdrop-filter: none;
+  transition: transform 0.2s ease, background-color 0.2s ease, border-color 0.2s ease; }
+body[data-home].scrolled .bar { background: rgb(var(--veil) / 0.92); border-bottom-color: color-mix(in srgb, var(--accent) 8%, transparent);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
 body[data-home] .bar h1.brand { font-family: var(--serif); font-weight: 500; font-size: 1.36rem; letter-spacing: 0; text-shadow: none; }
 body[data-home] .bar h1.brand .brand-accent { font-style: italic; }
 body[data-home] .bar .btn.primary { border-radius: 99px; background: var(--glass); border: 1px solid var(--glass-line); color: var(--fg); box-shadow: none; }
@@ -1668,7 +1662,7 @@ body[data-home] .credit { font-family: var(--serif); font-style: italic; font-si
 .sp-neon .sp-prev i:nth-child(3) { background: #2be3ff; box-shadow: 0 0 8px #2be3ff; }
 .sp-classic .sp-prev { background: linear-gradient(160deg, #f4efe4, #d9d3c6); }
 .sp-classic .sp-prev i { background: rgba(40, 40, 36, 0.55); }
-.sp-classic .sp-prev i:nth-child(3) { background: #2f6f5e; }
+.sp-classic .sp-prev i:nth-child(3) { background: #1d66d6; }
 @media (prefers-reduced-motion: reduce) { .h-stars i { animation: none; } }
 .h-sec { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px 10px; margin: 6px 2px 14px; }
 .h-sec h3 { white-space: nowrap; display: flex; align-items: center; gap: 9px; margin: 0; font-family: var(--serif); font-weight: 500; font-size: 1.4rem; }
@@ -1882,7 +1876,6 @@ button.pf-row:hover { background: color-mix(in srgb, var(--fg) 4%, transparent);
 /* ---------- Logo D (Gerhana) di dalam aplikasi: warna ikut aksen tema ---------- */
 .brand-logo { --a: var(--accent); --b: var(--accent-2, #ffffff); display: inline-block; flex: none; line-height: 0; }
 .brand-logo svg { width: 100%; height: 100%; overflow: visible; }
-.empty-logo { width: 112px; height: 112px; margin: 0 auto 6px; display: block; }
 .credit-logo { width: 18px; height: 18px; margin-right: 6px; vertical-align: -4px; }
 .pf-brand { display: grid; justify-items: center; gap: 2px; margin-top: 8px; }
 .pf-brand .brand-logo { width: 44px; height: 44px; }
@@ -2026,7 +2019,7 @@ dialog.nm-dlg .dlg-body { padding: 0 18px calc(18px + env(safe-area-inset-bottom
 .e-btns { flex-wrap: wrap; gap: 10px 12px; }
 .e-btns .h-cta { border: 0; cursor: pointer; font: inherit; font-weight: 700; }
 .e-pill { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 50px; padding: 0 20px 0 12px; border-radius: 99px; cursor: pointer; font: inherit; color: var(--fg);
-  background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.16); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+  background: color-mix(in srgb, var(--fg) 6%, transparent); border: 1px solid color-mix(in srgb, var(--fg) 16%, transparent); }
 .e-ic { flex: none; width: 28px; height: 28px; display: grid; place-items: center; }
 .e-ic svg { width: 18px; height: 18px; }
 .e-pill b { font-size: 0.92rem; font-weight: 600; text-align: center; }
@@ -2090,3 +2083,18 @@ body[data-home] .toast { background: rgb(var(--veil) / 0.88); color: var(--fg); 
 body[data-home] .toast button { color: var(--accent-2); border-color: color-mix(in srgb, var(--accent) 45%, transparent); font-weight: 600; }
 body[data-home]:has(.n-bar) #toasts { bottom: calc(100px + env(safe-area-inset-bottom)); }
 @media (min-width: 1100px) { body[data-home]:has(.sd) #toasts { bottom: calc(18px + env(safe-area-inset-bottom)); left: calc(50% + var(--sd-w) / 2); } }
+
+/* ---------- Klasik: judul bar & rak kosong ikut tema warna baca ---------- */
+:root { --serif: 'Source Serif 4', 'Noto Serif', Georgia, serif; }
+.bar h1.brand { font-family: var(--serif); font-weight: 500; font-size: 1.32rem; letter-spacing: 0; }
+.bar h1.brand .brand-accent { font-style: italic; }
+body:not([data-home]) .e-hero { min-height: 480px; }
+body:not([data-home]) .e-hero .h-title { text-shadow: none; }
+body:not([data-home]) .e-hero .h-cta { box-shadow: 0 10px 24px -12px color-mix(in srgb, var(--accent) 80%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.35); }
+:root[data-glow] body:not([data-home]) .e-hero .h-cta { box-shadow: 0 0 30px -4px color-mix(in srgb, var(--accent) 75%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.5); }
+:root:not([data-dark]) body:not([data-home]) .e-hero .h-stars { display: none; }
+:root:not([data-dark]) body:not([data-home]) .e-eclipse .brand-logo { filter: drop-shadow(0 12px 28px color-mix(in srgb, var(--accent) 30%, transparent)); }
+:root:not([data-dark]) body:not([data-home]) .e-ghost { border-color: color-mix(in srgb, var(--fg) 18%, transparent); }
+/* Klasik (halaman depan, bukan layar baca): bar bening di posisi paling atas, berlatar saat digulir — sama seperti gaya lain. */
+body[data-view='home']:not([data-home]) .bar { transition: transform 0.2s ease, background-color 0.2s ease, border-color 0.2s ease; }
+body[data-view='home']:not([data-home]):not(.scrolled) .bar { background: transparent; border-bottom-color: transparent; backdrop-filter: none; -webkit-backdrop-filter: none; }
