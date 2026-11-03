@@ -364,7 +364,7 @@ function themeColors() {
   const bg = settings.theme === 'custom' ? settings.customBg : t.bg;
   const fg = settings.theme === 'custom' ? settings.customFg || autoFg(bg) : t.fg;
   const dark = luminance(bg) < 0.25;
-  return { bg, fg, dark, glow: !!t.glow, accent: t.accent || (dark ? '#7fc4ae' : '#2f6f5e') };
+  return { bg, fg, dark, glow: !!t.glow, accent: t.accent || (dark ? '#7cb4ff' : '#1d66d6') };
 }
 
 // Gaya halaman depan. Palet & susunannya di css/app.css (body[data-home=…]); di sini nama & warna latarnya
@@ -382,6 +382,7 @@ let currentView = 'home';
 function applyHome() {
   const st = currentView === 'read' ? null : homeStyle();
   const b = document.body;
+  b.dataset.view = currentView; // 'home' atau 'read'
   if (st) b.dataset.home = st;
   else delete b.dataset.home;
   const bg = st ? HOME_STYLES[st].bg : themeColors().bg;
@@ -477,6 +478,12 @@ function applySettings() {
     '--muted': mix(c.fg, c.bg, 62),
     '--accent': c.accent,
     '--accent-fg': c.dark ? '#111111' : '#ffffff',
+    // Dipakai tampilan bergaya (rak kosong) saat gaya Klasik; gaya lain menimpanya di body[data-home].
+    '--accent-2': mix(c.accent, '#ffffff', c.dark ? 55 : 82),
+    '--accent-3': mix(c.accent, '#000000', c.dark ? 80 : 82),
+    '--veil': hexRgb(c.bg).join(' '),
+    '--glass': mix(c.fg, 'transparent', 5),
+    '--glass-line': mix(c.fg, 'transparent', 13),
     '--danger': c.dark ? '#f2827a' : '#b3261e',
     '--warn-bg': c.dark ? '#3a3017' : '#fff1cc',
     '--warn-fg': c.dark ? '#f1d68b' : '#6b4e00',
@@ -1009,7 +1016,11 @@ function setView(nodes, teardown) {
   cleanup = teardown || null;
   readerHooks = null;
   app.replaceChildren(...nodes);
+  requestAnimationFrame(markScrolled);
 }
+/** body.scrolled = halaman sudah digulir. Bar atas halaman depan bergaya bening (tanpa blur) di posisi paling atas. */
+const markScrolled = () => document.body.classList.toggle('scrolled', window.scrollY > 6);
+window.addEventListener('scroll', markScrolled, { passive: true });
 
 async function route() {
   const [view, id, num, para] = location.hash.replace(/^#\/?/, '').split('/');
@@ -1050,27 +1061,7 @@ async function showLibrary() {
     el('button', { type: 'button', class: 'btn primary', onclick: () => openImport() }, icon('plus'), 'Impor'),
   );
 
-  const body = novels.length
-    ? libraryList(novels, covers)
-    : el(
-        'div',
-        { class: 'empty' },
-        brandLogo('empty-logo'),
-        el('h2', null, 'Belum ada novel'),
-        el(
-          'p',
-          null,
-          'Impor file .epub, .zip berisi .txt, file .txt, atau tempel teks. Untuk teks, tiap chapter diawali baris seperti ',
-          el('code', null, 'Chapter 1: Judul'),
-          '.',
-        ),
-        el('p', null, el('button', { type: 'button', class: 'btn primary', onclick: () => openImport() }, 'Impor novel')),
-        el(
-          'p',
-          { class: 'small' },
-          'Data tersimpan di browser perangkat ini. Agar sama di HP, iPad, dan laptop, nyalakan sinkronisasi (ikon panah melingkar di atas).',
-        ),
-      );
+  const body = novels.length ? libraryList(novels, covers) : null;
 
   const foot = el('p', { class: 'foot' });
   showStorageInfo(foot);
@@ -1092,8 +1083,10 @@ async function showLibrary() {
     : null;
   // Gaya halaman depan dipakai juga saat rak kosong (dulu jatuh ke tampilan Klasik: tanpa navigasi & tanpa hero).
   const styled = !!homeStyle();
-  const empty = styled && !novels.length;
+  const empty = !novels.length;
   if (styled) bar.replaceChildren(bar.querySelector('h1'));
+  // Klasik: tombol Impor di bar tidak perlu saat rak kosong (sudah ada tombol besar di bagian atas).
+  else if (empty) bar.querySelector('.btn.primary')?.remove();
   const glass = styled && HOME_STYLES[homeStyle()].hero === 'glass';
   const [emptyHero, emptyBody] = empty ? emptyHome(glass) : [];
   const hero = empty ? emptyHero : styled ? (glass ? glassHero(novels, covers) : homeHero(novels, covers)) : null;
