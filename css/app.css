@@ -587,6 +587,36 @@ dialog.drawer {
 :root[data-dark] .badge.exists {
   color: #e8b25a;
 }
+.badge.same {
+  color: var(--muted);
+}
+.phead .pwhen {
+  color: var(--muted);
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+/* ---------- Riwayat impor ---------- */
+.imp-last { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin: 2px 0 10px; font-size: 0.85rem; color: var(--muted); }
+.imp-last svg { width: 16px; height: 16px; flex: none; }
+.imp-last b { color: var(--fg); font-weight: 600; }
+.imp-last .link-btn { font-size: inherit; padding: 0; }
+.ih-dlg .nv-label { text-align: left; margin: 0 0 4px; }
+.nv-imp { margin: 6px 0 0; }
+.ih-sum { margin: 0 0 12px; }
+.ih-check { margin-bottom: 4px; }
+.ih-check-out { min-height: 1.4em; margin: 0 0 14px; font-size: 0.9rem; overflow-wrap: anywhere; }
+.ih-check-out .ih-yes { color: var(--accent); }
+.ih-check-out .ih-no { color: #b26a00; }
+:root[data-dark] .ih-check-out .ih-no { color: #e8b25a; }
+.ih-list { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; margin: 6px 0 12px; }
+.ih-row { display: grid; grid-template-columns: minmax(5.5em, auto) 1fr; gap: 2px 12px; padding: 9px 12px; border-top: 1px solid var(--line); }
+.ih-row:first-child { border-top: 0; }
+.ih-when { font-size: 0.82rem; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; padding-top: 1px; }
+.ih-what { min-width: 0; }
+.ih-what b { display: block; font-weight: 600; overflow-wrap: anywhere; }
+.ih-what small { display: block; color: var(--muted); font-size: 0.8rem; overflow-wrap: anywhere; }
+@media (max-width: 380px) { .ih-row { grid-template-columns: 1fr; } }
 .pbody {
   padding: 0 12px 10px 38px;
   font-family: var(--read-font);
@@ -2085,12 +2115,16 @@ body:not([data-home]) .e-hero .h-cta { box-shadow: 0 10px 24px -12px color-mix(i
 :root:not([data-dark]) body:not([data-home]) .e-eclipse .brand-logo { filter: drop-shadow(0 12px 28px color-mix(in srgb, var(--accent) 30%, transparent)); }
 :root:not([data-dark]) body:not([data-home]) .e-ghost { border-color: color-mix(in srgb, var(--fg) 18%, transparent); }
 /* ---------- Bar atas halaman depan (semua gaya) ----------
-   Menempel di atas; bening di posisi paling atas (lukisan & bintang tetap tajam), latar kaca hampir pekat begitu
-   halaman digulir (body.scrolled). */
+   Bening (lukisan & bintang tetap tajam). Di Rak & Profil bar hanya berisi judul, jadi ikut tergulir bersama halaman
+   (position: absolute): dulu menempel dan berlatar gelap saat digulir, sehingga jadi pita hitam yang menutupi lukisan
+   sampul. Navigasi tetap di bar bawah. Halaman novel (tombol kembali & menu) tetap menempel, berlatar kaca saat digulir. */
 body[data-nav] .bar { background: transparent; border-bottom-color: transparent; backdrop-filter: none; -webkit-backdrop-filter: none;
   transition: transform 0.2s ease, background-color 0.2s ease, border-color 0.2s ease; }
 body[data-nav].scrolled .bar { background: rgb(var(--veil) / 0.92); border-bottom-color: color-mix(in srgb, var(--accent) 10%, transparent);
   backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+body[data-nav][data-page='rak'] .bar, body[data-nav][data-page='profil'] .bar { position: absolute; }
+body[data-nav][data-page='rak'].scrolled .bar, body[data-nav][data-page='profil'].scrolled .bar { background: transparent;
+  border-bottom-color: transparent; backdrop-filter: none; -webkit-backdrop-filter: none; }
 
 
 /* "bukumu": tanpa drop-shadow (filter pada teks bergradasi menggambar kotak samar di belakang kata). */

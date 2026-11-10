@@ -6,8 +6,12 @@
 // chapters: { novelId, num, title, paragraphs: string[], u }   key: [novelId, num]
 // meta:     { key: 'deletedNovels', value: { novelId: waktu } }
 // covers:   { novelId, data: 'data:image/jpeg;base64,…', u }   (novel.cover = { u } atau { u, del: true })
+// Riwayat impor: toc[].im = waktu chapter itu terakhir diimpor; novel.imports = [{ id, at, r: [[dari, sampai]], add, rep, src }]
+//           (terbaru dulu, maks IMPORT_LOG_MAX). Edit chapter tidak mengubah `im`.
 
-import { mergeNovel, maxMerge } from './merge.js';
+import { mergeNovel, maxMerge, IMPORT_LOG_MAX } from './merge.js';
+
+export { IMPORT_LOG_MAX };
 
 const DB_NAME = 'baca-novel';
 let dbp;
@@ -50,6 +54,17 @@ const result = (req) =>
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
   });
+
+/** [3, 4, 5, 9] → [[3, 5], [9, 9]] (chapter desimal jadi rentang sendiri). */
+function toRanges(nums) {
+  const out = [];
+  for (const n of nums) {
+    const last = out[out.length - 1];
+    if (last && Number.isInteger(n) && n === last[1] + 1) last[1] = n;
+    else out.push([n, n]);
+  }
+  return out;
+}
 
 const range = (novelId, from = -Infinity, to = Infinity) => IDBKeyRange.bound([novelId, from], [novelId, to]);
 
@@ -219,8 +234,12 @@ export async function getChapterRange(novelId, from, to) {
   );
 }
 
-/** Menyimpan chapter (menimpa nomor yang sama) dan memperbarui daftar isi dalam satu transaksi. */
-export async function saveChapters(novelId, items) {
+/**
+ * Menyimpan chapter (menimpa nomor yang sama) dan memperbarui daftar isi dalam satu transaksi.
+ * `importLog` ({ src }) = ini impor: waktu impor tiap chapter dicatat dan satu baris riwayat impor ditambahkan.
+ * Tanpa itu (edit chapter, rapikan TL note) waktu impor lama dipertahankan.
+ */
+export async function saveChapters(novelId, items, importLog = null) {
   const db = await open();
   const tx = db.transaction(['novels', 'chapters'], 'readwrite');
   const novels = tx.objectStore('novels');
@@ -231,12 +250,23 @@ export async function saveChapters(novelId, items) {
     const u = stamp();
     const toc = new Map(novel.toc.map((t) => [t.num, t]));
     novel.del ||= {};
+    let add = 0;
     for (const it of items) {
+      const prev = toc.get(it.num);
+      if (!prev) add++;
       chapters.put({ novelId, num: it.num, title: it.title, paragraphs: it.paragraphs, u });
-      toc.set(it.num, { num: it.num, title: it.title, n: it.paragraphs.length, u });
+      const entry = { num: it.num, title: it.title, n: it.paragraphs.length, u };
+      const im = importLog ? u : prev?.im;
+      if (im) entry.im = im;
+      toc.set(it.num, entry);
       delete novel.del[it.num];
     }
     novel.toc = [...toc.values()].sort((a, b) => a.num - b.num);
+    if (importLog && items.length) {
+      const nums = [...new Set(items.map((it) => it.num))].sort((a, b) => a - b);
+      const log = { id: newId(), at: u, r: toRanges(nums), add, rep: items.length - add, src: importLog.src || '' };
+      novel.imports = [log, ...(novel.imports || [])].slice(0, IMPORT_LOG_MAX);
+    }
     novel.updatedAt = Date.now();
     novels.put(novel);
   };

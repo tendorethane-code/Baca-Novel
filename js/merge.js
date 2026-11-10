@@ -7,7 +7,12 @@
 // - Posisi baca dan status baca: yang `at` lebih baru menang.
 // - Sampul: `cover = { u }` (atau `{ u, del: true }` bila dihapus); yang `u` lebih baru menang. Gambarnya disimpan terpisah.
 // - Bookmark: per id, versi `at` lebih baru menang; bookmark yang dihapus dicatat di `bdel[id]`.
+// - Riwayat impor: `imports` digabung per id (terbaru dulu, maks IMPORT_LOG_MAX); waktu impor chapter `toc[].im`
+//   diambil yang terbesar dari kedua sisi (edit di perangkat lain tidak menghapusnya).
 // Modul murni supaya bisa diuji dengan `node --test`.
+
+/** Jumlah maksimal baris riwayat impor per novel. */
+export const IMPORT_LOG_MAX = 60;
 
 const chapU = (novel, t) => t.u ?? novel.updatedAt ?? 0;
 const metaU = (novel) => (novel ? (novel.mu ?? novel.createdAt ?? 0) : -1);
@@ -42,7 +47,10 @@ export function mergeNovel(L, R) {
     if (l && r && l.u === r.u) [from, t] = ['same', l];
     else if (l && (!r || l.u > r.u)) [from, t] = ['L', l];
     else [from, t] = ['R', r];
-    toc.push({ num, title: t.title, n: t.n, u: t.u });
+    const entry = { num, title: t.title, n: t.n, u: t.u };
+    const im = Math.max(l?.im ?? 0, r?.im ?? 0);
+    if (im) entry.im = im;
+    toc.push(entry);
     chapters.set(num, { from, u: t.u, l: !!l, r: !!r });
   }
   toc.sort((a, b) => a.num - b.num);
@@ -68,11 +76,19 @@ export function mergeNovel(L, R) {
     bookmarks,
     bdel,
   };
+  const imports = mergeImports(L?.imports, R?.imports);
+  if (imports.length) novel.imports = imports;
   if (statuses[0]) novel.status = statuses[0];
   if (info) novel.info = info;
   if (covers[0]) novel.cover = covers[0];
   if (novel.lang === undefined) delete novel.lang;
   return { novel, chapters };
+}
+
+function mergeImports(a = [], b = []) {
+  const byId = new Map();
+  for (const e of [...a, ...b]) if (e?.id && !byId.has(e.id)) byId.set(e.id, e);
+  return [...byId.values()].sort((x, y) => y.at - x.at || (x.id < y.id ? -1 : 1)).slice(0, IMPORT_LOG_MAX);
 }
 
 function mergeBookmarks(L, R) {

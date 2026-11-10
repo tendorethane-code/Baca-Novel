@@ -139,6 +139,18 @@ async function busy(label, fn) {
 }
 
 const fmtNum = (n) => n.toLocaleString('id-ID');
+/** Waktu singkat: "Hari ini 14.58", "Kemarin 09.10", "3 Nov 14.20", "3 Nov 2025 14.20". */
+function fmtWhen(t) {
+  const d = new Date(t);
+  const now = new Date();
+  const hm = d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+  const day = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const diff = Math.round((day(now) - day(d)) / 864e5);
+  if (diff === 0) return `Hari ini ${hm}`;
+  if (diff === 1) return `Kemarin ${hm}`;
+  const opts = { day: 'numeric', month: 'short', ...(d.getFullYear() !== now.getFullYear() ? { year: 'numeric' } : {}) };
+  return `${d.toLocaleDateString('id-ID', opts)} ${hm}`;
+}
 const fmtBytes = (n) => (n > 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
 const safeFileName = (s) =>
   s
@@ -2071,6 +2083,7 @@ function novelParts(n, cover, { onBeforeNav = () => {} } = {}) {
     syn ? [el('div', { class: 'nv-label' }, 'Sinopsis'), syn, more] : null,
     source ? el('p', { class: 'nv-src' }, el('span', { class: 'muted' }, 'Sumber: '), source) : null,
     el('p', { class: 'nv-src muted' }, `Ditambahkan ${new Date(n.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`),
+    n.imports?.length ? el('div', { class: 'imp-last nv-imp' }, importSummary(n)) : null,
     empty && !locked ? el('p', { class: 'muted small' }, 'Belum ada info. Ketuk Edit info untuk menambahkan penulis, penerjemah, genre, sinopsis, dan sampul.') : null,
   );
   return { hero, readBtn, editBtn, tiles, gapBox, infoBox, idx, total };
@@ -2380,6 +2393,9 @@ async function novelMenu(n) {
       'Kelola',
       '',
       act('upload', 'Impor / tambah chapter', () => openImport(n.id)),
+      act('clock', 'Riwayat impor', () => openImportHistory(n.id), {
+        sub: n.imports?.[0] ? `Terakhir: Ch ${fmtRangesShort(n.imports[0].r, 2)} · ${fmtWhen(n.imports[0].at)}` : 'Chapter apa saja & kapan diimpor',
+      }),
       act('note', 'Rapikan TL note semua chapter', () => tidyTlNotes(n), { disabled: !has, change: true }),
       act('download', 'Ekspor & compile…', () => openExport(n), { disabled: !has, sub: 'EPUB atau .zip berisi .txt' }),
       act('pen', 'Edit judul & info novel', () => editNovelInfo(n), { change: true }),
@@ -2703,7 +2719,14 @@ async function openImport(presetNovelId) {
   );
   const titleIn = el('input', { type: 'text', placeholder: 'Judul novel' });
   const titleField = el('label', { class: 'field' }, el('span', null, 'Judul novel baru'), titleIn);
-  const syncTarget = () => titleField.classList.toggle('hidden', !!target.value);
+  // Novel tujuan dipilih: tampilkan impor terakhirnya, supaya tahu chapter mana yang sudah masuk.
+  const lastImport = el('div', { class: 'imp-last hidden' });
+  const syncTarget = () => {
+    titleField.classList.toggle('hidden', !!target.value);
+    const nv = novels.find((x) => x.id === target.value);
+    lastImport.classList.toggle('hidden', !nv);
+    if (nv) lastImport.replaceChildren(...importSummary(nv));
+  };
   target.onchange = syncTarget;
   syncTarget();
 
@@ -2865,6 +2888,7 @@ async function openImport(presetNovelId) {
       pastePane,
       filePane,
       el('div', { class: 'row-2' }, el('label', { class: 'field' }, el('span', null, 'Simpan ke'), target), titleField),
+      lastImport,
       err,
     ],
     actions: [
@@ -2897,12 +2921,16 @@ async function openImport(presetNovelId) {
           if (mode === 'file' && epub?.title && (!title || title === baseName(picked[0].name))) title = epub.title;
           if (!target.value && !title && mode === 'file' && picked.length) title = baseName(picked[0].name);
           // Teruskan ke pratinjau; dialog impor ditutup, pratinjau bisa kembali ke sini lewat tombol Batal.
-          pending = { res, novelId: target.value || null, title: title || 'Tanpa judul', epub };
+          const src = mode === 'paste' ? 'Tempel teks' : fileNames(picked.map((f) => f.name));
+          pending = { res, novelId: target.value || null, title: title || 'Tanpa judul', epub, src };
         },
       },
     ],
     onOpen: () => text.focus(),
   });
+  // Simpan draf sekarang juga: timer yang tertunda tidak boleh menulis ulang draf setelah impor tersimpan (lalu dihapus).
+  clearTimeout(draftTimer);
+  saveImportDraft(text.value);
   if (v === 'next' && pending) {
     const p = pending;
     pending = null;
@@ -2911,10 +2939,29 @@ async function openImport(presetNovelId) {
 }
 let pending = null;
 
-async function openPreview({ res, novelId, title, epub }) {
+async function openPreview({ res, novelId, title, epub, src }) {
   const novel = novelId ? await db.getNovel(novelId) : null;
   const existing = new Map((novel?.toc || []).map((t) => [t.num, t]));
   const items = res.items.map((it, i) => ({ ...it, i, on: !it.dup }));
+  // Chapter yang sudah ada: bandingkan isinya. Yang sama persis (impor ulang file yang sama) tidak dicentang,
+  // jadi yang tersisa hanya chapter baru & yang benar-benar direvisi.
+  const clash = [...new Set(items.filter((it) => existing.has(it.num)).map((it) => it.num))];
+  if (clash.length) {
+    const load = () => Promise.all(clash.map((num) => db.getChapter(novel.id, num)));
+    const olds = clash.length > 40 ? await busy('Membandingkan dengan chapter tersimpan…', load) : await load();
+    const byNum = new Map(olds.filter(Boolean).map((c) => [c.num, c]));
+    for (const it of items) {
+      const o = byNum.get(it.num);
+      if (o) it.same = sameChapter(o, it);
+      if (it.same) it.on = false;
+    }
+  }
+  const sameCount = items.filter((x) => x.same).length;
+  const notes = [...res.warnings];
+  if (sameCount)
+    notes.unshift(
+      `${fmtNum(sameCount)} chapter isinya sama persis dengan yang sudah tersimpan, jadi tidak dicentang (tidak perlu diimpor ulang).`,
+    );
 
   const summary = el('div', { class: 'summary' });
   const refreshSummary = () => {
@@ -2946,7 +2993,14 @@ async function openPreview({ res, novelId, title, epub }) {
       it.dup ? el('span', { class: 'badge dup' }, 'nomor kembar') : null,
       it.tl === 'fixed' ? el('span', { class: 'badge tl-fixed', title: 'Format TL note dirapikan otomatis' }, 'TL note dirapikan') : null,
       it.tl === 'ok' ? el('span', { class: 'badge tl-ok' }, 'TL note') : null,
-      existing.has(it.num) ? el('span', { class: 'badge exists' }, 'sudah ada') : el('span', { class: 'badge new' }, 'baru'),
+      existing.has(it.num)
+        ? el(
+            'span',
+            { class: `badge ${it.same ? 'same' : 'exists'}`, title: it.same ? 'Judul & isi sama dengan yang tersimpan' : 'Isinya berbeda dengan yang tersimpan' },
+            it.same ? 'sudah ada · sama' : 'sudah ada · beda',
+          )
+        : el('span', { class: 'badge new' }, 'baru'),
+      existing.get(it.num)?.im ? el('span', { class: 'pwhen' }, `diimpor ${fmtWhen(existing.get(it.num).im)}`) : null,
       el('span', { class: 'cnt' }, `${fmtNum(it.paragraphs.length)} par.`),
     );
     const exp = el('button', { type: 'button', class: 'expand', 'aria-label': 'Lihat isi', 'aria-expanded': 'false' }, '▸');
@@ -3022,11 +3076,11 @@ async function openPreview({ res, novelId, title, epub }) {
     className: 'wide',
     body: [
       summary,
-      res.warnings.length
+      notes.length
         ? el(
             'ul',
             { class: 'warnings' },
-            res.warnings.map((w) => el('li', null, w)),
+            notes.map((w) => el('li', null, w)),
           )
         : null,
       el(
@@ -3071,6 +3125,7 @@ async function openPreview({ res, novelId, title, epub }) {
     await db.saveChapters(
       target.id,
       save.map(({ num, title, paragraphs }) => ({ num, title, paragraphs })),
+      { src: src || '' },
     );
     // Dari EPUB: pengarang & sinopsis untuk novel baru, sampul bila novel belum punya.
     if (epub) {
@@ -3095,6 +3150,102 @@ async function openPreview({ res, novelId, title, epub }) {
   route();
 }
 
+const sameChapter = (a, b) =>
+  (a.title || '') === (b.title || '') && a.paragraphs.length === b.paragraphs.length && a.paragraphs.every((p, i) => p === b.paragraphs[i]);
+
+/** Nama file untuk riwayat impor: maks. 3 nama, sisanya "+N file". */
+function fileNames(names) {
+  const short = names.map((x) => baseName(x) || x);
+  return short.length > 3 ? `${short.slice(0, 3).join(', ')} +${short.length - 3} file` : short.join(', ');
+}
+
+/** Rentang chapter, dipotong bila terlalu banyak potongan. */
+const fmtRangesShort = (r, max = 6) => fmtRanges(r.slice(0, max)) + (r.length > max ? `, … (+${fmtNum(r.length - max)})` : '');
+const importCount = (e) =>
+  [`${fmtNum(e.add + e.rep)} chapter`, e.add ? `${fmtNum(e.add)} baru` : null, e.rep ? `${fmtNum(e.rep)} diganti` : null]
+    .filter(Boolean)
+    .join(' · ');
+
+/** Baris ringkas "Impor terakhir: Ch 228–229 · Hari ini 14.58 · Riwayat" (dialog impor & info novel). */
+function importSummary(n) {
+  const e = n.imports?.[0];
+  const btn = e
+    ? el('button', { type: 'button', class: 'link-btn', onclick: () => openImportHistory(n.id) }, 'Riwayat impor')
+    : null;
+  if (!e) {
+    const last = n.toc[n.toc.length - 1];
+    return [
+      icon('clock'),
+      el('span', null, last ? `Belum ada riwayat impor · chapter terakhir di novel: Ch ${last.num}` : 'Novel ini belum punya chapter.'),
+    ];
+  }
+  return [icon('clock'), el('span', null, 'Impor terakhir: ', el('b', null, `Ch ${fmtRangesShort(e.r, 3)}`), ` · ${fmtWhen(e.at)}`), btn];
+}
+
+/** Riwayat impor sebuah novel: kapan, chapter apa saja, dari mana; plus cek satu nomor chapter. */
+async function openImportHistory(novelId) {
+  const n = await db.getNovel(novelId);
+  if (!n) return;
+  const log = n.imports || [];
+  const byNum = new Map(n.toc.map((t) => [t.num, t]));
+  const last = n.toc[n.toc.length - 1];
+
+  const numIn = el('input', { type: 'text', inputmode: 'decimal', placeholder: 'Nomor chapter, mis. 229', 'aria-label': 'Cek nomor chapter' });
+  const out = el('p', { class: 'ih-check-out', 'aria-live': 'polite' });
+  const check = () => {
+    const raw = numIn.value.trim().replace(',', '.');
+    if (!raw) return out.replaceChildren();
+    const num = Number(raw);
+    if (!Number.isFinite(num)) return out.replaceChildren(el('span', { class: 'muted' }, 'Isi dengan angka.'));
+    const t = byNum.get(num);
+    if (!t) return out.replaceChildren(el('span', { class: 'ih-no' }, `Chapter ${raw} belum ada di novel ini.`));
+    const edited = t.im && t.u > t.im + 1000 ? ` · diedit setelahnya ${fmtWhen(t.u)}` : '';
+    out.replaceChildren(
+      el('b', null, chapterLabel(t.num, t.title)),
+      el('br'),
+      t.im
+        ? el('span', { class: 'ih-yes' }, `✓ Diimpor ${fmtWhen(t.im)}${edited}`)
+        : el('span', { class: 'muted' }, `✓ Sudah ada, waktu impornya tidak tercatat (masuk sebelum riwayat impor ada, atau dari sinkron versi lama) · diubah terakhir ${fmtWhen(t.u)}`),
+    );
+  };
+  numIn.addEventListener('input', check);
+
+  const rows = log.map((e) =>
+    el(
+      'div',
+      { class: 'ih-row' },
+      el('div', { class: 'ih-when' }, fmtWhen(e.at)),
+      el(
+        'div',
+        { class: 'ih-what' },
+        el('b', null, `Ch ${fmtRangesShort(e.r)}`),
+        el('small', null, [importCount(e), e.src].filter(Boolean).join(' · ')),
+      ),
+    ),
+  );
+  await dialog({
+    title: 'Riwayat impor',
+    className: 'ih-dlg',
+    body: [
+      el(
+        'p',
+        { class: 'ih-sum' },
+        el('b', null, n.title),
+        el('br'),
+        el('span', { class: 'muted' }, last ? `${fmtNum(n.toc.length)} chapter · terakhir Ch ${last.num}` : 'Belum ada chapter'),
+      ),
+      el('label', { class: 'field ih-check' }, el('span', null, 'Cek apakah chapter sudah diimpor'), numIn),
+      out,
+      el('div', { class: 'nv-label' }, log.length ? `Impor terbaru dulu (${fmtNum(log.length)})` : 'Impor'),
+      log.length
+        ? el('div', { class: 'ih-list' }, rows)
+        : el('p', { class: 'muted small' }, 'Belum ada riwayat. Riwayat mulai dicatat sejak pembaruan ini, jadi impor sebelumnya tidak tercatat.'),
+      el('p', { class: 'muted small' }, `Disimpan ${fmtNum(db.IMPORT_LOG_MAX)} impor terakhir dan ikut tersinkron. Edit chapter tidak tercatat di sini.`),
+    ],
+    actions: [{ label: 'Tutup', value: null }],
+  });
+}
+
 /** Menanyakan ganti/lewati untuk tiap chapter yang nomornya sudah ada. Mengembalikan { skip:Set } atau null bila batal. */
 async function askConflicts(conflicts, existing) {
   const radios = [];
@@ -3112,7 +3263,11 @@ async function askConflicts(conflicts, existing) {
         { class: 'what' },
         el('b', null, `Chapter ${c.num}`),
         el('br'),
-        el('span', { class: 'muted' }, `Lama: ${old.title || '(tanpa judul)'} · ${fmtNum(old.n)} par.`),
+        el(
+          'span',
+          { class: 'muted' },
+          `Lama: ${old.title || '(tanpa judul)'} · ${fmtNum(old.n)} par.${old.im ? ` · diimpor ${fmtWhen(old.im)}` : ''}`,
+        ),
         el('br'),
         el('span', null, `Baru: ${c.title || '(tanpa judul)'} · ${fmtNum(c.paragraphs.length)} par.`),
       ),
