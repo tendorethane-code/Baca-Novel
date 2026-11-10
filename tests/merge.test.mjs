@@ -103,3 +103,34 @@ test('stableStringify: urutan kunci tidak berpengaruh', () => {
   const b = mergeNovel(novel({ del: { 1: 5, 3: 5 } }), undefined).novel;
   assert.equal(stableStringify(a), stableStringify(b));
 });
+
+test('riwayat impor: digabung per id, terbaru dulu, dibatasi; waktu impor chapter ambil yang terbesar', async () => {
+  const { IMPORT_LOG_MAX } = await import('../js/merge.js');
+  const log = (id, at) => ({ id, at, r: [[1, 1]], add: 1, rep: 0, src: '' });
+  const L = novel({ toc: [{ ...ch(1, 10), im: 10 }, ch(2, 20)], imports: [log('a', 10), log('b', 30)] });
+  const R = novel({ toc: [{ ...ch(1, 15), im: 5 }, { ...ch(2, 20), im: 20 }], imports: [log('b', 30), log('c', 20)] });
+  const { novel: m } = mergeNovel(L, R);
+  assert.deepEqual(
+    m.imports.map((e) => e.id),
+    ['b', 'c', 'a'],
+  );
+  // Chapter 1: isi repo menang (u lebih baru), waktu impor tetap yang terbesar.
+  assert.equal(m.toc[0].u, 15);
+  assert.equal(m.toc[0].im, 10);
+  assert.equal(m.toc[1].im, 20);
+
+  // Sisi tanpa riwayat (aplikasi versi lama) tidak menghapus riwayat sisi lain.
+  const old = mergeNovel(novel({ toc: [ch(1, 10)] }), L).novel;
+  assert.equal(old.imports.length, 2);
+  assert.equal(old.toc[0].im, 10);
+
+  // Tanpa riwayat di kedua sisi: tidak ada kunci baru (library.json tidak berubah sia-sia).
+  const none = mergeNovel(novel({ toc: [ch(1, 10)] }), novel({ toc: [ch(1, 10)] })).novel;
+  assert.equal('imports' in none, false);
+  assert.equal('im' in none.toc[0], false);
+
+  const many = Array.from({ length: IMPORT_LOG_MAX + 10 }, (_, i) => log(`x${i}`, i));
+  const capped = mergeNovel(novel({ imports: many }), null).novel.imports;
+  assert.equal(capped.length, IMPORT_LOG_MAX);
+  assert.equal(capped[0].at, IMPORT_LOG_MAX + 9);
+});
