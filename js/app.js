@@ -154,6 +154,14 @@ function fmtDay(t) {
   return d.toLocaleDateString('id-ID', opts);
 }
 const fmtWhen = (t) => `${fmtDay(t)} ${fmtClock(t)}`;
+/** Waktu relatif singkat: "Baru saja", "5 mnt lalu", "2 jam lalu", lalu "Kemarin" / "15 Nov". */
+function fmtAgo(t) {
+  const m = Math.floor((Date.now() - t) / 60000);
+  if (m < 1) return 'Baru saja';
+  if (m < 60) return `${m} mnt lalu`;
+  if (m < 24 * 60 && fmtDay(t) === 'Hari ini') return `${Math.floor(m / 60)} jam lalu`;
+  return fmtDay(t);
+}
 const fmtBytes = (n) => (n > 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
 const safeFileName = (s) =>
   s
@@ -434,6 +442,7 @@ const DEFAULTS = {
   libFilter: 'all',
   libView: 'shelf',
   coverTap: 'popup',
+  trail: true, // strip "Jejak bacaan" di atas daftar chapter
   // Gaya halaman depan (perpustakaan, info novel, profil); layar baca tetap memakai tema warna di atas.
   homeStyle: 'neon',
 };
@@ -3413,7 +3422,7 @@ function tocTitle(title) {
 }
 
 /**
- * Daftar isi: tab Chapter (cari, urutan, ke chapter sekarang, per halaman 100), tab Bookmark, dan tab Riwayat.
+ * Daftar isi: tab Chapter (cari, urutan, ke chapter sekarang, jejak bacaan, per halaman 100) dan tab Bookmark.
  * Dipakai di layar baca dan di kartu novel perpustakaan. `idx` = indeks chapter yang sedang/terakhir dibaca (-1 bila belum),
  * `onChapter(i)` dan `onBookmark(num, para)` dipanggil setelah dialog ditutup.
  * opts.title: judul dialog (bawaan judul novel); opts.pickOnly: hanya tab chapter (untuk memilih rentang).
@@ -3542,63 +3551,166 @@ function tocBody(novel, idx, onChapter, onBookmark, opts = {}) {
         )
       : el('p', { class: 'muted toc-empty' }, 'Belum ada bookmark. Tambahkan lewat tombol Bookmark di panel baca.'),
   );
-  // Tab riwayat: posisi yang ditinggalkan saat lompat (terbaru dulu). Ketuk = lompat ke sana & disorot.
-  const histPane = el('div', { class: 'toc-pane toc-list', hidden: true });
+  // ----- Jejak bacaan (riwayat baca) -----
+  // Strip "Jejak" di atas daftar chapter: posisi yang ditinggalkan saat lompat, sebagai medali berisi nomor chapter
+  // dengan cincin = seberapa jauh di chapter itu. Tombol 🕘 membuka tampilan penuh (timeline per hari) yang juga
+  // berisi sakelar untuk menampilkan/menyembunyikan strip. Ketuk posisi = lompat ke sana & paragrafnya disorot.
   const byNum = new Map(novel.toc.map((t) => [t.num, t]));
-  function renderHist() {
-    const hs = (novel.hist || []).filter((h) => byNum.has(h.num));
-    histPane.replaceChildren(
-      ...(hs.length
-        ? [
-            ...hs.map((h) =>
-              el(
-                'button',
-                { type: 'button', class: 'toc-row bm-row hist-row', onclick: pick(() => onBookmark(h.num, h.para)) },
-                el('span', { class: 'n' }, h.num),
-                el(
-                  'span',
-                  { class: 't' },
-                  el('b', null, byNum.get(h.num).title || `Chapter ${h.num}`),
-                  h.text ? el('small', null, h.text) : null,
-                  el('span', { class: 'hist-when' }, `${fmtWhen(h.at)} · paragraf ${fmtNum(h.para + 1)}`),
-                ),
-              ),
-            ),
+  const nowNum = novel.toc[idx]?.num;
+  const hists = () => (novel.hist || []).filter((h) => byNum.has(h.num));
+  const ring = (h, size = 46) => {
+    const t = byNum.get(h.num);
+    const r = size / 2 - 3;
+    const c = 2 * Math.PI * r;
+    const pct = t?.n ? Math.min(1, (h.para + 1) / t.n) : 0;
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', `0 0 ${size} ${size}`);
+    svg.innerHTML =
+      `<circle class="rg-bg" cx="${size / 2}" cy="${size / 2}" r="${r}"/>` +
+      `<circle class="rg-fg" cx="${size / 2}" cy="${size / 2}" r="${r}" stroke-dasharray="${(pct * c).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 ${size / 2} ${size / 2})"/>`;
+    return el('span', { class: 'medal', style: `--sz:${size}px` }, svg, el('b', null, h.num));
+  };
+  const where = (h) => {
+    const n = byNum.get(h.num)?.n;
+    return n ? `paragraf ${fmtNum(h.para + 1)} dari ${fmtNum(n)}` : `paragraf ${fmtNum(h.para + 1)}`;
+  };
+  // Judul utama saja (bagian dalam kurung biasanya terjemahan, lihat tocTitle).
+  const mainTitle = (x) => (x ? /^(.+?)\s*\([^()]+\)\s*$/.exec(x)?.[1] || x : '');
+  const goH = (h) => pick(() => onBookmark(h.num, h.para));
+
+  const trail = el('div', { class: 'trail' });
+  function renderTrail() {
+    const hs = hists().filter((h) => h.num !== nowNum).slice(0, 8);
+    trail.hidden = !settings.trail || !hs.length;
+    histBtn.classList.toggle('dot', !settings.trail && hists().length > 0);
+    if (trail.hidden) return trail.replaceChildren();
+    trail.replaceChildren(
+      el('div', { class: 'trail-head' }, el('span', null, icon('clock'), 'Jejak bacaan'), el('button', { type: 'button', class: 'trail-all', onclick: () => openHist() }, 'Semua')),
+      el(
+        'div',
+        { class: 'trail-track' },
+        hs.map((h, i) =>
+          el(
+            'button',
+            { type: 'button', class: `stop${i ? '' : ' last'}`, style: `--i:${i}`, onclick: goH(h), title: `Chapter ${h.num} · ${where(h)}` },
+            ring(h),
             el(
-              'button',
-              {
-                type: 'button',
-                class: 'link-btn hist-clear',
-                onclick: async () => {
-                  await db.clearHistory(novel.id);
-                  novel.hist = [];
-                  renderHist();
-                  toast('Riwayat baca dihapus.');
-                },
-              },
-              'Hapus riwayat',
+              'span',
+              { class: 'stop-t' },
+              el('b', null, i ? fmtAgo(h.at) : 'Terakhir'),
+              el('small', null, i ? `¶ ${fmtNum(h.para + 1)}` : `${fmtAgo(h.at)} · ¶ ${fmtNum(h.para + 1)}`),
             ),
-          ]
-        : [
-            el(
-              'p',
-              { class: 'muted toc-empty' },
-              'Belum ada riwayat. Saat kamu lompat ke chapter lain (lewat daftar isi, cari, atau bookmark), posisi yang kamu tinggalkan dicatat di sini.',
-            ),
-          ]),
+          ),
+        ),
+      ),
     );
   }
-  renderHist();
+
+  const histBtn = iconBtn('clock', 'Jejak bacaan', () => openHist());
+  histBtn.classList.add('hist-btn');
+  const trailSwitch = el('button', { type: 'button', role: 'switch', class: 'switch', 'aria-label': 'Tampilkan jejak di atas daftar chapter' }, el('i'));
+  const syncSwitch = () => trailSwitch.setAttribute('aria-checked', String(!!settings.trail));
+  trailSwitch.onclick = () => {
+    settings.trail = !settings.trail;
+    saveSettings();
+    syncSwitch();
+    renderTrail();
+  };
+  const histList = el('div', { class: 'toc-list jl' });
+  let clearArmed = 0;
+  const clearBtn = el('button', { type: 'button', class: 'jl-clear' }, 'Hapus jejak');
+  clearBtn.onclick = async () => {
+    if (!clearArmed) {
+      clearBtn.textContent = 'Ketuk lagi untuk menghapus semua';
+      clearBtn.classList.add('armed');
+      clearArmed = setTimeout(() => {
+        clearArmed = 0;
+        clearBtn.textContent = 'Hapus jejak';
+        clearBtn.classList.remove('armed');
+      }, 3000);
+      return;
+    }
+    clearTimeout(clearArmed);
+    clearArmed = 0;
+    await db.clearHistory(novel.id);
+    novel.hist = [];
+    renderHist();
+    renderTrail();
+    toast('Jejak bacaan dihapus.');
+  };
+  const histCount = el('span', { class: 'jl-count' });
+  const histPane = el(
+    'div',
+    { class: 'toc-pane jl-pane', hidden: true },
+    el(
+      'div',
+      { class: 'jl-head' },
+      iconBtn('back', 'Kembali ke daftar chapter', () => closeHist()),
+      el('div', { class: 'jl-title' }, el('b', null, 'Jejak bacaan'), histCount),
+    ),
+    el('label', { class: 'jl-opt' }, el('span', null, 'Tampilkan di atas daftar chapter'), trailSwitch),
+    histList,
+  );
+  function renderHist() {
+    const hs = hists();
+    histCount.textContent = hs.length ? `${fmtNum(hs.length)} posisi` : '';
+    if (!hs.length) {
+      histList.replaceChildren(
+        el(
+          'div',
+          { class: 'jl-empty' },
+          icon('clock'),
+          el('b', null, 'Belum ada jejak'),
+          el('span', null, 'Saat kamu lompat ke chapter lain (lewat daftar isi, cari, atau bookmark), posisi yang kamu tinggalkan tersimpan di sini.'),
+        ),
+      );
+      return;
+    }
+    const nodes = [];
+    let day = null;
+    hs.forEach((h, i) => {
+      const d = fmtDay(h.at);
+      if (d !== day) nodes.push(el('div', { class: 'jl-day' }, (day = d)));
+      const t = byNum.get(h.num);
+      const pct = t?.n ? Math.min(100, ((h.para + 1) / t.n) * 100) : 0;
+      nodes.push(
+        el(
+          'button',
+          { type: 'button', class: `jl-item${i ? '' : ' last'}${h.num === nowNum ? ' now' : ''}`, onclick: goH(h) },
+          el('span', { class: 'jl-dot' }),
+          el(
+            'span',
+            { class: 'jl-body' },
+            el('span', { class: 'jl-top' }, el('b', null, `Ch ${h.num}`), el('span', null, mainTitle(t.title)), el('time', null, fmtClock(h.at))),
+            h.text ? el('span', { class: `jl-quote${/^["“'‘]/.test(h.text) ? '' : ' q'}` }, h.text) : null,
+            el('span', { class: 'jl-pos' }, el('i', { style: `--p:${pct.toFixed(1)}%` }), el('small', null, h.num === nowNum ? `${where(h)} · sedang dibuka` : where(h))),
+          ),
+        ),
+      );
+    });
+    nodes.push(clearBtn);
+    histList.replaceChildren(...nodes);
+  }
+  function openHist() {
+    renderHist();
+    syncSwitch();
+    panes.forEach((x) => (x.hidden = x !== histPane));
+  }
+  function closeHist() {
+    panes.forEach((x) => (x.hidden = x !== chPane));
+  }
   const chPane = el(
     'div',
     { class: 'toc-pane' },
-    el('div', { class: 'toc-tools' }, el('label', { class: 'toc-search' }, icon('search'), filter), sortBtn, locateBtn),
+    el('div', { class: 'toc-tools' }, el('label', { class: 'toc-search' }, icon('search'), filter), sortBtn, locateBtn, opts.pickOnly ? null : histBtn),
+    opts.pickOnly ? null : trail,
     list,
     pagerBar,
   );
   const panes = [chPane, bmPane, histPane];
+  renderTrail();
   const tab = (label, pane) => {
-    const b = el('button', { type: 'button', role: 'tab', 'aria-selected': String(pane === chPane) }, ...[label].flat());
+    const b = el('button', { type: 'button', role: 'tab', 'aria-selected': String(pane === chPane) }, label);
     b.onclick = () => {
       panes.forEach((x) => (x.hidden = x !== pane));
       b.parentNode.querySelectorAll('button').forEach((x) => x.setAttribute('aria-selected', String(x === b)));
@@ -3612,9 +3724,8 @@ function tocBody(novel, idx, onChapter, onBookmark, opts = {}) {
         : el(
             'div',
             { class: 'toc-tabs', role: 'tablist' },
-            tab(['Chapter', el('small', null, fmtNum(novel.toc.length))], chPane),
-            tab(['Bookmark', el('small', null, fmtNum(bms.length))], bmPane),
-            tab('Riwayat', histPane),
+            tab(`Chapter (${fmtNum(novel.toc.length)})`, chPane),
+            tab(`Bookmark (${fmtNum(bms.length)})`, bmPane),
           ),
       chPane,
       opts.pickOnly ? null : bmPane,
