@@ -8,10 +8,12 @@
 // covers:   { novelId, data: 'data:image/jpeg;base64,…', u }   (novel.cover = { u } atau { u, del: true })
 // Riwayat impor: toc[].im = waktu chapter itu terakhir diimpor; novel.imports = [{ id, at, r: [[dari, sampai]], add, rep, src }]
 //           (terbaru dulu, maks IMPORT_LOG_MAX). Edit chapter tidak mengubah `im`.
+// Riwayat baca: novel.hist = [{ num, para, text, at }] posisi yang ditinggalkan saat lompat (terbaru dulu, satu per chapter,
+//           maks HIST_MAX); novel.hclr = waktu riwayat dihapus.
 
-import { mergeNovel, maxMerge, IMPORT_LOG_MAX } from './merge.js';
+import { mergeNovel, maxMerge, addHistory, IMPORT_LOG_MAX, HIST_MAX } from './merge.js';
 
-export { IMPORT_LOG_MAX };
+export { IMPORT_LOG_MAX, HIST_MAX };
 
 const DB_NAME = 'baca-novel';
 let dbp;
@@ -114,6 +116,21 @@ async function patchNovel(id, fn) {
 export const updateMeta = (id, patch) => patchNovel(id, (n) => Object.assign(n, patch, { mu: stamp(), updatedAt: Date.now() }));
 
 export const setLastRead = (id, lastRead) => patchNovel(id, (n) => void (n.lastRead = lastRead));
+
+/** Catat posisi yang ditinggalkan ke riwayat baca. Mengembalikan riwayat baru. `e`: { num, para, text } */
+export async function pushHistory(id, e) {
+  const n = await patchNovel(id, (n) => {
+    n.hist = addHistory(n.hist, { num: e.num, para: e.para, text: (e.text || '').slice(0, 120), at: stamp() });
+  });
+  return n?.hist || [];
+}
+
+/** Kosongkan riwayat baca (ikut tersinkron lewat `hclr`). */
+export const clearHistory = (id) =>
+  patchNovel(id, (n) => {
+    n.hist = [];
+    n.hclr = stamp();
+  });
 
 export const setStatus = (id, v) => patchNovel(id, (n) => void (n.status = { v, at: stamp() }));
 
