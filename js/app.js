@@ -3572,7 +3572,7 @@ function tocBody(novel, idx, onChapter, onBookmark, opts = {}) {
   };
   const where = (h) => {
     const n = byNum.get(h.num)?.n;
-    return n ? `paragraf ${fmtNum(h.para + 1)} dari ${fmtNum(n)}` : `paragraf ${fmtNum(h.para + 1)}`;
+    return n ? `paragraf ${fmtNum(Math.min(h.para + 1, n))} dari ${fmtNum(n)}` : `paragraf ${fmtNum(h.para + 1)}`;
   };
   // Judul utama saja (bagian dalam kurung biasanya terjemahan, lihat tocTitle).
   const mainTitle = (x) => (x ? /^(.+?)\s*\([^()]+\)\s*$/.exec(x)?.[1] || x : '');
@@ -4225,6 +4225,7 @@ async function showReader(id, wantNum, wantPara = 0) {
   async function jump(i, para = 0, highlight, flash = false) {
     const t = novel.toc[i];
     if (!t) return;
+    if (i === idx && !para && !highlight && !flash) return; // chapter yang sama dipilih lagi: go() tidak berpindah
     const from = leaving(t.num, para);
     if (from) remember(from, article?.children[from.para]?.textContent || '');
     await go(i, para, highlight, flash);
