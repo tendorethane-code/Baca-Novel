@@ -601,7 +601,6 @@ dialog.drawer {
 .imp-last svg { width: 16px; height: 16px; flex: none; }
 .imp-last b { color: var(--fg); font-weight: 600; }
 .imp-last .link-btn { font-size: inherit; padding: 0; }
-.ih-dlg .nv-label { text-align: left; margin: 0 0 4px; }
 .nv-imp { margin: 6px 0 0; }
 .ih-sum { margin: 0 0 12px; }
 .ih-check { margin-bottom: 4px; }
@@ -609,14 +608,30 @@ dialog.drawer {
 .ih-check-out .ih-yes { color: var(--accent); }
 .ih-check-out .ih-no { color: #b26a00; }
 :root[data-dark] .ih-check-out .ih-no { color: #e8b25a; }
-.ih-list { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; margin: 6px 0 12px; }
-.ih-row { display: grid; grid-template-columns: minmax(5.5em, auto) 1fr; gap: 2px 12px; padding: 9px 12px; border-top: 1px solid var(--line); }
+/* Daftar impor: per hari, baris ringkas (jam · rentang · badge · nama file). */
+.ih-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin: 4px 0 2px; font-size: 0.95rem; }
+.ih-head .muted { font-size: 0.8rem; }
+.ih-days { margin: 0 0 12px; }
+.ih-day-h { margin: 14px 0 6px; font-size: 0.78rem; font-weight: 600; color: var(--muted); }
+.ih-list { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.ih-row {
+  display: grid; grid-template-columns: 3.1em minmax(0, 1fr); gap: 10px; align-items: baseline; width: 100%;
+  padding: 10px 12px; border: 0; border-top: 1px solid var(--line); background: none; color: inherit;
+  font: inherit; text-align: left;
+}
 .ih-row:first-child { border-top: 0; }
-.ih-when { font-size: 0.82rem; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; padding-top: 1px; }
-.ih-what { min-width: 0; }
-.ih-what b { display: block; font-weight: 600; overflow-wrap: anywhere; }
-.ih-what small { display: block; color: var(--muted); font-size: 0.8rem; overflow-wrap: anywhere; }
-@media (max-width: 380px) { .ih-row { grid-template-columns: 1fr; } }
+button.ih-row { cursor: pointer; }
+button.ih-row:hover { background: color-mix(in srgb, var(--fg) 4%, transparent); }
+.ih-time { font-size: 0.8rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.ih-what { display: grid; gap: 5px; min-width: 0; }
+.ih-ch { font-size: 0.95rem; font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.ih-more { font-weight: 500; color: var(--muted); white-space: nowrap; }
+.ih-meta { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 0.76rem; color: var(--muted); }
+.ih-tag { flex: none; padding: 1px 7px; border-radius: 99px; background: color-mix(in srgb, var(--fg) 8%, transparent); color: var(--fg); }
+.ih-tag.new { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); }
+.ih-src { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ih-row[aria-expanded='true'] .ih-meta { flex-wrap: wrap; }
+.ih-row[aria-expanded='true'] .ih-src { white-space: normal; overflow-wrap: anywhere; }
 .pbody {
   padding: 0 12px 10px 38px;
   font-family: var(--read-font);
@@ -955,6 +970,9 @@ dialog.toc-dlg .dlg-body { display: flex; flex-direction: column; overflow: hidd
   letter-spacing: 0.03em; text-transform: uppercase; color: var(--muted); border-bottom: 3px solid transparent;
 }
 .toc-tabs button[aria-selected='true'] { color: var(--fg); border-bottom-color: var(--accent); }
+.toc-tabs { gap: 10px; padding: 0 14px; }
+.toc-tabs button { white-space: nowrap; padding-left: 2px; padding-right: 2px; letter-spacing: 0.02em; font-size: 0.86rem; }
+.toc-tabs button small { margin-left: 5px; font-size: 0.8em; font-weight: 500; opacity: 0.7; font-variant-numeric: tabular-nums; }
 .toc-pane { display: flex; flex-direction: column; flex: 1; min-height: 0; }
 .toc-pane[hidden] { display: none; }
 .toc-tools { display: flex; gap: 8px; padding: 12px 18px; flex: none; border-bottom: 1px solid var(--line); }
@@ -981,6 +999,34 @@ dialog.toc-dlg .dlg-body { display: flex; flex-direction: column; overflow: hidd
 .bm-row { align-items: flex-start; padding: 10px 14px; }
 .bm-row .t { padding: 0; }
 .bm-row .t small { color: var(--muted); font-family: var(--read-font); font-size: 0.85rem; }
+.hist-row .t small { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.hist-when { color: var(--muted); font-size: 0.76rem; font-variant-numeric: tabular-nums; }
+.hist-clear { align-self: center; margin: 10px 0 4px; font-size: 0.85rem; color: var(--muted); }
+
+/* Tombol "Kembali ke Ch …" setelah lompat jauh. */
+.read-back {
+  position: fixed; z-index: 25; left: 16px; right: 16px; bottom: calc(18px + env(safe-area-inset-bottom));
+  width: max-content; max-width: calc(100% - 32px); margin: 0 auto;
+  display: flex; align-items: center; gap: 2px; padding: 4px 4px 4px 6px;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line)); border-radius: 999px;
+  background: color-mix(in srgb, var(--panel, var(--bg)) 88%, transparent); color: var(--fg);
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.55);
+  animation: rb-in 0.22s ease-out;
+}
+.read-back[hidden] { display: none; }
+html.panel-open .read-back { display: none; }
+body:has(.read-back:not([hidden])) #toasts { bottom: calc(76px + env(safe-area-inset-bottom)); }
+.rb-go {
+  display: flex; align-items: center; gap: 8px; min-width: 0; min-height: 40px; padding: 0 8px 0 6px;
+  border: 0; border-radius: 999px; background: none; color: inherit; cursor: pointer; font: inherit; text-align: left;
+}
+.rb-go svg { width: 18px; height: 18px; flex: none; color: var(--accent); }
+.rb-label { display: grid; min-width: 0; line-height: 1.2; }
+.rb-label b { font-size: 0.88rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rb-label small { font-size: 0.72rem; color: var(--muted); }
+.read-back .icon-btn { width: 36px; height: 36px; flex: none; }
+.read-back .icon-btn svg { width: 16px; height: 16px; }
+@keyframes rb-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 .toc-empty { text-align: center; padding: 24px 8px; }
 .toc-pager { display: flex; gap: 6px; padding: 10px 18px calc(12px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); flex: none; }
 .toc-pager[hidden] { display: none; }

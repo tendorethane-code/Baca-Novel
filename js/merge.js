@@ -9,10 +9,28 @@
 // - Bookmark: per id, versi `at` lebih baru menang; bookmark yang dihapus dicatat di `bdel[id]`.
 // - Riwayat impor: `imports` digabung per id (terbaru dulu, maks IMPORT_LOG_MAX); waktu impor chapter `toc[].im`
 //   diambil yang terbesar dari kedua sisi (edit di perangkat lain tidak menghapusnya).
+// - Riwayat baca: `hist = [{ num, para, text, at }]` (terbaru dulu, satu baris per chapter, maks HIST_MAX) digabung;
+//   per chapter `at` terbaru menang. `hclr` = waktu riwayat dihapus; baris yang lebih lama dari itu dibuang.
 // Modul murni supaya bisa diuji dengan `node --test`.
 
 /** Jumlah maksimal baris riwayat impor per novel. */
 export const IMPORT_LOG_MAX = 60;
+/** Jumlah maksimal baris riwayat baca per novel. */
+export const HIST_MAX = 30;
+
+/** Riwayat baca yang dirapikan: terbaru dulu, satu baris per chapter, tidak lebih tua dari `clr`, maks HIST_MAX. */
+function tidyHistory(list, clr = 0) {
+  const byNum = new Map();
+  for (const e of list) {
+    if (!e || !(e.at > clr)) continue;
+    const prev = byNum.get(e.num);
+    if (!prev || e.at > prev.at) byNum.set(e.num, e);
+  }
+  return [...byNum.values()].sort((a, b) => b.at - a.at || a.num - b.num).slice(0, HIST_MAX);
+}
+
+/** Tambah satu posisi ke riwayat baca (baris lama chapter yang sama diganti). */
+export const addHistory = (hist = [], e) => tidyHistory([e, ...hist]);
 
 const chapU = (novel, t) => t.u ?? novel.updatedAt ?? 0;
 const metaU = (novel) => (novel ? (novel.mu ?? novel.createdAt ?? 0) : -1);
@@ -78,6 +96,10 @@ export function mergeNovel(L, R) {
   };
   const imports = mergeImports(L?.imports, R?.imports);
   if (imports.length) novel.imports = imports;
+  const hclr = Math.max(L?.hclr ?? 0, R?.hclr ?? 0);
+  const hist = tidyHistory([...(L?.hist || []), ...(R?.hist || [])], hclr);
+  if (hist.length) novel.hist = hist;
+  if (hclr) novel.hclr = hclr;
   if (statuses[0]) novel.status = statuses[0];
   if (info) novel.info = info;
   if (covers[0]) novel.cover = covers[0];

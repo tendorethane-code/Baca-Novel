@@ -44,6 +44,7 @@ function el(tag, attrs, ...kids) {
 
 const ICONS = {
   back: 'M15 18l-6-6 6-6',
+  undo: 'M9 14 4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11',
   toc: 'M4 6h16M4 12h16M4 18h10',
   type: 'M4 7V5h11v2M9.5 5v14M7 19h5M14 12v-1.5h7V12M17.5 10.5V19M16 19h3',
   plus: 'M12 5v14M5 12h14',
@@ -140,17 +141,19 @@ async function busy(label, fn) {
 
 const fmtNum = (n) => n.toLocaleString('id-ID');
 /** Waktu singkat: "Hari ini 14.58", "Kemarin 09.10", "3 Nov 14.20", "3 Nov 2025 14.20". */
-function fmtWhen(t) {
+const fmtClock = (t) => new Date(t).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+/** Nama hari: "Hari ini", "Kemarin", atau "15 Nov" (plus tahun bila bukan tahun ini). */
+function fmtDay(t) {
   const d = new Date(t);
   const now = new Date();
-  const hm = d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
   const day = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
   const diff = Math.round((day(now) - day(d)) / 864e5);
-  if (diff === 0) return `Hari ini ${hm}`;
-  if (diff === 1) return `Kemarin ${hm}`;
+  if (diff === 0) return 'Hari ini';
+  if (diff === 1) return 'Kemarin';
   const opts = { day: 'numeric', month: 'short', ...(d.getFullYear() !== now.getFullYear() ? { year: 'numeric' } : {}) };
-  return `${d.toLocaleDateString('id-ID', opts)} ${hm}`;
+  return d.toLocaleDateString('id-ID', opts);
 }
+const fmtWhen = (t) => `${fmtDay(t)} ${fmtClock(t)}`;
 const fmtBytes = (n) => (n > 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
 const safeFileName = (s) =>
   s
@@ -1133,7 +1136,7 @@ function openToc(n) {
   openTocDialog(
     n,
     idx,
-    (i) => (location.hash = `#/read/${encodeURIComponent(n.id)}/${n.toc[i].num}`),
+    (i) => (location.hash = jumpHash(n.id, n.toc[i].num)),
     (num, para) => (location.hash = bookmarkHash(n.id, num, para)),
   );
 }
@@ -1808,7 +1811,7 @@ function novelCard(n, cover) {
                 openTocDialog(
                   n,
                   idx,
-                  (i) => (location.hash = `#/read/${encodeURIComponent(n.id)}/${n.toc[i].num}`),
+                  (i) => (location.hash = jumpHash(n.id, n.toc[i].num)),
                   (num, para) => (location.hash = bookmarkHash(n.id, num, para)),
                 ),
             },
@@ -1926,12 +1929,17 @@ function byline(n) {
 const novelHash = (id) => `#/novel/${encodeURIComponent(id)}`;
 const readHash = (id, num, para) =>
   `#/read/${encodeURIComponent(id)}${num != null ? `/${num}${para ? `/${para}` : ''}` : ''}`;
-/** Lompat ke bookmark dari luar layar baca: sama dengan readHash, dan paragrafnya disorot saat dibuka. */
-let flashNext = '';
-const bookmarkHash = (id, num, para) => {
-  flashNext = `${id}:${num}:${para || 0}`;
+/**
+ * Lompat ke chapter/posisi tertentu dari luar layar baca (daftar isi, bookmark, riwayat): sama dengan readHash,
+ * tapi layar baca tahu ini lompatan, jadi posisi terakhir dicatat ke riwayat & muncul tombol Kembali.
+ * `flash`: sorot paragraf tujuan (bookmark, riwayat). Membuka ulang/memuat ulang halaman tidak dianggap lompatan.
+ */
+let jumpNext = null;
+const jumpHash = (id, num, para, flash = false) => {
+  jumpNext = { key: `${id}:${num}:${para || 0}`, flash };
   return readHash(id, num, para);
 };
+const bookmarkHash = (id, num, para) => jumpHash(id, num, para, true);
 
 /** Buka info novel sesuai pilihan di Pengaturan: popup (bawaan) atau halaman lengkap. */
 async function openNovelInfo(n) {
@@ -2113,7 +2121,7 @@ async function openNovelPopup(n) {
           parts.idx,
           (k) => {
             close();
-            location.hash = readHash(n.id, n.toc[k].num);
+            location.hash = jumpHash(n.id, n.toc[k].num);
           },
           (num, para) => {
             close();
@@ -2173,7 +2181,7 @@ async function showNovel(id) {
     ? tocBody(
         n,
         parts.idx,
-        (k) => (location.hash = readHash(n.id, n.toc[k].num)),
+        (k) => (location.hash = jumpHash(n.id, n.toc[k].num)),
         (num, para) => (location.hash = bookmarkHash(n.id, num, para)),
       )
     : null;
@@ -3216,18 +3224,39 @@ async function openImportHistory(novelId) {
   };
   numIn.addEventListener('input', check);
 
-  const rows = log.map((e) =>
-    el(
-      'div',
-      { class: 'ih-row' },
-      el('div', { class: 'ih-when' }, fmtWhen(e.at)),
-      el(
-        'div',
-        { class: 'ih-what' },
-        el('b', null, `Ch ${fmtRangesShort(e.r)}`),
-        el('small', null, [importCount(e), e.src].filter(Boolean).join(' · ')),
-      ),
-    ),
+  // Dikelompokkan per hari; tiap baris: jam · rentang chapter · badge jumlah · nama file.
+  // Rentang yang panjang dipotong; ketuk barisnya untuk melihat semua rentang & nama file lengkap.
+  const IH_SHOWN = 4;
+  const row = (e) => {
+    const long = e.r.length > IH_SHOWN + 1; // jangan sembunyikan cuma satu potongan
+    const short = () => (long ? [`Ch ${fmtRanges(e.r.slice(0, IH_SHOWN))}`, el('span', { class: 'ih-more' }, ` +${fmtNum(e.r.length - IH_SHOWN)} lagi`)] : `Ch ${fmtRanges(e.r)}`);
+    const what = el('b', { class: 'ih-ch' }, ...[short()].flat());
+    const src = e.src ? el('span', { class: 'ih-src' }, e.src) : null;
+    const meta = el(
+      'span',
+      { class: 'ih-meta' },
+      e.add ? el('span', { class: 'ih-tag new' }, `${fmtNum(e.add)} baru`) : null,
+      e.rep ? el('span', { class: 'ih-tag' }, `${fmtNum(e.rep)} diganti`) : null,
+      src,
+    );
+    const body = [el('span', { class: 'ih-time' }, fmtClock(e.at)), el('span', { class: 'ih-what' }, what, meta)];
+    if (!long && !e.src) return el('div', { class: 'ih-row' }, body);
+    const btn = el('button', { type: 'button', class: 'ih-row', 'aria-expanded': 'false' }, body);
+    btn.onclick = () => {
+      const open = btn.getAttribute('aria-expanded') !== 'true';
+      btn.setAttribute('aria-expanded', String(open));
+      what.replaceChildren(...[open ? `Ch ${fmtRanges(e.r)}` : short()].flat());
+    };
+    return btn;
+  };
+  const groups = [];
+  for (const e of log) {
+    const day = fmtDay(e.at);
+    if (groups.at(-1)?.day !== day) groups.push({ day, items: [] });
+    groups.at(-1).items.push(e);
+  }
+  const rows = groups.map((g) =>
+    el('section', { class: 'ih-day' }, el('h3', { class: 'ih-day-h' }, g.day), el('div', { class: 'ih-list' }, g.items.map(row))),
   );
   await dialog({
     title: 'Riwayat impor',
@@ -3242,9 +3271,9 @@ async function openImportHistory(novelId) {
       ),
       el('label', { class: 'field ih-check' }, el('span', null, 'Cek apakah chapter sudah diimpor'), numIn),
       out,
-      el('div', { class: 'nv-label' }, log.length ? `Impor terbaru dulu (${fmtNum(log.length)})` : 'Impor'),
+      el('div', { class: 'ih-head' }, el('b', null, 'Impor'), log.length ? el('span', { class: 'muted' }, `${fmtNum(log.length)} · terbaru di atas`) : null),
       log.length
-        ? el('div', { class: 'ih-list' }, rows)
+        ? el('div', { class: 'ih-days' }, rows)
         : el('p', { class: 'muted small' }, 'Belum ada riwayat. Riwayat mulai dicatat sejak pembaruan ini, jadi impor sebelumnya tidak tercatat.'),
       el('p', { class: 'muted small' }, `Disimpan ${fmtNum(db.IMPORT_LOG_MAX)} impor terakhir dan ikut tersinkron. Edit chapter tidak tercatat di sini.`),
     ],
@@ -3384,7 +3413,7 @@ function tocTitle(title) {
 }
 
 /**
- * Daftar isi: tab Chapter (cari, urutan, ke chapter sekarang, per halaman 100) dan tab Bookmark.
+ * Daftar isi: tab Chapter (cari, urutan, ke chapter sekarang, per halaman 100), tab Bookmark, dan tab Riwayat.
  * Dipakai di layar baca dan di kartu novel perpustakaan. `idx` = indeks chapter yang sedang/terakhir dibaca (-1 bila belum),
  * `onChapter(i)` dan `onBookmark(num, para)` dipanggil setelah dialog ditutup.
  * opts.title: judul dialog (bawaan judul novel); opts.pickOnly: hanya tab chapter (untuk memilih rentang).
@@ -3513,6 +3542,53 @@ function tocBody(novel, idx, onChapter, onBookmark, opts = {}) {
         )
       : el('p', { class: 'muted toc-empty' }, 'Belum ada bookmark. Tambahkan lewat tombol Bookmark di panel baca.'),
   );
+  // Tab riwayat: posisi yang ditinggalkan saat lompat (terbaru dulu). Ketuk = lompat ke sana & disorot.
+  const histPane = el('div', { class: 'toc-pane toc-list', hidden: true });
+  const byNum = new Map(novel.toc.map((t) => [t.num, t]));
+  function renderHist() {
+    const hs = (novel.hist || []).filter((h) => byNum.has(h.num));
+    histPane.replaceChildren(
+      ...(hs.length
+        ? [
+            ...hs.map((h) =>
+              el(
+                'button',
+                { type: 'button', class: 'toc-row bm-row hist-row', onclick: pick(() => onBookmark(h.num, h.para)) },
+                el('span', { class: 'n' }, h.num),
+                el(
+                  'span',
+                  { class: 't' },
+                  el('b', null, byNum.get(h.num).title || `Chapter ${h.num}`),
+                  h.text ? el('small', null, h.text) : null,
+                  el('span', { class: 'hist-when' }, `${fmtWhen(h.at)} · paragraf ${fmtNum(h.para + 1)}`),
+                ),
+              ),
+            ),
+            el(
+              'button',
+              {
+                type: 'button',
+                class: 'link-btn hist-clear',
+                onclick: async () => {
+                  await db.clearHistory(novel.id);
+                  novel.hist = [];
+                  renderHist();
+                  toast('Riwayat baca dihapus.');
+                },
+              },
+              'Hapus riwayat',
+            ),
+          ]
+        : [
+            el(
+              'p',
+              { class: 'muted toc-empty' },
+              'Belum ada riwayat. Saat kamu lompat ke chapter lain (lewat daftar isi, cari, atau bookmark), posisi yang kamu tinggalkan dicatat di sini.',
+            ),
+          ]),
+    );
+  }
+  renderHist();
   const chPane = el(
     'div',
     { class: 'toc-pane' },
@@ -3520,11 +3596,11 @@ function tocBody(novel, idx, onChapter, onBookmark, opts = {}) {
     list,
     pagerBar,
   );
-  const tab = (label, pane, other) => {
-    const b = el('button', { type: 'button', role: 'tab', 'aria-selected': String(pane === chPane) }, label);
+  const panes = [chPane, bmPane, histPane];
+  const tab = (label, pane) => {
+    const b = el('button', { type: 'button', role: 'tab', 'aria-selected': String(pane === chPane) }, ...[label].flat());
     b.onclick = () => {
-      pane.hidden = false;
-      other.hidden = true;
+      panes.forEach((x) => (x.hidden = x !== pane));
       b.parentNode.querySelectorAll('button').forEach((x) => x.setAttribute('aria-selected', String(x === b)));
     };
     return b;
@@ -3536,11 +3612,13 @@ function tocBody(novel, idx, onChapter, onBookmark, opts = {}) {
         : el(
             'div',
             { class: 'toc-tabs', role: 'tablist' },
-            tab(`Chapter (${fmtNum(novel.toc.length)})`, chPane, bmPane),
-            tab(`Bookmark (${fmtNum(bms.length)})`, bmPane, chPane),
+            tab(['Chapter', el('small', null, fmtNum(novel.toc.length))], chPane),
+            tab(['Bookmark', el('small', null, fmtNum(bms.length))], bmPane),
+            tab('Riwayat', histPane),
           ),
       chPane,
       opts.pickOnly ? null : bmPane,
+      opts.pickOnly ? null : histPane,
     ].filter(Boolean),
     locate,
   };
@@ -3600,9 +3678,16 @@ async function showReader(id, wantNum, wantPara = 0) {
     if (idx < 0) idx = novel.toc.length - 1;
     para = 0;
   }
-  // Dibuka dari bookmark (lihat bookmarkHash)? Sorot paragrafnya, asal chapter itu masih ada.
-  const flashFirst = flashNext === `${id}:${wantNum}:${wantPara}` && novel.toc[idx].num === wantNum;
-  flashNext = '';
+  // Dibuka lewat lompatan (lihat jumpHash)? Posisi terakhir masuk riwayat & bisa dikembalikan;
+  // untuk bookmark/riwayat, paragraf tujuan disorot (asal chapter itu masih ada).
+  const intent = jumpNext?.key === `${id}:${wantNum}:${wantPara}` ? jumpNext : null;
+  jumpNext = null;
+  const flashFirst = !!intent?.flash && novel.toc[idx].num === wantNum;
+  const lr0 = novel.lastRead;
+  const leftAt =
+    intent && lr0 && novel.toc.some((t) => t.num === lr0.num) && !(lr0.num === novel.toc[idx].num && Math.abs(lr0.para - para) <= 3)
+      ? { num: lr0.num, para: lr0.para }
+      : null;
 
   // Panel baca: tersembunyi saat membaca, muncul dari bawah saat teks diketuk.
   // Isinya judul & progres, baris tombol (bisa diatur di Pengaturan), dan pengaturan huruf.
@@ -3693,7 +3778,16 @@ async function showReader(id, wantNum, wantPara = 0) {
   let current = null; // { entry, chapter }
   let token = 0;
 
-  setView([main, backdrop, panel, lockLayer], () => {
+  // Tombol Kembali (lihat "Riwayat baca & tombol Kembali" di bawah).
+  let back = null; // { num, para, y }: tujuan tombol Kembali; y = posisi gulir saat mendarat
+  const backLabel = el('span', { class: 'rb-label' });
+  const backBar = el(
+    'div',
+    { class: 'read-back', hidden: true },
+    el('button', { type: 'button', class: 'rb-go', onclick: () => back && goNum(back.num, back.para, null, true) }, icon('undo'), backLabel),
+    iconBtn('close', 'Tutup tombol kembali', () => hideBack()),
+  );
+  setView([main, backBar, backdrop, panel, lockLayer], () => {
     saveNow();
     showPanel(false);
     setTouchLock(false);
@@ -3774,6 +3868,7 @@ async function showReader(id, wantNum, wantPara = 0) {
     const y = window.scrollY;
     // Panel hanya muncul lewat ketukan; menggulir menutupnya lagi.
     if (controls && Math.abs(y - lastY) > 8) showPanel(false);
+    if (back && Math.abs(y - back.y) > window.innerHeight * 2) hideBack();
     lastY = y;
     scheduleSave();
   }
@@ -3979,14 +4074,51 @@ async function showReader(id, wantNum, wantPara = 0) {
     if (i < 0 || i >= novel.toc.length) return;
     if (i === idx && !para && !highlight && !flash) return;
     saveNow();
+    hideBack(); // pindah chapter berurutan: tombol Kembali tidak relevan lagi (lompatan memunculkannya lagi)
     idx = i;
-    render(para, highlight, flash);
+    return render(para, highlight, flash);
   }
+  // Lompat (cari, bookmark, riwayat): selalu lewat jump supaya posisi sekarang masuk riwayat.
   const goNum = (num, para, highlight, flash = false) => {
     const i = novel.toc.findIndex((t) => t.num === num);
     if (i < 0) return toast(`Chapter ${num} sudah tidak ada.`);
-    go(i, para, highlight, flash);
+    jump(i, para, highlight, flash);
   };
+
+  // ----- Riwayat baca & tombol Kembali -----
+  // Lompat jauh (daftar isi, cari, bookmark, riwayat, Kembali) mencatat posisi yang ditinggalkan ke riwayat baca
+  // dan memunculkan tombol "Kembali" ke sana. Pindah chapter berurutan (‹ ›, lanjut) tidak dicatat.
+  // Tombol hilang saat ditutup, saat pindah chapter berurutan, atau setelah menggulir ±2 layar (sudah lanjut baca di sini).
+  function hideBack() {
+    back = null;
+    backBar.hidden = true;
+  }
+  function showBack(pos) {
+    if (!pos) return;
+    back = { num: pos.num, para: pos.para, y: window.scrollY };
+    backLabel.replaceChildren(el('b', null, `Kembali ke Ch ${pos.num}`), el('small', null, `paragraf ${fmtNum(pos.para + 1)}`));
+    backBar.hidden = false;
+  }
+  /** Catat posisi ke riwayat (teks paragraf ikut disimpan sebagai cuplikan). */
+  function remember(pos, text) {
+    db.pushHistory(novel.id, { ...pos, text })
+      .then((h) => (novel.hist = h))
+      .catch((e) => console.error(e));
+  }
+  /** Posisi sekarang, bila cukup jauh dari tujuan lompatan (chapter lain, atau > 3 paragraf). */
+  function leaving(num, para) {
+    if (!current) return null;
+    const pos = { num: current.entry.num, para: anchor() };
+    return pos.num === num && Math.abs(pos.para - para) <= 3 ? null : pos;
+  }
+  async function jump(i, para = 0, highlight, flash = false) {
+    const t = novel.toc[i];
+    if (!t) return;
+    const from = leaving(t.num, para);
+    if (from) remember(from, article?.children[from.para]?.textContent || '');
+    await go(i, para, highlight, flash);
+    showBack(from);
+  }
 
   // ----- Bookmark -----
   function openBookmarks() {
@@ -4165,7 +4297,7 @@ async function showReader(id, wantNum, wantPara = 0) {
     });
   }
 
-  const openToc = () => openTocDialog(novel, idx, (i) => go(i), (num, para) => goNum(num, para, null, true));
+  const openToc = () => openTocDialog(novel, idx, (i) => jump(i), (num, para) => goNum(num, para, null, true));
 
   // Menu "lainnya". Edit sengaja ditaruh di sini (bukan di bar) dan dipisah dari tombol biasa,
   // supaya tidak terpencet tanpa sengaja.
@@ -4281,7 +4413,7 @@ async function showReader(id, wantNum, wantPara = 0) {
     const fresh = await db.getNovel(novel.id);
     if (!fresh || !current) return;
     const mine = novel.lastRead;
-    Object.assign(novel, { title: fresh.title, toc: fresh.toc, bookmarks: fresh.bookmarks });
+    Object.assign(novel, { title: fresh.title, toc: fresh.toc, bookmarks: fresh.bookmarks, hist: fresh.hist });
     markBookmarks();
     const at = novel.toc.findIndex((t) => t.num === current.entry.num);
     if (at >= 0) idx = at;
@@ -4292,18 +4424,19 @@ async function showReader(id, wantNum, wantPara = 0) {
       novel.lastRead = lr;
       toast(`Perangkat lain terakhir membaca Chapter ${lr.num}.`, {
         label: 'Lompat',
-        run: () => {
-          const i = novel.toc.findIndex((t) => t.num === lr.num);
-          if (i < 0) return;
-          idx = i;
-          render(lr.para);
-        },
+        run: () => goNum(lr.num, lr.para),
       });
     }
   }
 
   readerHooks = { anchor: () => anchor(), restore, refreshRecap, onSynced, rebuildBar };
   await render(para, null, flashFirst);
+  if (leftAt) {
+    showBack(leftAt);
+    db.getChapter(novel.id, leftAt.num)
+      .then((c) => remember(leftAt, c?.paragraphs?.[leftAt.para] || ''))
+      .catch((e) => console.error(e));
+  }
 }
 
 function onLockChange() {

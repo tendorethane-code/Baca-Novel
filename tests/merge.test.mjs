@@ -1,7 +1,7 @@
 // Jalankan: node --test tests/*.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mergeNovel, novelActivity, maxMerge, stableStringify } from '../js/merge.js';
+import { mergeNovel, novelActivity, maxMerge, stableStringify, addHistory, HIST_MAX } from '../js/merge.js';
 
 const novel = (over) => ({ id: 'n1', title: 'A', createdAt: 1, updatedAt: 1, mu: 1, toc: [], del: {}, lastRead: null, ...over });
 const ch = (num, u, title = `T${num}`) => ({ num, title, n: 1, u });
@@ -133,4 +133,31 @@ test('riwayat impor: digabung per id, terbaru dulu, dibatasi; waktu impor chapte
   const capped = mergeNovel(novel({ imports: many }), null).novel.imports;
   assert.equal(capped.length, IMPORT_LOG_MAX);
   assert.equal(capped[0].at, IMPORT_LOG_MAX + 9);
+});
+
+test('riwayat baca: satu baris per chapter, terbaru dulu, maks HIST_MAX', () => {
+  let h = [];
+  h = addHistory(h, { num: 231, para: 14, at: 10 });
+  h = addHistory(h, { num: 50, para: 0, at: 20 });
+  h = addHistory(h, { num: 231, para: 30, at: 30 });
+  assert.deepEqual(h.map((e) => [e.num, e.para]), [[231, 30], [50, 0]]);
+  for (let i = 0; i < HIST_MAX + 5; i++) h = addHistory(h, { num: 1000 + i, para: 0, at: 100 + i });
+  assert.equal(h.length, HIST_MAX);
+  assert.equal(h[0].num, 1000 + HIST_MAX + 4);
+});
+
+test('riwayat baca: gabungan dua perangkat, hapus riwayat (hclr) menang atas baris lama', () => {
+  const L = novel({ hist: [{ num: 231, para: 14, at: 40 }, { num: 50, para: 2, at: 10 }] });
+  const R = novel({ hist: [{ num: 50, para: 9, at: 30 }, { num: 7, para: 1, at: 20 }] });
+  const { novel: m } = mergeNovel(L, R);
+  assert.deepEqual(m.hist.map((e) => [e.num, e.para]), [[231, 14], [50, 9], [7, 1]]);
+  assert.equal(m.hclr, undefined);
+
+  const C = novel({ hist: [], hclr: 25 });
+  const { novel: m2 } = mergeNovel(C, R);
+  assert.deepEqual(m2.hist.map((e) => e.num), [50]);
+  assert.equal(m2.hclr, 25);
+
+  const { novel: m3 } = mergeNovel(novel({}), novel({}));
+  assert.equal('hist' in m3, false);
 });
