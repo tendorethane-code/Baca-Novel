@@ -1134,7 +1134,7 @@ function openToc(n) {
     n,
     idx,
     (i) => (location.hash = `#/read/${encodeURIComponent(n.id)}/${n.toc[i].num}`),
-    (num, para) => (location.hash = `#/read/${encodeURIComponent(n.id)}/${num}/${para}`),
+    (num, para) => (location.hash = bookmarkHash(n.id, num, para)),
   );
 }
 /** Bagian atas: sampul novel yang sedang dibaca jadi lukisan latar, sapaan, tombol lanjut, daftar isi, progres. */
@@ -1809,7 +1809,7 @@ function novelCard(n, cover) {
                   n,
                   idx,
                   (i) => (location.hash = `#/read/${encodeURIComponent(n.id)}/${n.toc[i].num}`),
-                  (num, para) => (location.hash = `#/read/${encodeURIComponent(n.id)}/${num}/${para}`),
+                  (num, para) => (location.hash = bookmarkHash(n.id, num, para)),
                 ),
             },
             icon('toc'),
@@ -1926,6 +1926,12 @@ function byline(n) {
 const novelHash = (id) => `#/novel/${encodeURIComponent(id)}`;
 const readHash = (id, num, para) =>
   `#/read/${encodeURIComponent(id)}${num != null ? `/${num}${para ? `/${para}` : ''}` : ''}`;
+/** Lompat ke bookmark dari luar layar baca: sama dengan readHash, dan paragrafnya disorot saat dibuka. */
+let flashNext = '';
+const bookmarkHash = (id, num, para) => {
+  flashNext = `${id}:${num}:${para || 0}`;
+  return readHash(id, num, para);
+};
 
 /** Buka info novel sesuai pilihan di Pengaturan: popup (bawaan) atau halaman lengkap. */
 async function openNovelInfo(n) {
@@ -2111,7 +2117,7 @@ async function openNovelPopup(n) {
           },
           (num, para) => {
             close();
-            location.hash = readHash(n.id, num, para);
+            location.hash = bookmarkHash(n.id, num, para);
           },
         ),
     },
@@ -2168,7 +2174,7 @@ async function showNovel(id) {
         n,
         parts.idx,
         (k) => (location.hash = readHash(n.id, n.toc[k].num)),
-        (num, para) => (location.hash = readHash(n.id, num, para)),
+        (num, para) => (location.hash = bookmarkHash(n.id, num, para)),
       )
     : null;
   const tocBox = toc ? el('section', { class: 'nv-box nv-toc' }, el('div', { class: 'nv-label' }, 'Daftar chapter'), toc.nodes) : null;
@@ -3594,6 +3600,9 @@ async function showReader(id, wantNum, wantPara = 0) {
     if (idx < 0) idx = novel.toc.length - 1;
     para = 0;
   }
+  // Dibuka dari bookmark (lihat bookmarkHash)? Sorot paragrafnya, asal chapter itu masih ada.
+  const flashFirst = flashNext === `${id}:${wantNum}:${wantPara}` && novel.toc[idx].num === wantNum;
+  flashNext = '';
 
   // Panel baca: tersembunyi saat membaca, muncul dari bawah saat teks diketuk.
   // Isinya judul & progres, baris tombol (bisa diatur di Pengaturan), dan pengaturan huruf.
@@ -3918,7 +3927,7 @@ async function showReader(id, wantNum, wantPara = 0) {
     [...article.children].forEach((p, i) => p.classList.toggle('bm', marked.has(i)));
   }
 
-  async function render(startPara, highlight) {
+  async function render(startPara, highlight, flash = false) {
     const my = ++token;
     const entry = novel.toc[idx];
     const chapter = await db.getChapter(novel.id, entry.num);
@@ -3952,9 +3961,10 @@ async function showReader(id, wantNum, wantPara = 0) {
     if (controls) refreshHead();
     markBookmarks();
     const target = article.children[startPara];
-    if (highlight && target) {
-      target.replaceChildren(...highlightText(target.textContent, highlight));
+    if ((highlight || flash) && target) {
+      if (highlight) target.replaceChildren(...highlightText(target.textContent, highlight));
       target.classList.add('flash');
+      target.addEventListener('animationend', () => target.classList.remove('flash'), { once: true });
     }
     restore(startPara);
     pinned = startPara ? { para: startPara, y: window.scrollY } : null;
@@ -3965,17 +3975,17 @@ async function showReader(id, wantNum, wantPara = 0) {
     saveNow();
   }
 
-  function go(i, para = 0, highlight) {
+  function go(i, para = 0, highlight, flash = false) {
     if (i < 0 || i >= novel.toc.length) return;
-    if (i === idx && !para && !highlight) return;
+    if (i === idx && !para && !highlight && !flash) return;
     saveNow();
     idx = i;
-    render(para, highlight);
+    render(para, highlight, flash);
   }
-  const goNum = (num, para, highlight) => {
+  const goNum = (num, para, highlight, flash = false) => {
     const i = novel.toc.findIndex((t) => t.num === num);
     if (i < 0) return toast(`Chapter ${num} sudah tidak ada.`);
-    go(i, para, highlight);
+    go(i, para, highlight, flash);
   };
 
   // ----- Bookmark -----
@@ -4000,7 +4010,7 @@ async function showReader(id, wantNum, wantPara = 0) {
                     class: 'bm-go',
                     onclick: () => {
                       d.close();
-                      goNum(b.num, b.para);
+                      goNum(b.num, b.para, null, true);
                     },
                   },
                   el('b', null, `Chapter ${b.num}`, el('span', { class: 'muted' }, ` · paragraf ${b.para + 1}`)),
@@ -4155,7 +4165,7 @@ async function showReader(id, wantNum, wantPara = 0) {
     });
   }
 
-  const openToc = () => openTocDialog(novel, idx, (i) => go(i), (num, para) => goNum(num, para));
+  const openToc = () => openTocDialog(novel, idx, (i) => go(i), (num, para) => goNum(num, para, null, true));
 
   // Menu "lainnya". Edit sengaja ditaruh di sini (bukan di bar) dan dipisah dari tombol biasa,
   // supaya tidak terpencet tanpa sengaja.
@@ -4293,7 +4303,7 @@ async function showReader(id, wantNum, wantPara = 0) {
   }
 
   readerHooks = { anchor: () => anchor(), restore, refreshRecap, onSynced, rebuildBar };
-  await render(para);
+  await render(para, null, flashFirst);
 }
 
 function onLockChange() {

@@ -827,7 +827,12 @@ textarea.editor {
 :root[data-dark] .badge.st-done { color: #c4a8ee; }
 
 /* Bookmark */
-.reader article p.bm { box-shadow: -10px 0 0 -7px var(--accent); }
+/* Penanda samar: garis tipis setinggi baris pertama, berjarak dari teks. */
+.reader article p.bm { position: relative; }
+.reader article p.bm::before {
+  content: ''; position: absolute; left: -11px; top: 0.3em; width: 2px; height: 1.1em;
+  border-radius: 2px; background: var(--accent); opacity: 0.45; pointer-events: none;
+}
 .bm-add { display: grid; gap: 8px; padding-bottom: 6px; }
 .bm-text { font-family: var(--read-font); color: var(--muted); font-size: 0.92rem; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .bm-item { display: flex; align-items: flex-start; gap: 4px; border-top: 1px solid var(--line); }
@@ -847,8 +852,15 @@ textarea.editor {
 }
 .sr-item:hover { background: color-mix(in srgb, var(--fg) 6%, transparent); }
 mark { background: color-mix(in srgb, #f5c542 55%, transparent); color: inherit; border-radius: 2px; padding: 0 1px; }
-.reader article p.flash { animation: flash 2.4s ease-out; }
-@keyframes flash { from { background: color-mix(in srgb, var(--accent) 22%, transparent); } to { background: transparent; } }
+/* Sorot sesaat (hasil cari, lompat ke bookmark): menyala ±1 detik lalu memudar. Kelas dilepas setelah selesai. */
+.reader article p.flash { border-radius: 6px; animation: flash 3s ease-out; }
+@keyframes flash {
+  0%, 35% {
+    background: color-mix(in srgb, var(--accent) 18%, transparent);
+    box-shadow: 0 0 0 8px color-mix(in srgb, var(--accent) 18%, transparent);
+  }
+  100% { background: transparent; box-shadow: 0 0 0 8px transparent; }
+}
 
 /* ---------- Pengaturan huruf: pemilih ukuran bertitik, pilihan huruf & kecerahan teks ---------- */
 .size-pick { display: flex; align-items: center; gap: 6px; margin: 4px 0 14px; }
